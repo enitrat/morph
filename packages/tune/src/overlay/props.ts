@@ -1,6 +1,6 @@
 import { type Attribute } from "../dial/jsx"
 import { type PropControl, type PropValue, resolveAt } from "../dial/props"
-import { type Fiber, isComponentName, nameOf } from "../inspector/fiber"
+import { type Instance, instanceName, isComponentName, ownerOf, propsOf } from "../inspector/fiber"
 import { instancesOf, isTune } from "../inspector/target"
 import { type SourceLoc } from "../variant/model"
 import { bridge, explain } from "./bridge"
@@ -45,25 +45,19 @@ export interface InstanceProps {
   rows: PropRow[]
 }
 
-const propsOf = (fiber: Fiber) => fiber.memoizedProps ?? {}
-
-/** The instance fiber, then each component whose render wrote the one below it. */
-function ownersOf(fiber: Fiber): Fiber[] {
-  const chain = [fiber]
-  // oxlint-disable-next-line no-underscore-dangle -- React's dev-only field, read as React names it.
-  for (let owner = fiber._debugOwner ?? null; owner && chain.length < CHAIN_MAX;) {
+/** The instance, then each component whose render wrote the one below it. */
+function ownersOf(instance: Instance): Instance[] {
+  const chain = [instance]
+  for (let owner = ownerOf(instance); owner && chain.length < CHAIN_MAX; owner = ownerOf(owner))
     chain.push(owner)
-    // oxlint-disable-next-line no-underscore-dangle -- see above.
-    owner = owner._debugOwner ?? null
-  }
   return chain
 }
 
 const sameSite = (a: SourceLoc | null, b: SourceLoc) =>
   a !== null && a.path === b.path && a.line === b.line && a.col === b.col
 
-const valueOf = (control: PropControl, fiber: Fiber): PropValue => {
-  const value = propsOf(fiber)[control.name]
+const valueOf = (control: PropControl, instance: Instance): PropValue => {
+  const value = propsOf(instance)[control.name]
   return typeof value === typeof control.default ? (value as PropValue) : control.default
 }
 
@@ -77,7 +71,7 @@ type Level = { site: SourceLoc; tag: string; attributes: readonly Attribute[] } 
  */
 async function siteFor(
   name: string,
-  chain: readonly Fiber[],
+  chain: readonly Instance[],
   levelAt: (depth: number) => Promise<Level>,
 ): Promise<{ depth: number; written: PropValue | null } | null> {
   for (let depth = 0; depth < chain.length; depth++) {
@@ -87,25 +81,25 @@ async function siteFor(
     if (resolved.kind === "code") return null
     if (resolved.kind === "edit")
       return (await plumbingAt(level.site.path)) ? null : { depth, written: resolved.written }
-    const [fiber, owner] = [chain[depth], chain[depth + 1]]
-    if (fiber === undefined || owner === undefined) return null
-    if (propsOf(owner)[name] !== propsOf(fiber)[name]) return null
+    const [instance, owner] = [chain[depth], chain[depth + 1]]
+    if (instance === undefined || owner === undefined) return null
+    if (propsOf(owner)[name] !== propsOf(instance)[name]) return null
   }
   return null
 }
 
 /** Each instance of `component` on the page, as its owner chain. */
-function instancesIn(root: ParentNode, element: Element, component: string): Fiber[][] {
+function instancesIn(root: ParentNode, element: Element, component: string): Instance[][] {
   const catalog = catalogNow()
   return [...root.querySelectorAll(element.tagName)].flatMap((other) => {
     if (isTune(other)) return []
-    const instance = instancesOf(other, catalog).find(({ name }) => name === component)
-    return instance === undefined ? [] : [ownersOf(instance.fiber)]
+    const found = instancesOf(other, catalog).find(({ name }) => name === component)
+    return found === undefined ? [] : [ownersOf(found.instance)]
   })
 }
 
 /** How many instances on the page take the prop from `site`, `depth` owners up from each. */
-async function placesAt(chains: readonly Fiber[][], depth: number, site: SourceLoc) {
+async function placesAt(chains: readonly Instance[][], depth: number, site: SourceLoc) {
   const writers = [...new Set(chains.flatMap((chain) => chain[depth] ?? []))]
   const sites = await sitesOf(writers)
   return sites.filter((other) => sameSite(other, site)).length
@@ -117,11 +111,12 @@ async function placesAt(chains: readonly Fiber[][], depth: number, site: SourceL
  * either reaches only its page.
  */
 async function wrapperAt(
-  chain: readonly Fiber[],
+  chain: readonly Instance[],
   depth: number,
   site: SourceLoc,
 ): Promise<Wrapper | null | string> {
-  const name = nameOf(chain[depth + 1]?.type)
+  const owner = chain[depth + 1]
+  const name = owner && instanceName(owner)
   if (!isComponentName(name)) return null
   const counted = await bridge.uses(name, site.path)
   if (!counted.ok) return explain(counted.error)
@@ -132,14 +127,16 @@ async function wrapperAt(
 /** The outermost instance the element is the root of that takes props, with its controls. */
 async function instanceWithProps(
   element: Element,
-): Promise<{ instance: { name: string; fiber: Fiber }; controls: PropControl[] } | string | null> {
+): Promise<
+  { picked: { name: string; instance: Instance }; controls: PropControl[] } | string | null
+> {
   const tokens = await loadTokens()
   if (!tokens.ok) return explain(tokens.error)
-  for (const instance of instancesOf(element, catalogNow())) {
-    const answer = await bridge.props(instance.name)
+  for (const picked of instancesOf(element, catalogNow())) {
+    const answer = await bridge.props(picked.name)
     if (!answer.ok) return explain(answer.error)
     const { controls } = answer.value
-    if (controls.length > 0) return { instance, controls }
+    if (controls.length > 0) return { picked, controls }
   }
   return null
 }
@@ -149,10 +146,10 @@ async function instanceWithProps(
  * fails, `null` when the pick is no instance that takes props.
  */
 export async function deriveProps(element: Element): Promise<InstanceProps | string | null> {
-  const picked = await instanceWithProps(element)
-  if (picked === null || typeof picked === "string") return picked
-  const { instance, controls } = picked
-  const chain = ownersOf(instance.fiber)
+  const found = await instanceWithProps(element)
+  if (found === null || typeof found === "string") return found
+  const { picked, controls } = found
+  const chain = ownersOf(picked.instance)
   const sites = await sitesOf(chain)
   const levels = new Map<number, Promise<Level>>()
   const levelAt = (depth: number): Promise<Level> => {
@@ -171,11 +168,11 @@ export async function deriveProps(element: Element): Promise<InstanceProps | str
   }
   // The lab repeats a specimen across its page, so only instances in the pointed-at stage count.
   const root: ParentNode = element.closest("[data-tune-stage]") ?? document
-  const chains = instancesIn(root, element, instance.name)
+  const chains = instancesIn(root, element, picked.name)
   const reach = new Map<number, Promise<{ places: number; wrapper: Wrapper | null } | string>>()
   const rows = await Promise.all(
     controls.map(async (control): Promise<PropRow | string> => {
-      const value = valueOf(control, instance.fiber)
+      const value = valueOf(control, picked.instance)
       const found = await siteFor(control.name, chain, levelAt)
       const level = found && (await levelAt(found.depth))
       if (found === null || level === null) return { control, value, at: null }
@@ -200,5 +197,5 @@ export async function deriveProps(element: Element): Promise<InstanceProps | str
   )
   const failed = rows.find((row) => typeof row === "string")
   if (failed !== undefined) return failed
-  return { component: instance.name, rows: rows.filter((row) => typeof row !== "string") }
+  return { component: picked.name, rows: rows.filter((row) => typeof row !== "string") }
 }

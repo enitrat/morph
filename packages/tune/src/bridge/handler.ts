@@ -7,22 +7,29 @@ import { Ask, Choice, Refine, RepoPath, SessionId, SourceLoc, VariantId } from "
 import { designSystemOf, dial, tagClasses } from "./dial"
 import { type Host, openRepo } from "./git"
 import { guard } from "./guard"
-import { locate } from "./locate"
 import { componentUses, propControls, tagAttributes, writeProp } from "./props"
 import { ask, discard, type Done, keep, look, refine, type Refusal, retry, show } from "./session"
+import { type Bundler, type Frame } from "./symbolicate"
 
-const FRAME = /^(https?:\/\/.+):(\d+):(\d+)$/
+const FRAME = /^(.+):(\d+):(\d+)$/
+const SERVER_FRAME = /^(?:about|rsc):\/\/React\//
 
-/** `<chunk url>:<line>:<col>`, served by the dev server that answers this request. */
+/**
+ * `<url>:<line>:<col>` of an owner stack: code the dev server answering this request served, or a
+ * Server Component frame React replayed in the browser.
+ */
 const frameIn = (origin: string) =>
   z
     .string()
     .regex(FRAME)
-    .transform((text) => {
+    .transform((text): Frame => {
       const [, url = "", line = "", col = ""] = FRAME.exec(text) ?? []
-      return { url: new URL(url), line: Number(line), col: Number(col) }
+      return { url, line: Number(line), col: Number(col) }
     })
-    .refine((frame) => frame.url.origin === origin, "frames must come from this dev server")
+    .refine(
+      ({ url }) => SERVER_FRAME.test(url) || (URL.canParse(url) && new URL(url).origin === origin),
+      "frames must come from this dev server",
+    )
 
 const SessionRef = z.object({ id: SessionId })
 const ChoiceRef = z.object({ id: SessionId, variant: Choice })
@@ -41,7 +48,7 @@ type Answer = Done<unknown>
 
 interface Op {
   method: "GET" | "POST"
-  run(request: Request, repo: Host): Promise<Answer>
+  run(request: Request, repo: Host, bundler: Bundler): Promise<Answer>
 }
 
 /** The `path`, `line` and `col` search params of a GET that names a JSX tag. */
@@ -58,15 +65,18 @@ const body = async <T>(request: Request, schema: z.ZodType<T>) => schema.parse(a
 
 const OPS: Record<string, Op> = {
   locate: {
-    method: "GET",
-    async run(request, repo) {
-      const url = new URL(request.url)
-      const frames = z
-        .array(frameIn(url.origin))
-        .min(1)
-        .max(64)
-        .parse(url.searchParams.getAll("frame"))
-      return { ok: true, value: { sources: await locate(repo.root, frames) } }
+    method: "POST",
+    async run(request, repo, bundler) {
+      const { frames } = await body(
+        request,
+        z.object({
+          frames: z
+            .array(frameIn(new URL(request.url).origin))
+            .min(1)
+            .max(64),
+        }),
+      )
+      return { ok: true, value: { sources: await bundler.symbolicate(repo.root, frames) } }
     },
   },
   tokens: { method: "GET", run: async (_, repo) => ({ ok: true, value: designSystemOf(repo) }) },
@@ -148,45 +158,44 @@ const OPS: Record<string, Op> = {
   },
 }
 
-async function handle(
-  opened: () => Promise<Host>,
-  request: Request,
-  { params }: { params: Promise<{ op: string }> },
-): Promise<Response> {
-  const admitted = guard(request)
-  if ("answer" in admitted) return admitted.answer
-  const json = (value: unknown, status = 200) =>
-    Response.json(value, { status, headers: admitted.cors })
-
-  const op = OPS[(await params).op]
-  if (op === undefined) return json({ error: { kind: "not-found" } }, 404)
-  if (op.method !== request.method) return json({ error: { kind: "method" } }, 405)
-  try {
-    const answer = await op.run(request, await opened())
-    if (answer.ok) return json(answer.value)
-    const { ok: _, ...refusal } = answer
-    return json({ error: refusal }, STATUS[refusal.kind])
-  } catch (error) {
-    if (error instanceof z.ZodError || error instanceof SyntaxError) {
-      const issues =
-        error instanceof z.ZodError ? error.issues.map((issue) => issue.message) : [error.message]
-      return json({ error: { kind: "bad-request", issues } }, 400)
-    }
-    console.error(error)
-    const detail = error instanceof Error ? error.message : String(error)
-    return json({ error: { kind: "crashed", detail } }, 500)
-  }
-}
+/** The Tune bridge: answers one op of a request, after the guard admits it. */
+export type Handler = (request: Request, op: string) => Promise<Response>
 
 /**
- * The Tune bridge as a Next route at `/api/tune/[op]`; outside development it answers 404. A
- * config that does not parse throws here, so the host's first request fails on it.
+ * The Tune bridge as one Web-standard handler for an adapter to mount; outside development it
+ * answers 404. It serves the git checkout holding `dir`, and maps stack frames through `bundler`.
+ * A config that does not parse throws here, so the host fails at startup.
  */
-export function tuneRoute(input: TuneConfigInput) {
+export function tuneHandler(
+  input: TuneConfigInput,
+  { bundler, dir }: { bundler: Bundler; dir: string },
+): Handler {
   const config = TuneConfig.parse(input)
   let host: Promise<Host> | undefined
-  const opened = () => (host ??= openRepo(process.cwd()).then((repo) => ({ ...repo, config })))
-  const route = (request: Request, context: { params: Promise<{ op: string }> }) =>
-    handle(opened, request, context)
-  return { GET: route, POST: route, OPTIONS: route }
+  const opened = () => (host ??= openRepo(dir).then((repo) => ({ ...repo, config })))
+  return async (request, name) => {
+    const admitted = guard(request)
+    if ("answer" in admitted) return admitted.answer
+    const json = (value: unknown, status = 200) =>
+      Response.json(value, { status, headers: admitted.cors })
+
+    const op = OPS[name]
+    if (op === undefined) return json({ error: { kind: "not-found" } }, 404)
+    if (op.method !== request.method) return json({ error: { kind: "method" } }, 405)
+    try {
+      const answer = await op.run(request, await opened(), bundler)
+      if (answer.ok) return json(answer.value)
+      const { ok: _, ...refusal } = answer
+      return json({ error: refusal }, STATUS[refusal.kind])
+    } catch (error) {
+      if (error instanceof z.ZodError || error instanceof SyntaxError) {
+        const issues =
+          error instanceof z.ZodError ? error.issues.map((issue) => issue.message) : [error.message]
+        return json({ error: { kind: "bad-request", issues } }, 400)
+      }
+      console.error(error)
+      const detail = error instanceof Error ? error.message : String(error)
+      return json({ error: { kind: "crashed", detail } }, 500)
+    }
+  }
 }

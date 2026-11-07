@@ -1,8 +1,8 @@
-"use client"
-
 import { type ReactNode } from "react"
 
 import { Badge, Button, Card, OrderSummary } from "@/ui"
+
+import { ThemeToggle } from "./theme-toggle"
 
 const VARIANTS = ["primary", "secondary", "outline", "ghost", "destructive"] as const
 const SIZES = ["sm", "md", "lg"] as const
@@ -21,13 +21,7 @@ export default function Page() {
     <main className="mx-auto flex max-w-3xl flex-col gap-10 p-8">
       <header className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Acme</h1>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => document.documentElement.classList.toggle("dark")}
-        >
-          Toggle theme
-        </Button>
+        <ThemeToggle />
       </header>
 
       <Section title="Button">

@@ -1,4 +1,13 @@
-import { type Fiber, fiberOf, isComponentName, nameOf } from "./fiber"
+import {
+  type Fiber,
+  fiberOf,
+  type Instance,
+  instanceName,
+  isComponentName,
+  nameOf,
+  rootedAt,
+  serverComponentsOf,
+} from "./fiber"
 import { type Catalog, type Look, type Row, type Seen } from "./label"
 
 /** Tune's own nodes, which pointing never lands on. */
@@ -64,27 +73,25 @@ export function leafAt(x: number, y: number): Element | null {
 
 /** The component names between this element and the host element above it, innermost first. */
 function ownNames(element: Element): string[] {
-  const names: string[] = []
-  for (let fiber = fiberOf(element)?.return ?? null; fiber; fiber = fiber.return) {
-    if (fiber.stateNode instanceof Element) break
-    const name = nameOf(fiber.type)
-    if (isComponentName(name)) names.push(name)
-  }
-  return names
+  return rootedAt(element)
+    .map(instanceName)
+    .filter((name) => isComponentName(name))
 }
 
 /**
  * The catalog components this element is the root of, outermost first: one renders another at the
  * same root, and the instance a designer sets props on is the outermost one that takes props.
  */
-export function instancesOf(element: Element, catalog: Catalog): { name: string; fiber: Fiber }[] {
-  const found: { name: string; fiber: Fiber }[] = []
-  for (let fiber = fiberOf(element)?.return ?? null; fiber; fiber = fiber.return) {
-    if (fiber.stateNode instanceof Element) break
-    const name = nameOf(fiber.type)
-    if (isComponentName(name) && catalog.has(name)) found.unshift({ name, fiber })
-  }
-  return found
+export function instancesOf(
+  element: Element,
+  catalog: Catalog,
+): { name: string; instance: Instance }[] {
+  return rootedAt(element)
+    .flatMap((instance) => {
+      const name = instanceName(instance)
+      return isComponentName(name) && catalog.has(name) ? [{ name, instance }] : []
+    })
+    .reverse()
 }
 
 const transparent = (color: string) =>
@@ -216,8 +223,9 @@ export function rowOf(element: Element): Row | null {
 export function seenOf(element: Element): Seen {
   const owners: string[] = []
   for (let fiber: Fiber | null = fiberOf(element) ?? null; fiber; fiber = fiber.return) {
-    const name = nameOf(fiber.type)
-    if (isComponentName(name) && owners.at(-1) !== name) owners.push(name)
+    const names = [nameOf(fiber.type), ...serverComponentsOf(fiber).reverse().map(instanceName)]
+    for (const name of names)
+      if (isComponentName(name) && owners.at(-1) !== name) owners.push(name)
   }
   return {
     own: ownNames(element),

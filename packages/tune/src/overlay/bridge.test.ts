@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { SessionId } from "../variant/model"
-import { bridge, explain } from "./bridge"
+import { bridge, connect, explain } from "./bridge"
 
 const ID = SessionId.parse("6f1c1f6e-3f0e-4f4e-9d2a-2b1f6c3d4e5f")
 
@@ -11,8 +11,17 @@ const answering = (response: Response) =>
     vi.fn(async () => response),
   )
 
+connect("/__tune/")
+
 afterEach(() => {
   vi.unstubAllGlobals()
+})
+
+it("calls the bridge at the path its adapter mounts it on", async () => {
+  const fetch = vi.fn(async () => Response.json(null))
+  vi.stubGlobal("fetch", fetch)
+  await bridge.discard(ID)
+  expect(fetch).toHaveBeenCalledWith("/__tune/discard", expect.anything())
 })
 
 describe("what the overlay says when the bridge cannot answer", () => {

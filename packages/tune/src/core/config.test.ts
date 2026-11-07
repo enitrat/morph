@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import ours from "../bridge/fixtures/acme/tune.config"
-import { tuneRoute } from "../bridge/route"
+import { tuneRoute } from "../next"
 import { normalizeSelector, rootStateOf, TuneConfig, type TuneConfigInput } from "./config"
 
 const withThemes = (themes: TuneConfigInput["tokens"]["themes"]): TuneConfigInput => ({

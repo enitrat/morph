@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { createRoot, type Root } from "react-dom/client"
 
+import { connect } from "../overlay/bridge"
 import { Overlay } from "../overlay/overlay"
 import { SENTINEL } from "./sentinel"
 
@@ -15,9 +16,11 @@ interface Holder {
 /**
  * Renders the overlay into a shadow root on a `tune-root` appended to `<html>`, outside `body`
  * so the app's layout never moves for it. The overlay has its own React root: a variant that
- * crashes the host's tree does not take it down, so it is never unmounted with the host.
+ * crashes the host's tree does not take it down, so it is never unmounted with the host. `base` is
+ * the path the bridge answers on, which the adapter that mounts it chose.
  */
-function mountOverlay() {
+export function mountTune(base: string) {
+  connect(base)
   const holder = window as Holder
   const mounted = holder[MOUNTED]
   if (mounted?.host.isConnected) {
@@ -32,7 +35,8 @@ function mountOverlay() {
   holder[MOUNTED] = { host, root }
 }
 
-export function TuneWidget() {
-  useEffect(mountOverlay, [])
+/** Mounts the overlay from a React tree, talking to the bridge at `base`. */
+export function TuneWidget({ base }: { base: string }) {
+  useEffect(() => mountTune(base), [base])
   return null
 }

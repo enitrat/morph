@@ -7,4 +7,4 @@ export const TuneMount =
     ? dynamic(() => import("@enitrat/tune/widget").then((module) => module.TuneWidget), {
         ssr: false,
       })
-    : () => null
+    : (_: { base: string }) => null

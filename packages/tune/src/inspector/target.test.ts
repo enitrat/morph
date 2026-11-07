@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { catalogOf } from "./label"
-import { above, below, leafAt, meaningfulFrom, rowOf, seenOf } from "./target"
+import { above, below, instancesOf, leafAt, meaningfulFrom, rowOf, seenOf } from "./target"
 
 const catalog = catalogOf([])
 
@@ -108,7 +108,8 @@ describe("pointing at plain elements", () => {
 
 describe("what a pick shows", () => {
   it("reads a box by its heading over the first text in it", () => {
-    document.body.innerHTML = '<section id="checkout"><span>Step 1</span><h2>Checkout</h2></section>'
+    document.body.innerHTML =
+      '<section id="checkout"><span>Step 1</span><h2>Checkout</h2></section>'
     expect(seenOf(byId("checkout")).text).toBe("Checkout")
   })
 
@@ -117,5 +118,34 @@ describe("what a pick shows", () => {
     byId("grid").insertAdjacentHTML("beforeend", '<div class="tile">Total</div>')
     byId("tile").className = "tile"
     expect(rowOf(byId("grid"))).toMatchObject({ count: 2, first: { text: "Top region" } })
+  })
+})
+
+describe("instances a pick is the root of", () => {
+  it("finds client components by their fiber and Server Components by the debug info React sent", () => {
+    function Card() {}
+    const button = document.createElement("button")
+    const page = { name: "Page", env: "Server", props: {} }
+    const shell = { name: "Shell", env: "Server", props: {}, owner: page }
+    const iconButton = { name: "IconButton", env: "Server", props: { size: "sm" }, owner: page }
+    const card = { type: Card, return: null, child: null, memoizedProps: {}, stateNode: null }
+    const fiber = {
+      type: "button",
+      return: { ...card, _debugInfo: [{ time: 1 }, shell] },
+      child: null,
+      memoizedProps: {},
+      stateNode: button,
+      _debugInfo: [{ time: 2 }, iconButton],
+    }
+    Object.assign(button, { __reactFiber$test: fiber })
+    const listed = catalogOf([
+      { title: "UI", naming: "own", exports: ["IconButton", "Card", "Shell"] },
+    ])
+
+    expect(instancesOf(button, listed).map(({ name }) => name)).toEqual([
+      "Shell",
+      "Card",
+      "IconButton",
+    ])
   })
 })

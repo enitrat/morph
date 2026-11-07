@@ -11,7 +11,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         {children}
-        <TuneMount />
+        <TuneMount base="/api/tune" />
       </body>
     </html>
   )

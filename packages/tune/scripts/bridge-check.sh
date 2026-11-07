@@ -50,7 +50,8 @@ call -X POST "$API/ask" -H 'x-tune: 1' -H 'content-type: application/json' -d '{
 echo "guard: 403 without x-tune, 403 foreign origin, 400 malformed ask"
 
 FRAME="$(node "$(dirname "$0")/frame-of.mjs" "$ORIGIN" "$PAGE" "$FILE")"
-call -G "$API/locate" --data-urlencode "frame=${FRAME% *}"
+call -X POST "$API/locate" -H 'x-tune: 1' -H 'content-type: application/json' \
+  -d "$(jq -n --arg frame "${FRAME% *}" '{frames: [$frame]}')"
 [ "$STATUS" = 200 ] || fail "locate answered $STATUS: $BODY"
 GOT="$(jq -r '.sources[0] | "\(.path):\(.line)"' <<<"$BODY")"
 [ "$GOT" = "${FRAME#* }" ] || fail "locate resolved ${FRAME% *} to $GOT, expected ${FRAME#* }"

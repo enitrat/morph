@@ -1,10 +1,21 @@
-import { type Fiber, fiberOf, isComponentName, nameOf } from "../inspector/fiber"
+import {
+  fiberOf,
+  type Instance,
+  instanceName,
+  isComponentName,
+  ownerOf,
+  stackOf,
+} from "../inspector/fiber"
 import { type Anchor, type SourceLoc } from "../variant/model"
 import { bridge } from "./bridge"
 import { plumbingAt } from "./catalog"
 
-/** `at Name (http://host/chunk.js:1:2)` or `at http://host/chunk.js:1:2`. */
-const FRAME = /^\s*at (?:.*? \()?(https?:\/\/[^)\s]+?:\d+:\d+)\)?$/
+/**
+ * `at Name (<url>:1:2)` or `at <url>:1:2`, for code the dev server served or a Server Component
+ * frame React replays in the browser (`about://React/Server/file:///…`).
+ */
+const FRAME = /^\s*at (?:.*? \()?((?:https?|about|rsc):\/\/[^)\s]+?:\d+:\d+)\)?$/
+const SERVER_FRAME = /^(?:about|rsc):\/\/React\//
 const CHAIN_MAX = 8
 const FRAMES_PER_LINK = 4
 
@@ -21,13 +32,15 @@ interface Link {
   frames: string[]
 }
 
-function framesOf(fiber: Fiber): string[] {
-  // oxlint-disable-next-line no-underscore-dangle -- React's dev-only field, read as React names it.
-  const lines = fiber._debugStack?.stack?.split("\n").slice(1) ?? []
+/** The creation frames of an instance's element that the bridge can map to source. */
+function framesOf(instance: Instance): string[] {
+  const lines = stackOf(instance)?.stack?.split("\n").slice(1) ?? []
   return lines
     .flatMap((line) => {
       const frame = FRAME.exec(line)?.[1]
-      return frame?.startsWith(location.origin) ? [frame] : []
+      return frame !== undefined && (frame.startsWith(location.origin) || SERVER_FRAME.test(frame))
+        ? [frame]
+        : []
     })
     .slice(0, FRAMES_PER_LINK)
 }
@@ -35,11 +48,13 @@ function framesOf(fiber: Fiber): string[] {
 /** The element's fiber, then each owner that created it: their names and creation frames. */
 function chainOf(element: Element): Link[] {
   const chain: Link[] = []
-  for (let fiber = fiberOf(element) ?? null; fiber && chain.length < CHAIN_MAX;) {
-    const name = nameOf(fiber.type)
-    chain.push({ name: isComponentName(name) ? name : undefined, frames: framesOf(fiber) })
-    // oxlint-disable-next-line no-underscore-dangle -- see above.
-    fiber = fiber._debugOwner ?? null
+  for (
+    let instance: Instance | null = fiberOf(element) ?? null;
+    instance && chain.length < CHAIN_MAX;
+    instance = ownerOf(instance)
+  ) {
+    const name = instanceName(instance)
+    chain.push({ name: isComponentName(name) ? name : undefined, frames: framesOf(instance) })
   }
   return chain
 }
@@ -69,11 +84,11 @@ async function resolve(element: Element): Promise<Located> {
 /** The bridge locates at most 64 frames per call. */
 const FIBERS_PER_CALL = 64 / FRAMES_PER_LINK
 
-/** Where each fiber's element was written: its JSX call site, or `null` outside the repo. */
-export async function sitesOf(fibers: readonly Fiber[]): Promise<(SourceLoc | null)[]> {
-  const groups: Fiber[][] = []
-  for (let at = 0; at < fibers.length; at += FIBERS_PER_CALL)
-    groups.push(fibers.slice(at, at + FIBERS_PER_CALL))
+/** Where each instance's element was written: its JSX call site, or `null` outside the repo. */
+export async function sitesOf(instances: readonly Instance[]): Promise<(SourceLoc | null)[]> {
+  const groups: Instance[][] = []
+  for (let at = 0; at < instances.length; at += FIBERS_PER_CALL)
+    groups.push(instances.slice(at, at + FIBERS_PER_CALL))
   const found = await Promise.all(
     groups.map(async (group) => {
       const frames = group.map(framesOf)

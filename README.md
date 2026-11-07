@@ -9,9 +9,8 @@ Tune writes only to your working tree, and only while `next dev` runs.
 
 ## Requirements
 
-- React 19 in development, on Next.js with the App Router. Tune finds an element's code through
-  the client component that renders it, so it reports "Code not found" for markup a Server
-  Component renders. Point at pages and components marked `"use client"`.
+- React 19 in development, on Next.js with the App Router. Server Components and client
+  components both work.
 - A git checkout. Variants are built in worktrees and kept as refs.
 - Design tokens as CSS custom properties, Tailwind CSS 4 style (`@theme`, `:root`, `.dark`).
 - The [`claude` CLI](https://docs.claude.com/en/docs/claude-code), signed in, on your `PATH`.
@@ -79,10 +78,11 @@ pnpm add -D github:enitrat/tune
        ? dynamic(() => import("@enitrat/tune/widget").then((module) => module.TuneWidget), {
            ssr: false,
          })
-       : () => null
+       : (_: { base: string }) => null
    ```
 
-   Render `<TuneMount />` inside `<body>`. Press Alt+Shift+R to start pointing.
+   Render `<TuneMount base="/api/tune" />` inside `<body>`; `base` is the route's path. Press
+   Alt+Shift+R to start pointing.
 
 ## Allowed origins
 

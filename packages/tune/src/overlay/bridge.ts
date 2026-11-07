@@ -36,9 +36,17 @@ export type Answer<T> = { ok: true; value: T } | { ok: false; error: BridgeError
 const isRefusal = (body: unknown): body is { error: BridgeError } =>
   typeof body === "object" && body !== null && "error" in body
 
+let base: string | undefined
+
+/** Points the bridge at the path its adapter mounts it on, before the overlay renders. */
+export function connect(to: string) {
+  base = to.replace(/\/+$/, "")
+}
+
 async function call<T>(op: string, init: RequestInit = {}): Promise<Answer<T>> {
+  if (base === undefined) throw new Error("tune: the overlay called the bridge before connect()")
   try {
-    const response = await fetch(`/api/tune/${op}`, {
+    const response = await fetch(`${base}/${op}`, {
       ...init,
       headers: { "x-tune": "1", "content-type": "application/json" },
     })
@@ -69,9 +77,7 @@ const siteQuery = (site: SourceLoc) =>
 
 export const bridge = {
   locate: (frames: readonly string[]) =>
-    call<{ sources: (SourceLoc | null)[] }>(
-      `locate?${frames.map((frame) => `frame=${encodeURIComponent(frame)}`).join("&")}`,
-    ),
+    post<{ sources: (SourceLoc | null)[] }>("locate", { frames }),
   ask: (ask: Ask) => post<SessionView>("ask", ask),
   refine: (refine: Refine) => post<SessionView>("refine", refine),
   session: (id: SessionId) => call<SessionView>(`session?id=${id}`),
