@@ -1,15 +1,12 @@
 import { z } from "zod"
 
-import { type DesignSystem } from "../core"
 import { type Anchor, type Ask, Direction, type Mark, type Parent } from "../variant/model"
-import { importableOf } from "./design-system"
 
 interface DesignRules {
   /** Each specifier the agent may import components from, with the React names it imports. */
   imports: readonly { specifier: string; names: readonly string[] }[]
+  styleRules: readonly string[]
 }
-
-export const readDesignRules = (ds: DesignSystem): DesignRules => ({ imports: importableOf(ds) })
 
 export const Directions = (count: number) =>
   z.object({ directions: z.array(Direction).length(count) })
@@ -100,8 +97,8 @@ export function variantPrompt(
   rules: DesignRules,
 ): string {
   return [
-    "You are editing a git checkout of a React 19 + Next.js + Tailwind 4 monorepo, your working",
-    "directory. Make one design change in its source, then stop.",
+    "You are editing a git checkout of a React project in your working directory.",
+    "Make one design change in its source, then stop.",
     "",
     request(ask, parent),
     "",
@@ -116,8 +113,7 @@ export function variantPrompt(
       : [
           `- Build UI only from ${rules.imports.map(({ specifier, names }) => `${specifier} components: ${names.join(", ")}`).join("; ")}.`,
         ]),
-    "- Style with the Tailwind utilities and ds tokens the code already uses. Never add a colour,",
-    "  a token, or an arbitrary value.",
+    ...rules.styleRules.map((rule) => `- ${rule}`),
     "- Never put an interactive element (button, link, input, popover trigger) inside a link or a",
     "  button. Restructure so they are siblings.",
     "- Render only the new layout. Do not keep the old one hidden or behind a prop.",

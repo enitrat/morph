@@ -122,10 +122,30 @@ describe("the prompts of a refine round", () => {
   }
   const request = askOf(SessionId.parse(randomUUID()), "make the price bigger and bolder")
 
+  it("uses the project's styling rules without assuming a framework", () => {
+    const prompt = variantPrompt(
+      request,
+      null,
+      { title: "Rows", description: "Use rows." },
+      {
+        imports: [],
+        styleRules: ["Use CSS modules already in this project."],
+      },
+    )
+    expect(prompt).toContain("Use CSS modules already in this project.")
+    expect(prompt).not.toContain("React 19 + Next.js + Tailwind 4")
+    expect(prompt).not.toContain("Style with the Tailwind utilities")
+  })
+
   it("carry the original words, the kept variant and the feedback, and start from the code", () => {
     for (const prompt of [
       plannerPrompt(request, parent),
-      variantPrompt(request, parent, { title: "Bold", description: "Bolder." }, { imports: [] }),
+      variantPrompt(
+        request,
+        parent,
+        { title: "Bold", description: "Bolder." },
+        { imports: [], styleRules: [] },
+      ),
     ]) {
       expect(prompt).toContain("make these cards list rows")
       expect(prompt).toContain(
@@ -165,7 +185,11 @@ describe("refine", () => {
     })
 
     const next = SessionId.parse(randomUUID())
-    const request = { from: first, variant: "v2" as const, ask: askOf(next, "make the price bigger") }
+    const request = {
+      from: first,
+      variant: "v2" as const,
+      ask: askOf(next, "make the price bigger"),
+    }
     planner.mockResolvedValueOnce({ ok: false, detail: "planner down" })
     const failed = await refine(repo, request, signal)
 

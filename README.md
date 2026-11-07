@@ -57,6 +57,10 @@ Then follow the steps for your bundler.
 
 ### Next.js
 
+Run `pnpm exec tune setup-next` to create the route and client mount shown below. The command
+leaves existing files alone and prints the remaining layout and configuration steps. You can also
+create the files manually.
+
 1. Add the bridge route at `app/api/tune/[op]/route.dev.ts`:
 
    ```ts
@@ -67,14 +71,13 @@ Then follow the steps for your bundler.
    export const { GET, POST, OPTIONS } = tuneRoute(config)
    ```
 
-   Then let Next compile Tune and serve `.dev.ts` routes, both only under `next dev`, so no
-   production build contains the bridge. In `next.config.mjs`:
+   Let Next serve `.dev.ts` routes only under `next dev`, so no production build contains the
+   bridge. In `next.config.mjs`, merge this with any existing page extensions:
 
    ```js
    const dev = process.env.NODE_ENV === "development"
 
    export default {
-     transpilePackages: dev ? ["@enitrat/tune"] : [],
      pageExtensions: dev ? ["dev.ts", "tsx", "ts", "jsx", "js"] : undefined,
    }
    ```
@@ -190,13 +193,12 @@ Check binaries run from `node_modules/.bin` at the git root, with the git root a
 directory. For an app in a subfolder, with shared shadcn/ui components, see
 `examples/next/tune.config.ts`.
 
+The default agent styling rule uses existing Tailwind utilities and design tokens. To use a
+different project convention, set `styleRules` to an array of instructions in `tune.config.ts`.
+For example, `styleRules: ["Use the existing CSS modules and design tokens."]` replaces the
+default. An empty array removes the default styling rule.
+
 ## When the overlay can't answer
 
-If a variant breaks the page that hosts the overlay, use the CLI. Add a script to your
-app, which needs `tsx` installed:
-
-```json
-{ "scripts": { "tune": "tsx node_modules/@enitrat/tune/src/bin/tune.ts" } }
-```
-
-Then run `pnpm tune status`, `pnpm tune discard` or `pnpm tune gc`.
+If a variant breaks the page that hosts the overlay, run `pnpm exec tune status`,
+`pnpm exec tune discard` or `pnpm exec tune gc` from your app.

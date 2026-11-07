@@ -35,6 +35,16 @@ export function mountTune(base: string) {
   holder[MOUNTED] = { host, root }
 }
 
+/** Removes the document's Tune overlay when the host intentionally stops it. */
+export function unmountTune() {
+  const holder = window as Holder
+  const mounted = holder[MOUNTED]
+  if (mounted === undefined) return
+  delete holder[MOUNTED]
+  mounted.root.unmount()
+  mounted.host.remove()
+}
+
 /** Mounts the overlay from a React tree, talking to the bridge at `base`. */
 export function TuneWidget({ base }: { base: string }) {
   useEffect(() => mountTune(base), [base])

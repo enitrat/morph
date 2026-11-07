@@ -22,9 +22,9 @@ export type Snapshot = ReadonlyMap<string, string>
 const isFolderSource = (name: string) =>
   (name.endsWith(".tsx") && !name.endsWith(".test.tsx")) || name.endsWith(".tokens.css")
 
-export function snapshotOf(root: string, config: TuneConfig): Snapshot {
+function snapshot(root: string, config: TuneConfig, tokenFiles: readonly string[]): Snapshot {
   const glob = (pattern: string) => globSync(pattern, { cwd: root })
-  const paths = config.tokens.files.flatMap(glob)
+  const paths = tokenFiles.flatMap(glob)
   for (const source of config.components) {
     if (source.kind === "files") paths.push(...glob(source.files))
     else
@@ -35,6 +35,10 @@ export function snapshotOf(root: string, config: TuneConfig): Snapshot {
       }
   }
   return new Map(paths.map((path) => [path, readFileSync(join(root, path), "utf8")]))
+}
+
+export function snapshotOf(root: string, config: TuneConfig): Snapshot {
+  return snapshot(root, config, config.tokens.files)
 }
 
 const byPath = ([a]: [string, string], [b]: [string, string]) => (a < b ? -1 : a > b ? 1 : 0)
@@ -115,6 +119,11 @@ function listedIn(files: Snapshot, source: ComponentSource): Listed[] {
  */
 function componentsOf(config: TuneConfig, files: Snapshot): Component[] {
   const listed = config.components.flatMap((source) => listedIn(files, source))
+  const slugs = new Set<string>()
+  for (const { slug } of listed) {
+    if (slugs.has(slug)) throw new Error(`two components are named ${slug}`)
+    slugs.add(slug)
+  }
   const specifiers = new Set(
     listed.flatMap(({ slug, source }) => source.importFrom?.replaceAll("{slug}", slug) ?? []),
   )
@@ -184,11 +193,6 @@ export function buildDesignSystem(config: TuneConfig, files: Snapshot): DesignSy
     owned: !path.split("/").includes("node_modules"),
   }))
   const components = componentsOf(config, files)
-  const slugs = new Set<string>()
-  for (const { slug } of components) {
-    if (slugs.has(slug)) throw new Error(`two components are named ${slug}`)
-    slugs.add(slug)
-  }
   return {
     tokens: buildTokens(sources, themeModelOf(config.tokens.themes)),
     components,
@@ -200,10 +204,22 @@ export function readDesignSystem(root: string, config: TuneConfig): DesignSystem
   return buildDesignSystem(config, snapshotOf(root, config))
 }
 
+/** Component imports without reading or constructing the token graph. */
+export function readImportable(
+  root: string,
+  config: TuneConfig,
+): { specifier: string; names: string[] }[] {
+  return importsOf(componentsOf(config, snapshot(root, config, [])))
+}
+
 /** Each specifier the agent may import components from, with the names it imports there. */
 export function importableOf(ds: DesignSystem): { specifier: string; names: string[] }[] {
+  return importsOf(ds.components)
+}
+
+function importsOf(components: readonly Component[]): { specifier: string; names: string[] }[] {
   const names = new Map<string, string[]>()
-  for (const { importFrom, exports } of ds.components)
+  for (const { importFrom, exports } of components)
     if (importFrom !== null) names.set(importFrom, [...(names.get(importFrom) ?? []), ...exports])
   return [...names].map(([specifier, imported]) => ({ specifier, names: imported }))
 }

@@ -1,4 +1,5 @@
-// `pnpm tune status | discard | gc`: the hatch for when the overlay cannot answer, for example
+#!/usr/bin/env node
+// `tune status | discard | gc`: the hatch for when the overlay cannot answer, for example
 // after a shown variant broke the page that hosts it.
 // oxlint-disable-next-line import/no-nodejs-modules -- a CLI.
 import { existsSync } from "node:fs"
@@ -10,6 +11,12 @@ import { recoverLive, setLive } from "../bridge/live"
 import { tryLock, unlock } from "../bridge/lock"
 import { discard, openSessions, readSession } from "../bridge/session"
 import { SLOT_IDS, slotsRoot } from "../bridge/slots"
+import { setupNext } from "./setup-next"
+
+if (process.argv[2] === "setup-next") {
+  await setupNext(process.cwd())
+  process.exit(0)
+}
 
 const repo = await openRepo(process.cwd())
 
@@ -77,7 +84,7 @@ async function gc() {
 const COMMANDS: Record<string, () => Promise<void>> = { status, discard: discardAll, gc }
 const command = COMMANDS[process.argv[2] ?? ""]
 if (command === undefined) {
-  console.error("usage: pnpm tune status | discard | gc")
+  console.error("usage: tune setup-next | status | discard | gc")
   process.exit(2)
 }
 await command()

@@ -9,7 +9,7 @@ import { promisify } from "node:util"
 
 import { type TuneConfig } from "../core/config"
 import { type RepoPath } from "../variant/model"
-import { importableOf, readDesignSystem } from "./design-system"
+import { readImportable } from "./design-system"
 import { type Host } from "./git"
 import { breachesIn, DESIGNER, resolverAt } from "./scope"
 import { workspaceOf, workspacesIn } from "./workspaces"
@@ -130,9 +130,7 @@ const nameOf = (dir: string, workspace: string): string | undefined =>
 
 /** The projects to typecheck: each workspace owning a file, plus every workspace depending on one. */
 async function projectsOf(dir: string, files: readonly RepoPath[]): Promise<string[]> {
-  const owners = new Set(
-    files.map((path) => workspaceOf(dir, path)).filter((owner) => owner !== ""),
-  )
+  const owners = new Set(files.map((path) => workspaceOf(dir, path)))
   const direct = [...owners]
   const workspaces = await workspacesIn(dir)
   for (const owner of direct) {
@@ -189,7 +187,7 @@ export async function checks(
   const diff = await addedDiff(dir, code)
   const dead = deadLinksIn(diff)
   const links = dead.length === 0 ? null : `links:\n${dead.join("\n")}`
-  const importable = importableOf(readDesignSystem(dir, config)).map(({ specifier }) => specifier)
+  const importable = readImportable(dir, config).map(({ specifier }) => specifier)
   const breaches = breachesIn(diff, files, resolverAt(dir), importable)
   const scope =
     breaches.length === 0

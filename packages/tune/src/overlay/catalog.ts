@@ -4,6 +4,7 @@ import { rowOf, seenOf } from "../inspector/target"
 import { type Answer, bridge } from "./bridge"
 
 let tokens: Promise<Answer<DesignSystemWire>> | undefined
+let plumbing: ReturnType<typeof bridge.plumbing> | undefined
 let catalog: Catalog = new Map()
 
 /** The bridge's token sources and catalog, fetched once per page; a failure is asked again. */
@@ -24,7 +25,11 @@ export function loadTokens(): Promise<Answer<DesignSystemWire>> {
  * marks nothing, so locating still works without it.
  */
 export async function plumbingAt(path: string): Promise<boolean> {
-  const answer = await loadTokens()
+  plumbing ??= bridge.plumbing().then((answer) => {
+    if (!answer.ok) plumbing = undefined
+    return answer
+  })
+  const answer = await plumbing
   return answer.ok && isPlumbing(answer.value.plumbing, path)
 }
 

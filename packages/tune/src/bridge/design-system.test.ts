@@ -4,10 +4,16 @@ import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
 import { dependentsOf, impactOf, type TokenName } from "../core"
-import { REPO, repoCatalog } from "./test-fixtures"
+import { importableOf, readImportable } from "./design-system"
+import { CONFIG, REPO, repoCatalog } from "./test-fixtures"
 
 const ds = repoCatalog()
 const { graph } = ds.tokens
+
+it("finds the same component imports without loading token sources", () => {
+  const config = { ...CONFIG, tokens: { ...CONFIG.tokens, files: ["missing/**/*.css"] } }
+  expect(readImportable(REPO, config)).toEqual(importableOf(ds))
+})
 
 // Reference: a per-token regex scan over raw component sources.
 const UTILITY =

@@ -1,4 +1,5 @@
 import { type DesignSystemWire } from "../core"
+import { type PathRule } from "../core/config"
 import { type Attribute } from "../dial/jsx"
 import { type Dialed, type DialWrite } from "../dial/model"
 import {
@@ -86,6 +87,7 @@ export const bridge = {
   keep: (id: SessionId) => post<null>("keep", { id }),
   discard: (id: SessionId) => post<null>("discard", { id }),
   tokens: () => call<DesignSystemWire>("tokens"),
+  plumbing: () => call<{ plumbing: readonly PathRule[] }>("plumbing"),
   tag: (site: SourceLoc) => call<{ classes: string[] }>(`tag?${siteQuery(site)}`),
   dial: (write: DialWrite) => post<Dialed>("dial", write),
   props: (component: string) =>

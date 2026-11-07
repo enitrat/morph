@@ -1,6 +1,4 @@
-// Plain JavaScript: Vite loads its config's dependencies with Node, which runs no TypeScript from
-// node_modules. The bridge is TypeScript, so it loads through tsx once the dev server starts.
-import { tsImport } from "tsx/esm/api"
+import { serve } from "./server"
 
 const VIRTUAL = "virtual:tune"
 const RESOLVED = `\0${VIRTUAL}`
@@ -18,8 +16,7 @@ export function tune(config, { base = "/__tune", inject = true } = {}) {
       resolve: { dedupe: ["react", "react-dom"] },
       optimizeDeps: { include: ["@enitrat/tune > zod"] },
     }),
-    async configureServer(server) {
-      const { serve } = await tsImport("./server.ts", import.meta.url)
+    configureServer(server) {
       serve(server, config, base)
     },
     resolveId: (id) => (id === VIRTUAL ? RESOLVED : undefined),

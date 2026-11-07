@@ -174,6 +174,12 @@ export type PathRule = z.infer<typeof PathRule>
 export const TuneConfig = z.object({
   tokens: TokenSource,
   components: z.array(ComponentSource),
+  /** Project-specific styling instructions supplied to the variant agent. */
+  styleRules: z
+    .array(z.string().min(1))
+    .default([
+      "Style with the Tailwind utilities and ds tokens the code already uses. Never add a colour, a token, or an arbitrary value.",
+    ]),
   /** Call sites here are rarely what a designer means when picking an element. */
   plumbing: z.array(PathRule),
   checks: z.object({

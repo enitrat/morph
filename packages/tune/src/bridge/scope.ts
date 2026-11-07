@@ -27,7 +27,7 @@ export const DESIGNER: Record<Breach["kind"], string> = {
 
 const MANIFESTS =
   /(?:^|\/)(?:package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|package-lock\.json|yarn\.lock|bun\.lockb?|\.npmrc)$/
-const BUILD = /(?:^|\/)(?:tsconfig[\w.-]*\.json|next\.config\.[cm]?[jt]s)$/
+const BUILD = /(?:^|\/)(?:tsconfig[\w.-]*\.json|(?:next|vite)\.config\.[cm]?[jt]s)$/
 const SHIM = /\.d\.[cm]?ts$/
 const CODE = /\.(?:[cm]?[jt]sx?)$/
 const SPECIFIERS = [
@@ -50,7 +50,7 @@ function pathBreach(path: RepoPath): Breach | null {
       path,
       line: 1,
       kind: "build",
-      detail: "Variants never change TypeScript or Next config. Restore this file.",
+      detail: "Variants never change TypeScript, Next, or Vite config. Restore this file.",
     }
   if (SHIM.test(path))
     return {

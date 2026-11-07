@@ -80,6 +80,10 @@ const OPS: Record<string, Op> = {
     },
   },
   tokens: { method: "GET", run: async (_, repo) => ({ ok: true, value: designSystemOf(repo) }) },
+  plumbing: {
+    method: "GET",
+    run: async (_, repo) => ({ ok: true, value: { plumbing: repo.config.plumbing } }),
+  },
   tag: {
     method: "GET",
     run: async (request, repo) => ({

@@ -100,7 +100,7 @@ function spawnJob(repo: Repo, id: SessionId, variant: VariantId): number {
   try {
     const child = spawn(
       process.execPath,
-      ["--import", "tsx", join(pkg, "src", "bridge", "runner.ts"), repo.root, id, variant],
+      [join(pkg, "dist", "runner.js"), repo.root, id, variant],
       { cwd: pkg, detached: true, stdio: ["ignore", log, log] },
     )
     child.unref()

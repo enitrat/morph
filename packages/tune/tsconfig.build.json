@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "src",
+    "outDir": "dist/types"
+  },
+  "include": ["src/core/config.ts", "src/next/index.ts", "src/widget/index.tsx", "src/vite/index.d.ts"],
+  "exclude": ["src/**/*.test.ts", "src/bridge/fixtures"]
+}

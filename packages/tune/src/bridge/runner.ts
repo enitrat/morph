@@ -20,10 +20,10 @@ import {
 import { type AgentResult, agentModel, EDIT_TOOLS, runClaude } from "./agent"
 import { checks } from "./checks"
 import { outside } from "./contain"
-import { readDesignSystem } from "./design-system"
+import { readImportable } from "./design-system"
 import { readJson, writeJson } from "./disk"
 import { changedFiles, commitTree, git, type Host, openRepo, type Repo, updateRef } from "./git"
-import { Outcome, readDesignRules, retryPrompt, variantPrompt } from "./prompt"
+import { Outcome, retryPrompt, variantPrompt } from "./prompt"
 import { jobDir, readSessionFile, variantRef, variantsOf } from "./session"
 import { acquire, release } from "./slots"
 
@@ -141,12 +141,10 @@ async function generate(
   const slot = await acquire(repo, session.base)
   const ms = { agent: 0, checks: 0 }
   try {
-    const prompt = variantPrompt(
-      session.ask,
-      session.parent,
-      direction,
-      readDesignRules(readDesignSystem(slot.dir, repo.config)),
-    )
+    const prompt = variantPrompt(session.ask, session.parent, direction, {
+      imports: readImportable(slot.dir, repo.config),
+      styleRules: repo.config.styleRules,
+    })
     const edited = await edit(slot.dir, repo.config, prompt, phase, ms)
     if (!edited.ok) return edited.result
 

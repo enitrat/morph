@@ -47,22 +47,22 @@ describe("what a variant may not touch", () => {
     )
   })
 
-  it("refuses lockfiles, tsconfig and next config, and lets ordinary source through", () => {
+  it("refuses lockfiles and build config, and lets ordinary source through", () => {
     const touched = paths(
       "pnpm-lock.yaml",
       "apps/site/tsconfig.json",
       "apps/site/next.config.mjs",
+      "apps/site/vite.config.ts",
       "apps/site/app/page.tsx",
       "packages/ui/src/components/atoms/button/button.tokens.css",
     )
     expect(
-      breachesIn("", touched, resolve, ["@acme/ui"]).map(
-        ({ path, kind }) => `${path} ${kind}`,
-      ),
+      breachesIn("", touched, resolve, ["@acme/ui"]).map(({ path, kind }) => `${path} ${kind}`),
     ).toEqual([
       "pnpm-lock.yaml package",
       "apps/site/tsconfig.json build",
       "apps/site/next.config.mjs build",
+      "apps/site/vite.config.ts build",
     ])
   })
 
