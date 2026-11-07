@@ -18,7 +18,7 @@ Tune writes only to your working tree, and only while `next dev` runs.
 
 ## Try it
 
-`example/` is a Next app with a small design system and Tune already set up. From this repo:
+`examples/next/` is a Next app with a small design system and Tune already set up. From this repo:
 
 ```sh
 pnpm install
@@ -45,14 +45,14 @@ pnpm add -D github:enitrat/tune
    export default { /* … */ } satisfies TuneConfigInput
    ```
 
-2. Add the bridge route at `app/api/retouch/[op]/route.dev.ts`:
+2. Add the bridge route at `app/api/tune/[op]/route.dev.ts`:
 
    ```ts
-   import { retouchRoute } from "@enitrat/tune/bridge"
+   import { tuneRoute } from "@enitrat/tune/next"
 
    import config from "../../../../tune.config"
 
-   export const { GET, POST, OPTIONS } = retouchRoute(config)
+   export const { GET, POST, OPTIONS } = tuneRoute(config)
    ```
 
    Then let Next compile Tune and serve `.dev.ts` routes only under `next dev`, so no production
@@ -76,7 +76,7 @@ pnpm add -D github:enitrat/tune
 
    export const TuneMount =
      process.env.NODE_ENV === "development"
-       ? dynamic(() => import("@enitrat/tune/widget").then((module) => module.RetouchWidget), {
+       ? dynamic(() => import("@enitrat/tune/widget").then((module) => module.TuneWidget), {
            ssr: false,
          })
        : () => null
@@ -89,10 +89,10 @@ pnpm add -D github:enitrat/tune
 The bridge answers only requests whose `Host` is `localhost` or `127.0.0.1`, from an allowed
 origin. By default the allowed origins are `http://localhost:3000`, `https://localhost:3000` and
 the route's own origin. To allow others, such as a component catalogue on another port, list them
-in `RETOUCH_ORIGINS`, separated by commas:
+in `TUNE_ORIGINS`, separated by commas:
 
 ```sh
-RETOUCH_ORIGINS=http://localhost:3000,http://localhost:6006 pnpm dev
+TUNE_ORIGINS=http://localhost:3000,http://localhost:6006 pnpm dev
 ```
 
 ## Example: a stock shadcn/ui app
@@ -134,7 +134,7 @@ export default {
 
 Check binaries run from `node_modules/.bin` at the git root, with the git root as the working
 directory. For an app in a subfolder, with a component library and lab-meta files, see
-`example/tune.config.ts`.
+`examples/next/tune.config.ts`.
 
 ## When the overlay can't answer
 
@@ -142,7 +142,7 @@ If a variant breaks the page that hosts the overlay, use the CLI. Add a script t
 app, which needs `tsx` installed:
 
 ```json
-{ "scripts": { "retouch": "tsx node_modules/@enitrat/tune/src/bin/retouch.ts" } }
+{ "scripts": { "tune": "tsx node_modules/@enitrat/tune/src/bin/tune.ts" } }
 ```
 
-Then run `pnpm retouch status`, `pnpm retouch discard` or `pnpm retouch gc`.
+Then run `pnpm tune status`, `pnpm tune discard` or `pnpm tune gc`.
