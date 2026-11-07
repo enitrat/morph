@@ -5,46 +5,56 @@ Tune asks the `claude` CLI for a few variants, builds each one in its own git wo
 you flip between them on the live page. You can then fine-tune the result: step a design token,
 a Tailwind utility or a component prop. Keep the variant you like and discard the rest.
 
-Tune writes only to your working tree, and only while `next dev` runs.
+Tune writes only to your working tree, and only while the dev server runs.
 
 ## Requirements
 
-- React 19 in development, on Next.js with the App Router. Server Components and client
-  components both work.
+- React 19 in development, on Next.js with the App Router or on Vite. On Next, Server Components
+  and client components both work.
 - A git checkout. Variants are built in worktrees and kept as refs.
 - Design tokens as CSS custom properties, Tailwind CSS 4 style (`@theme`, `:root`, `.dark`).
 - The [`claude` CLI](https://docs.claude.com/en/docs/claude-code), signed in, on your `PATH`.
 
 ## Try it
 
-`examples/next/` is a Next app with a small design system and Tune already set up. From this repo:
+This repo holds the package and two example apps that render the same page:
+
+- `packages/tune` is the package, `@enitrat/tune`.
+- `examples/acme` is a small design system: tokens, components and their lab-meta files.
+- `examples/next` is a Next app on it, with a Server Component page.
+- `examples/vite` is a Vite single-page app on it.
 
 ```sh
 pnpm install
-pnpm dev
+pnpm dev        # Next, http://localhost:3000
+pnpm dev:vite   # Vite, http://localhost:5173
 ```
 
-Open http://localhost:3000 and press Alt+Shift+R.
+Open the page and press Alt+Shift+R.
 
 ## Install
 
 ```sh
-pnpm add -D github:enitrat/tune
+pnpm add -D "github:enitrat/tune#path:/packages/tune"
 ```
 
 ## Set it up
 
-1. Describe your design system in `tune.config.ts` at your app's root, the folder that holds
-   `app/`. Every path in it is relative to the git root, which differs from the app's root when
-   the app sits in a monorepo. See the example below. The schema is `TuneConfigInput`:
+Describe your design system in `tune.config.ts` at your app's root, the folder that runs the dev
+server. Every path in it is relative to the git root, which differs from the app's root when the
+app sits in a monorepo. See the example below. The schema is `TuneConfigInput`:
 
-   ```ts
-   import { type TuneConfigInput } from "@enitrat/tune/config"
+```ts
+import { type TuneConfigInput } from "@enitrat/tune/config"
 
-   export default { /* … */ } satisfies TuneConfigInput
-   ```
+export default { /* … */ } satisfies TuneConfigInput
+```
 
-2. Add the bridge route at `app/api/tune/[op]/route.dev.ts`:
+Then follow the steps for your bundler.
+
+### Next.js
+
+1. Add the bridge route at `app/api/tune/[op]/route.dev.ts`:
 
    ```ts
    import { tuneRoute } from "@enitrat/tune/next"
@@ -65,7 +75,7 @@ pnpm add -D github:enitrat/tune
    }
    ```
 
-3. Mount the widget in your root layout, behind a `NODE_ENV` check with a dynamic import. The
+2. Mount the widget in your root layout, behind a `NODE_ENV` check with a dynamic import. The
    production build drops the branch, so it emits no widget chunk:
 
    ```tsx
@@ -81,14 +91,46 @@ pnpm add -D github:enitrat/tune
        : (_: { base: string }) => null
    ```
 
-   Render `<TuneMount base="/api/tune" />` inside `<body>`; `base` is the route's path. Press
-   Alt+Shift+R to start pointing.
+   Render `<TuneMount base="/api/tune" />` inside `<body>`. `base` is the route's path.
+
+### Vite
+
+Add the plugin to `vite.config.ts`:
+
+```ts
+import { tune } from "@enitrat/tune/vite"
+import { defineConfig } from "vite"
+
+import tuneConfig from "./tune.config.ts"
+
+export default defineConfig({
+  plugins: [/* react(), tailwindcss(), … */ tune(tuneConfig)],
+})
+```
+
+The plugin runs under `vite` only, never under `vite build`. It serves the bridge at `/__tune` and
+adds the widget to `index.html`, so a single-page app needs no other change.
+
+A framework that renders its own HTML on Vite has no `index.html` for the plugin to change. Pass
+`{ inject: false }` as the plugin's second argument and render the widget yourself, behind
+`import.meta.env.DEV`:
+
+```tsx
+import { lazy } from "react"
+
+export const TuneMount = import.meta.env.DEV
+  ? lazy(() => import("@enitrat/tune/widget").then((module) => ({ default: module.TuneWidget })))
+  : (_: { base: string }) => null
+```
+
+Render `<TuneMount base="/__tune" />` on the client. To serve the bridge elsewhere, pass `base` to
+both.
 
 ## Allowed origins
 
 The bridge answers only requests whose `Host` is `localhost` or `127.0.0.1`, from an allowed
 origin. By default the allowed origins are `http://localhost:3000`, `https://localhost:3000` and
-the route's own origin. To allow others, such as a component catalogue on another port, list them
+the bridge's own origin. To allow others, such as a component catalogue on another port, list them
 in `TUNE_ORIGINS`, separated by commas:
 
 ```sh

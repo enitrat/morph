@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@import "acme/tokens/primitives.css";
+@import "acme/tokens/semantic.css";
+@import "acme/tokens/radius.css";
+@import "acme/tokens/spacing.css";
+@import "acme/tokens/typography.css";
+@import "acme/tokens/layout.css";
+@import "acme/tokens/elevation.css";
+@import "acme/tokens/chip.css";
+@import "acme/atoms/button/button.tokens.css";
+@import "acme/atoms/badge/badge.tokens.css";
+@import "acme/molecules/card/card.tokens.css";
+@import "acme/organisms/order-summary/order-summary.tokens.css";
+@source "../../acme";
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, sans-serif;
+}

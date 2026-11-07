@@ -1,12 +1,12 @@
 import { type TuneConfigInput } from "@enitrat/tune/config"
 
-/** Globs are relative to the git root, which is two folders above this one. */
+/** Globs are relative to the git root, two folders up; the design system is `examples/acme`. */
 export default {
   tokens: {
     kind: "css",
-    files: ["examples/next/ui/tokens/*.css", "examples/next/ui/*/*/*.tokens.css"],
+    files: ["examples/acme/tokens/*.css", "examples/acme/*/*/*.tokens.css"],
     tiers: [
-      { files: "examples/next/ui/tokens/primitives.css", tier: "primitive" },
+      { files: "examples/acme/tokens/primitives.css", tier: "primitive" },
       { files: "**/*.tokens.css", tier: "component" },
     ],
     themes: {
@@ -20,33 +20,33 @@ export default {
   components: [
     {
       kind: "lab-meta",
-      meta: "examples/next/ui/atoms/*/*.meta.ts",
+      meta: "examples/acme/atoms/*/*.meta.ts",
       group: "atom",
       naming: "own",
       href: null,
-      importFrom: "@/ui",
+      importFrom: "acme",
       props: "lab-meta",
     },
     {
       kind: "lab-meta",
-      meta: "examples/next/ui/molecules/*/*.meta.ts",
+      meta: "examples/acme/molecules/*/*.meta.ts",
       group: "molecule",
       naming: "nearest",
       href: null,
-      importFrom: "@/ui",
+      importFrom: "acme",
       props: "lab-meta",
     },
     {
       kind: "lab-meta",
-      meta: "examples/next/ui/organisms/*/*.meta.ts",
+      meta: "examples/acme/organisms/*/*.meta.ts",
       group: "block",
       naming: "container",
       href: null,
-      importFrom: "@/ui",
+      importFrom: "acme",
       props: "lab-meta",
     },
   ],
-  plumbing: [{ prefix: "examples/next/ui/", except: [] }],
+  plumbing: [{ prefix: "examples/acme/", except: [] }],
   checks: {
     lint: null,
     format: { bin: "oxfmt", args: ["--write"] },

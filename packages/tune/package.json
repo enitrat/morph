@@ -9,6 +9,10 @@
     "./config": "./src/core/config.ts",
     "./next": "./src/next/index.ts",
     "./package.json": "./package.json",
+    "./vite": {
+      "types": "./src/vite/index.d.ts",
+      "default": "./src/vite/index.js"
+    },
     "./widget": "./src/widget/index.tsx"
   },
   "scripts": {
@@ -31,10 +35,17 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "typescript": "7.0.2",
+    "vite": "^8.3.5",
     "vitest": "^5.0.5"
   },
   "peerDependencies": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "vite": ">=7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
   }
 }

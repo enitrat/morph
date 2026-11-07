@@ -1,17 +1,18 @@
 @import "tailwindcss";
 
-@import "../ui/tokens/primitives.css";
-@import "../ui/tokens/semantic.css";
-@import "../ui/tokens/radius.css";
-@import "../ui/tokens/spacing.css";
-@import "../ui/tokens/typography.css";
-@import "../ui/tokens/layout.css";
-@import "../ui/tokens/elevation.css";
-@import "../ui/tokens/chip.css";
-@import "../ui/atoms/button/button.tokens.css";
-@import "../ui/atoms/badge/badge.tokens.css";
-@import "../ui/molecules/card/card.tokens.css";
-@import "../ui/organisms/order-summary/order-summary.tokens.css";
+@import "acme/tokens/primitives.css";
+@import "acme/tokens/semantic.css";
+@import "acme/tokens/radius.css";
+@import "acme/tokens/spacing.css";
+@import "acme/tokens/typography.css";
+@import "acme/tokens/layout.css";
+@import "acme/tokens/elevation.css";
+@import "acme/tokens/chip.css";
+@import "acme/atoms/button/button.tokens.css";
+@import "acme/atoms/badge/badge.tokens.css";
+@import "acme/molecules/card/card.tokens.css";
+@import "acme/organisms/order-summary/order-summary.tokens.css";
+@source "../../acme";
 
 body {
   background: var(--background);

@@ -1,6 +1,6 @@
 import { type ReactNode } from "react"
 
-import { Badge, Button, Card, OrderSummary } from "@/ui"
+import { Badge, Button, Card, OrderSummary } from "acme"
 
 import { ThemeToggle } from "./theme-toggle"
 

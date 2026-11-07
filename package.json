@@ -5,7 +5,12 @@
   "packageManager": "pnpm@12.9.0",
   "scripts": {
     "dev": "pnpm --filter next-example dev",
+    "dev:vite": "pnpm --filter vite-example dev",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm --filter @enitrat/tune test"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.74.0",
+    "typescript": "7.0.2"
   }
 }
