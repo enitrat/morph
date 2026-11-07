@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@import "../ui/tokens/primitives.css";
+@import "../ui/tokens/semantic.css";
+@import "../ui/tokens/radius.css";
+@import "../ui/tokens/spacing.css";
+@import "../ui/tokens/typography.css";
+@import "../ui/tokens/layout.css";
+@import "../ui/tokens/elevation.css";
+@import "../ui/tokens/chip.css";
+@import "../ui/atoms/button/button.tokens.css";
+@import "../ui/atoms/badge/badge.tokens.css";
+@import "../ui/molecules/card/card.tokens.css";
+@import "../ui/organisms/order-summary/order-summary.tokens.css";
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, sans-serif;
+}

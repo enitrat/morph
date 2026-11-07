@@ -13,6 +13,7 @@
     "./widget": "./src/widget/index.tsx"
   },
   "scripts": {
+    "dev": "pnpm --filter example dev",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "generate": "tsx scripts/generate.ts",

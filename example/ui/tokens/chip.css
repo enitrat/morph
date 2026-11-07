@@ -1,0 +1,7 @@
+/* Chips sit a step darker than --secondary, so they stay legible on a muted fill. */
+@layer base {
+  :where(:root, .light, .dark) {
+    --chip-bg: color-mix(in oklab, var(--secondary), var(--secondary-foreground) 6%);
+    --chip-bg-hover: color-mix(in oklab, var(--secondary), var(--secondary-foreground) 12%);
+  }
+}

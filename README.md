@@ -9,10 +9,23 @@ Tune writes only to your working tree, and only while `next dev` runs.
 
 ## Requirements
 
-- React 19 in development, on Next.js with the App Router.
+- React 19 in development, on Next.js with the App Router. Tune finds an element's code through
+  the client component that renders it, so it reports "Code not found" for markup a Server
+  Component renders. Point at pages and components marked `"use client"`.
 - A git checkout. Variants are built in worktrees and kept as refs.
 - Design tokens as CSS custom properties, Tailwind CSS 4 style (`@theme`, `:root`, `.dark`).
 - The [`claude` CLI](https://docs.claude.com/en/docs/claude-code), signed in, on your `PATH`.
+
+## Try it
+
+`example/` is a Next app with a small design system and Tune already set up. From this repo:
+
+```sh
+pnpm install
+pnpm dev
+```
+
+Open http://localhost:3000 and press Alt+Shift+R.
 
 ## Install
 
@@ -22,8 +35,9 @@ pnpm add -D github:enitrat/tune
 
 ## Set it up
 
-1. Describe your design system in `tune.config.ts` at the repo root. See the example below. The
-   schema is `TuneConfigInput`:
+1. Describe your design system in `tune.config.ts` at your app's root, the folder that holds
+   `app/`. Every path in it is relative to the git root, which differs from the app's root when
+   the app sits in a monorepo. See the example below. The schema is `TuneConfigInput`:
 
    ```ts
    import { type TuneConfigInput } from "@enitrat/tune/config"
@@ -118,8 +132,9 @@ export default {
 } satisfies TuneConfigInput
 ```
 
-Check binaries run from the repo's `node_modules/.bin`. For a monorepo with a component library
-and lab-meta files, see `src/bridge/fixtures/acme/tune.config.ts`.
+Check binaries run from `node_modules/.bin` at the git root, with the git root as the working
+directory. For an app in a subfolder, with a component library and lab-meta files, see
+`example/tune.config.ts`.
 
 ## When the overlay can't answer
 

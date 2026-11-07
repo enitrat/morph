@@ -1,0 +1,6 @@
+@layer base {
+  :where(:root, .light, .dark) {
+    --order-summary-gap: calc(var(--spacing) * 4);
+    --order-summary-total-fg: var(--foreground);
+  }
+}
