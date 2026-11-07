@@ -1,0 +1,38 @@
+@layer base {
+  :where(:root, .light, .dark) {
+    --button-radius: var(--radius-control);
+    --button-gap: var(--gap-control);
+    --button-h-sm: var(--control-h-sm);
+    --button-h-md: var(--control-h-md);
+    --button-h-lg: var(--control-h-lg);
+    --button-px-sm: calc(var(--spacing) * 3);
+    --button-px-md: calc(var(--spacing) * 4);
+    --button-px-lg: calc(var(--spacing) * 6);
+
+    --button-primary-bg: var(--primary);
+    --button-primary-fg: var(--primary-foreground);
+    --button-primary-bg-hover: color-mix(in oklab, var(--primary), var(--primary-foreground) 8%);
+
+    --button-bg-disabled: var(--secondary);
+    --button-fg-disabled: var(--subtle-foreground);
+
+    --button-secondary-bg: var(--secondary);
+    --button-secondary-fg: var(--secondary-foreground);
+    --button-secondary-bg-hover: color-mix(
+      in oklab,
+      var(--secondary),
+      var(--secondary-foreground) 6%
+    );
+
+    --button-outline-bg: var(--background);
+    --button-outline-fg: var(--foreground);
+    --button-outline-border: var(--input);
+
+    --button-ghost-bg: transparent;
+    --button-ghost-fg: var(--foreground);
+    --button-ghost-bg-hover: var(--accent);
+
+    --button-destructive-bg: var(--destructive);
+    --button-destructive-fg: var(--destructive-foreground);
+  }
+}

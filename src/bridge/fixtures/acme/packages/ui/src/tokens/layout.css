@@ -1,0 +1,9 @@
+/* Components read these roles, not the raw steps. */
+:root {
+  --radius-control: var(--radius-xs);
+  --radius-surface: var(--radius-lg);
+  --control-h-sm: 2.25rem;
+  --control-h-md: 2.75rem;
+  --control-h-lg: 3.25rem;
+  --gap-control: calc(var(--spacing) * 2);
+}

@@ -1,0 +1,7 @@
+{
+  "name": "@acme/ui",
+  "private": true,
+  "exports": { ".": "./src/index.ts", "./meta": "./src/meta.ts" },
+  "dependencies": { "lucide-react": "0.0.0" },
+  "peerDependencies": { "react": "19.0.0" }
+}

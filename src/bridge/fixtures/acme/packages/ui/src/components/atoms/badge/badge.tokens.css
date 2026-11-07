@@ -1,0 +1,8 @@
+@layer base {
+  :where(:root, .light, .dark) {
+    --badge-bg: var(--chip-bg);
+    --badge-fg: var(--secondary-foreground);
+    --badge-radius: var(--radius-full);
+    --badge-px: calc(var(--spacing) * 2);
+  }
+}
