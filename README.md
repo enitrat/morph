@@ -30,7 +30,8 @@ pnpm dev        # Next, http://localhost:3000
 pnpm dev:vite   # Vite, http://localhost:5173
 ```
 
-Open the page and press Alt+Shift+R.
+Open the page and press Alt+Shift+R. `pnpm check:prod` builds both examples for production and
+fails if any output file names Tune.
 
 ## Install
 
@@ -64,14 +65,15 @@ Then follow the steps for your bundler.
    export const { GET, POST, OPTIONS } = tuneRoute(config)
    ```
 
-   Then let Next compile Tune and serve `.dev.ts` routes only under `next dev`, so no production
-   build contains the bridge. In `next.config.mjs`:
+   Then let Next compile Tune and serve `.dev.ts` routes, both only under `next dev`, so no
+   production build contains the bridge. In `next.config.mjs`:
 
    ```js
+   const dev = process.env.NODE_ENV === "development"
+
    export default {
-     transpilePackages: ["@enitrat/tune"],
-     pageExtensions:
-       process.env.NODE_ENV === "development" ? ["dev.ts", "tsx", "ts", "jsx", "js"] : undefined,
+     transpilePackages: dev ? ["@enitrat/tune"] : [],
+     pageExtensions: dev ? ["dev.ts", "tsx", "ts", "jsx", "js"] : undefined,
    }
    ```
 
@@ -85,13 +87,17 @@ Then follow the steps for your bundler.
 
    export const TuneMount =
      process.env.NODE_ENV === "development"
-       ? dynamic(() => import("@enitrat/tune/widget").then((module) => module.TuneWidget), {
-           ssr: false,
-         })
-       : (_: { base: string }) => null
+       ? dynamic(
+           () =>
+             import("@enitrat/tune/widget").then(({ TuneWidget }) => () => (
+               <TuneWidget base="/api/tune" />
+             )),
+           { ssr: false },
+         )
+       : () => null
    ```
 
-   Render `<TuneMount base="/api/tune" />` inside `<body>`. `base` is the route's path.
+   Render `<TuneMount />` inside `<body>`. `base` is the bridge route's path.
 
 ### Vite
 
@@ -119,12 +125,16 @@ A framework that renders its own HTML on Vite has no `index.html` for the plugin
 import { lazy } from "react"
 
 export const TuneMount = import.meta.env.DEV
-  ? lazy(() => import("@enitrat/tune/widget").then((module) => ({ default: module.TuneWidget })))
-  : (_: { base: string }) => null
+  ? lazy(() =>
+      import("@enitrat/tune/widget").then(({ TuneWidget }) => ({
+        default: () => <TuneWidget base="/__tune" />,
+      })),
+    )
+  : () => null
 ```
 
-Render `<TuneMount base="/__tune" />` on the client. To serve the bridge elsewhere, pass `base` to
-both.
+Render `<TuneMount />` on the client. To serve the bridge elsewhere, pass the same `base` to the
+plugin and the widget.
 
 ## Allowed origins
 

@@ -7,7 +7,8 @@
     "dev": "pnpm --filter next-example dev",
     "dev:vite": "pnpm --filter vite-example dev",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm --filter @enitrat/tune test"
+    "test": "pnpm --filter @enitrat/tune test",
+    "check:prod": "node scripts/check-prod.mjs"
   },
   "devDependencies": {
     "oxfmt": "^0.74.0",

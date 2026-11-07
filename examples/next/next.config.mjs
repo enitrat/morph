@@ -1,5 +1,6 @@
+const dev = process.env.NODE_ENV === "development"
+
 export default {
-  transpilePackages: ["@enitrat/tune", "acme"],
-  pageExtensions:
-    process.env.NODE_ENV === "development" ? ["dev.ts", "tsx", "ts", "jsx", "js"] : undefined,
+  transpilePackages: dev ? ["@enitrat/tune", "acme"] : ["acme"],
+  pageExtensions: dev ? ["dev.ts", "tsx", "ts", "jsx", "js"] : undefined,
 }
