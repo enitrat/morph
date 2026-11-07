@@ -50,7 +50,7 @@ for (const { name, out, skip } of EXAMPLES) {
     const body = readFileSync(file, "latin1")
     return [file, file.endsWith(".map") ? JSON.stringify(sourcesOf(body)) : body]
   })
-  if (!text.some(([, body]) => body.includes("Order summary")))
+  if (!text.some(([, body]) => body.includes("Point to a possibility.")))
     throw new Error(
       `${name}: no output file holds the page, so the search looked in the wrong place`,
     )

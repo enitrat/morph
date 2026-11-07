@@ -1,9 +1,0 @@
-@layer base {
-  :where(:root, .light, .dark) {
-    --card-bg: var(--card);
-    --card-fg: var(--card-foreground);
-    --card-border: var(--border);
-    --card-radius: var(--radius-surface);
-    --card-pad: calc(var(--spacing) * 6);
-  }
-}

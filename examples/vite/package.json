@@ -8,9 +8,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "acme": "workspace:*",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "example-shared": "workspace:*"
   },
   "devDependencies": {
     "@enitrat/tune": "workspace:*",

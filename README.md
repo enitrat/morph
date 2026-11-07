@@ -20,15 +20,17 @@ Tune writes only to your working tree, and only while the dev server runs.
 This repo holds the package and two example apps that render the same page:
 
 - `packages/tune` is the package, `@enitrat/tune`.
-- `examples/acme` is a small design system: tokens, components and their lab-meta files.
-- `examples/next` is a Next app on it, with a Server Component page.
-- `examples/vite` is a Vite single-page app on it.
+- `examples/shared` contains the landing page and shared components from the shadcn/ui registry.
+- `examples/next` is a Next app with a Server Component page.
+- `examples/vite` is a Vite single-page app.
 
 ```sh
 pnpm install
 pnpm dev        # Next, http://localhost:3000
 pnpm dev:vite   # Vite, http://localhost:5173
 ```
+
+The shared button, badge and card are copied from the [shadcn/ui registry](https://ui.shadcn.com/docs/components); their source is in `examples/shared/ui`. Both apps configure Tune to discover these components and the shared Tailwind tokens.
 
 Open the page and press Alt+Shift+R. `pnpm check:prod` builds both examples for production and
 fails if any output file names Tune.
@@ -48,7 +50,7 @@ app sits in a monorepo. See the example below. The schema is `TuneConfigInput`:
 ```ts
 import { type TuneConfigInput } from "@enitrat/tune/config"
 
-export default { /* … */ } satisfies TuneConfigInput
+export default {/* … */} satisfies TuneConfigInput
 ```
 
 Then follow the steps for your bundler.
@@ -185,7 +187,7 @@ export default {
 ```
 
 Check binaries run from `node_modules/.bin` at the git root, with the git root as the working
-directory. For an app in a subfolder, with a component library and lab-meta files, see
+directory. For an app in a subfolder, with shared shadcn/ui components, see
 `examples/next/tune.config.ts`.
 
 ## When the overlay can't answer

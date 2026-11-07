@@ -1,52 +1,22 @@
 import { type TuneConfigInput } from "@enitrat/tune/config"
-
-/** Globs are relative to the git root, two folders up; the design system is `examples/acme`. */
 export default {
   tokens: {
     kind: "css",
-    files: ["examples/acme/tokens/*.css", "examples/acme/*/*/*.tokens.css"],
-    tiers: [
-      { files: "examples/acme/tokens/primitives.css", tier: "primitive" },
-      { files: "**/*.tokens.css", tier: "component" },
-    ],
-    themes: {
-      shared: [":root", ":where(:root, .light, .dark)"],
-      list: [
-        { name: "light", selectors: [":root, .light", ".light"] },
-        { name: "dark", selectors: [".dark"], fallback: "light" },
-      ],
-    },
+    files: ["examples/shared/styles.css"],
+    themes: { shared: [], list: [{ name: "light", selectors: [":root"] }] },
   },
   components: [
     {
-      kind: "lab-meta",
-      meta: "examples/acme/atoms/*/*.meta.ts",
-      group: "atom",
+      kind: "files",
+      files: "examples/shared/ui/*.tsx",
+      group: "ui",
       naming: "own",
       href: null,
-      importFrom: "acme",
-      props: "lab-meta",
-    },
-    {
-      kind: "lab-meta",
-      meta: "examples/acme/molecules/*/*.meta.ts",
-      group: "molecule",
-      naming: "nearest",
-      href: null,
-      importFrom: "acme",
-      props: "lab-meta",
-    },
-    {
-      kind: "lab-meta",
-      meta: "examples/acme/organisms/*/*.meta.ts",
-      group: "block",
-      naming: "container",
-      href: null,
-      importFrom: "acme",
-      props: "lab-meta",
+      importFrom: "example-shared/ui/{slug}",
+      props: "cva",
     },
   ],
-  plumbing: [{ prefix: "examples/acme/", except: [] }],
+  plumbing: [],
   checks: {
     lint: null,
     format: { bin: "oxfmt", args: ["--write"] },
