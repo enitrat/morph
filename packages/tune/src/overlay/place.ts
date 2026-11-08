@@ -229,7 +229,7 @@ export function cardSpot(
   const beside = clamp(target.top, MARGIN, limit - h)
   const across = clamp(target.right - w, area.left + MARGIN, area.right - MARGIN - w)
   const near: Point[] = [
-    { x: target.right + gap, y: beside },
+    { x: target.right + PIN / 2 + gap, y: beside },
     { x: target.left - gap - w, y: beside },
     { x: across, y: target.bottom + gap },
     { x: across, y: target.top - gap - h },

@@ -52,7 +52,7 @@ const buttonVariants = [ready("v1", buttonFile), ready("v2", buttonFile), ready(
 const hero = (place: Parameters<typeof session>[1]) => session(ids.hero, place, heroVariants)
 const button = (place: Parameters<typeof session>[1]) => session(ids.button, place, buttonVariants)
 
-async function mount() {
+async function mount({ asks = true } = {}) {
   connect("/__tune")
   let send: Dispatch<Event> = () => {}
   let poll = () => {}
@@ -89,8 +89,10 @@ async function mount() {
         baseline: null,
       },
     })
-  pinFor(ids.hero, "Hero", elements[0] as Element)
-  pinFor(ids.button, "Button", elements[1] as Element)
+  if (asks) {
+    pinFor(ids.hero, "Hero", elements[0] as Element)
+    pinFor(ids.button, "Button", elements[1] as Element)
+  }
   later()
   poll()
   const text = () => host.textContent ?? ""
@@ -209,4 +211,24 @@ it("shows a conflict's files and offers to keep what is on the page", async () =
   await vi.waitFor(() =>
     expect(bridge.requests).toEqual([{ op: "keep", body: { id: ids.hero, variant: "v3" } }]),
   )
+})
+
+it("gives sessions a reload left open their pins back from what this browser stored", async () => {
+  localStorage.setItem(
+    "tune:pins",
+    JSON.stringify({
+      [ids.button]: { n: 4, name: "Button", words: "Softer", file: "button.tsx", at: [] },
+    }),
+  )
+  fakeBridge(
+    (_, now) => now,
+    page(hero({ kind: "original" }), button({ kind: "shown", variant: "v3", edited: false })),
+  )
+  const ui = await mount({ asks: false })
+  await vi.waitFor(() => expect(ui.chip("Button")).toContain("C"))
+  expect(ui.chip("Session")).toContain("original")
+  const numbers = [...ui.host.querySelectorAll("[role=toolbar] button[aria-pressed]")].map(
+    (chip) => chip.textContent?.match(/^\d+/)?.[0],
+  )
+  expect(numbers.filter(Boolean)).toEqual(["4", "5"])
 })

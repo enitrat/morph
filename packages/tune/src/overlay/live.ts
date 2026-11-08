@@ -1,4 +1,4 @@
-import { type Dispatch, useEffect, useEffectEvent, useMemo, useRef } from "react"
+import { type Dispatch, useEffect, useEffectEvent, useMemo, useRef, useState } from "react"
 
 import { type SessionId } from "../variant/model"
 import { actionsOf, type SessionActions } from "./ask"
@@ -64,6 +64,8 @@ export function useSessions(state: State, dispatch: Dispatch<Event>): SessionAct
   const { open, sessions } = state
   const { page, pins, notice } = sessions
   const pinnedOnce = useRef(new Set<SessionId>())
+  // Read before the first mirror below overwrites it with this tab's still empty pins.
+  const [stored] = useState(readStore)
   const originalBefore = useRef(new Set<SessionId>())
 
   useEffect(() => {
@@ -84,7 +86,6 @@ export function useSessions(state: State, dispatch: Dispatch<Event>): SessionAct
       (view) => pins[view.id] === undefined && !pinnedOnce.current.has(view.id),
     )
     if (lost.length === 0) return
-    const stored = readStore()
     const back: NewPin[] = lost.map((view) => {
       const found = stored[view.id]
       return {
@@ -99,7 +100,7 @@ export function useSessions(state: State, dispatch: Dispatch<Event>): SessionAct
     })
     for (const pin of back) pinnedOnce.current.add(pin.id)
     dispatch({ kind: "rejoined", pins: back })
-  }, [page, pins, dispatch])
+  }, [page, pins, stored, dispatch])
 
   // A target the variant redrew, or one a reload lost, is picked again at its spot.
   useEffect(() => {

@@ -147,7 +147,7 @@ describe("pinSpots", () => {
 describe("cardSpot", () => {
   it("opens beside the target when there is room on its right", () => {
     expect(cardSpot(box(100, 200, 400, 300), card, full, viewport)).toEqual({
-      x: 412,
+      x: 425,
       y: 200,
       docked: false,
     })

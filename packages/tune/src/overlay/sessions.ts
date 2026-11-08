@@ -128,17 +128,23 @@ export function stepSessions(state: Sessions, event: SessionEvent): Sessions {
     case "asked":
       return add(state, event.pin, false)
     case "rejoined":
-      return event.pins.reduce(
-        (next, pin) => (next.pins[pin.id] === undefined ? add(next, pin, true) : next),
-        state,
-      )
+      // Stored numbers first, so a session with none is numbered after them.
+      return event.pins
+        .toSorted((a, b) => (a.n === null ? 1 : 0) - (b.n === null ? 1 : 0))
+        .reduce(
+          (next, pin) => (next.pins[pin.id] === undefined ? add(next, pin, true) : next),
+          state,
+        )
     case "refined": {
       const from = state.pins[event.from]
       if (from === undefined) return state
       const { [event.from]: _, ...rest } = state.pins
       return {
         ...state,
-        pins: { ...rest, [event.id]: { ...from, id: event.id, words: event.words, joined: false, refine: "" } },
+        pins: {
+          ...rest,
+          [event.id]: { ...from, id: event.id, words: event.words, joined: false, refine: "" },
+        },
         card: state.card === event.from ? event.id : state.card,
       }
     }
