@@ -125,19 +125,39 @@ async function addedDiff(dir: string, paths: readonly string[]): Promise<string>
   })
 }
 
-const nameOf = (dir: string, workspace: string): string | undefined =>
-  (JSON.parse(readFileSync(join(dir, workspace, "package.json"), "utf8")) as { name?: string }).name
-
-/** The projects to typecheck: each workspace owning a file, plus every workspace depending on one. */
+/** The projects owning changed paths and their transitive workspace dependents. */
 async function projectsOf(dir: string, files: readonly RepoPath[]): Promise<string[]> {
   const owners = new Set(files.map((path) => workspaceOf(dir, path)))
-  const direct = [...owners]
-  const workspaces = await workspacesIn(dir)
-  for (const owner of direct) {
-    const name = nameOf(dir, owner)
-    for (const workspace of workspaces) {
-      const manifest = readFileSync(join(dir, workspace, "package.json"), "utf8")
-      if (name !== undefined && manifest.includes(`"${name}"`)) owners.add(workspace)
+  const workspaces = [...new Set(["", ...(await workspacesIn(dir))])]
+  const manifests = workspaces.map((workspace) => {
+    const path = join(dir, workspace, "package.json")
+    const manifest: {
+      name?: string
+      dependencies?: Record<string, string>
+      devDependencies?: Record<string, string>
+      peerDependencies?: Record<string, string>
+      optionalDependencies?: Record<string, string>
+    } = existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : {}
+    return {
+      workspace,
+      name: manifest.name,
+      dependencies: Object.keys({
+        ...manifest.dependencies,
+        ...manifest.devDependencies,
+        ...manifest.peerDependencies,
+        ...manifest.optionalDependencies,
+      }),
+    }
+  })
+  const pending = [...owners]
+  for (const owner of pending) {
+    const name = manifests.find((manifest) => manifest.workspace === owner)?.name
+    if (name === undefined) continue
+    for (const manifest of manifests) {
+      if (!owners.has(manifest.workspace) && manifest.dependencies.includes(name)) {
+        owners.add(manifest.workspace)
+        pending.push(manifest.workspace)
+      }
     }
   }
   return [...owners].filter((owner) => existsSync(join(dir, owner, "tsconfig.json"))).toSorted()
@@ -169,11 +189,7 @@ export async function checks(
       ? null
       : await failureOf(formatter.bin, dir, bin(formatter.bin), [...formatter.args, ...formatted])
   const projects =
-    typecheck.scope === "workspace"
-      ? await projectsOf(dir, present)
-      : present.length > 0
-        ? [""]
-        : []
+    typecheck.scope === "workspace" ? await projectsOf(dir, files) : files.length > 0 ? [""] : []
   const types = await Promise.all(
     projects.map((project) =>
       failureOf(

@@ -127,3 +127,60 @@ describe("what a variant may not touch", () => {
     }
   })
 })
+
+it("resolves inherited JSONC aliases and baseUrl from the defining config", () => {
+  const root = mkdtempSync(join(tmpdir(), "tune-tsconfig-"))
+  const files: Record<string, string> = {
+    "package.json": JSON.stringify({ name: "app", dependencies: { react: "19" } }),
+    "configs/base.json": `{
+      // Paths and baseUrl are relative to this file.
+      "compilerOptions": {
+        "baseUrl": "../src",
+        "paths": { "exact": ["exact"], "@lib/*/view": ["lib/*/view"], },
+      },
+    }`,
+    "tsconfig.json": '{ "extends": "./configs/base.json", }',
+    "src/exact.ts": "",
+    "src/lib/a/view.ts": "",
+    "src/local.ts": "",
+    "src/page.ts": "",
+  }
+  try {
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(dirname(join(root, path)), { recursive: true })
+      writeFileSync(join(root, path), text)
+    }
+    const resolveFrom = resolverAt(root)
+    const from = RepoPath.parse("src/page.ts")
+    expect(resolveFrom(from, "exact")).toBe("resolves")
+    expect(resolveFrom(from, "@lib/a/view")).toBe("resolves")
+    expect(resolveFrom(from, "@lib/missing/view")).toBe("no-file")
+    expect(resolveFrom(from, "local")).toBe("resolves")
+    expect(resolveFrom(from, "react")).toBe("resolves")
+    expect(resolveFrom(from, "unlisted")).toBe("no-package")
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+it("resolves paths inherited from an installed package config", () => {
+  const root = mkdtempSync(join(tmpdir(), "tune-package-config-"))
+  const files: Record<string, string> = {
+    "package.json": '{"name":"app"}',
+    "tsconfig.json": '{"extends":"@example/config/tsconfig.json"}',
+    "node_modules/@example/config/package.json": '{"name":"@example/config"}',
+    "node_modules/@example/config/tsconfig.json":
+      '{"compilerOptions":{"paths":{"shared":["./shared"]}}}',
+    "node_modules/@example/config/shared.ts": "",
+    "src/page.ts": "",
+  }
+  try {
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(dirname(join(root, path)), { recursive: true })
+      writeFileSync(join(root, path), text)
+    }
+    expect(resolverAt(root)(RepoPath.parse("src/page.ts"), "shared")).toBe("resolves")
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})

@@ -1,7 +1,9 @@
 // oxlint-disable-next-line import/no-nodejs-modules -- the scope check reads the slot's manifests.
 import { existsSync, readFileSync } from "node:fs"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
-import { dirname, join, posix } from "node:path"
+import { dirname, join } from "node:path"
+
+import { createPathsMatcher, getTsconfig } from "get-tsconfig"
 
 import { RepoPath } from "../variant/model"
 import { workspaceOf } from "./workspaces"
@@ -147,23 +149,29 @@ export function resolverAt(dir: string): Resolve {
     if (spec.startsWith("node:")) return "resolves"
     const workspace = join(dir, workspaceOf(dir, from))
     if (spec.startsWith(".")) return file(join(dir, dirname(from), spec))
-    const options = (readJson(join(workspace, "tsconfig.json")).compilerOptions ?? {}) as {
-      paths?: Record<string, string[]>
-    }
-    for (const [key, targets] of Object.entries(options.paths ?? {})) {
-      const prefix = key.replace(/\*$/, "")
-      if (!key.endsWith("*") || !spec.startsWith(prefix)) continue
-      const rest = spec.slice(prefix.length)
-      const found = targets.some(
-        (target) =>
-          file(join(workspace, posix.normalize(target.replace(/\*$/, rest)))) === "resolves",
-      )
-      return found ? "resolves" : "no-file"
+    const tsconfig = getTsconfig(join(dir, dirname(from)))
+    let matchesAlias = false
+    if (tsconfig !== null) {
+      const candidates = createPathsMatcher(tsconfig)?.(spec) ?? []
+      if (candidates.some((candidate) => file(candidate) === "resolves")) return "resolves"
+      const aliases = Object.keys(tsconfig.config.compilerOptions?.paths ?? {})
+      matchesAlias = aliases.some((alias) => {
+        const star = alias.indexOf("*")
+        return star < 0
+          ? alias === spec
+          : spec.startsWith(alias.slice(0, star)) &&
+              spec.endsWith(alias.slice(star + 1)) &&
+              spec.length >= alias.length - 1
+      })
     }
     const manifest = readJson(join(workspace, "package.json"))
-    const listed = ["dependencies", "devDependencies", "peerDependencies"].flatMap((field) =>
-      Object.keys((manifest[field] ?? {}) as Record<string, string>),
-    )
-    return [...listed, manifest.name].includes(packageOf(spec)) ? "resolves" : "no-package"
+    const listed = [
+      "dependencies",
+      "devDependencies",
+      "peerDependencies",
+      "optionalDependencies",
+    ].flatMap((field) => Object.keys((manifest[field] ?? {}) as Record<string, string>))
+    if ([...listed, manifest.name].includes(packageOf(spec))) return "resolves"
+    return matchesAlias ? "no-file" : "no-package"
   }
 }

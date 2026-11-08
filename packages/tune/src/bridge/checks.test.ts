@@ -1,6 +1,13 @@
+import { execFileSync } from "node:child_process"
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { dirname, join } from "node:path"
+
 import { describe, expect, it } from "vitest"
 
-import { deadLinksIn, reasonOf } from "./checks"
+import { RepoPath } from "../variant/model"
+import { checks, deadLinksIn, reasonOf } from "./checks"
+import { CONFIG, MODULES } from "./test-fixtures"
 
 describe("links a variant added that go nowhere", () => {
   it("names each added dead link by file and line, and ignores real and removed ones", () => {
@@ -52,3 +59,93 @@ describe("the reason a variant failed its checks", () => {
     )
   })
 })
+
+it.each(["root", "workspace"] as const)(
+  "typechecks deleted imports in %s scope",
+  async (scope) => {
+    const root = mkdtempSync(join(tmpdir(), "tune-checks-"))
+    const project = scope === "root" ? "" : "packages/ui/"
+    try {
+      const files: Record<string, string> = {
+        "package.json": '{"name":"root"}',
+        [`${project}tsconfig.json`]:
+          '{"compilerOptions":{"noEmit":true,"skipLibCheck":true,"noUncheckedSideEffectImports":true}}',
+        [`${project}src/index.ts`]: 'import "./deleted"',
+        [`${project}src/deleted.ts`]: "export const value = 1",
+      }
+      if (project !== "") files[`${project}package.json`] = '{"name":"ui"}'
+      for (const [path, text] of Object.entries(files)) {
+        mkdirSync(dirname(join(root, path)), { recursive: true })
+        writeFileSync(join(root, path), text)
+      }
+      symlinkSync(MODULES, join(root, "node_modules"))
+      execFileSync("git", ["init", "-q"], { cwd: root })
+      execFileSync("git", ["add", "."], { cwd: root })
+      execFileSync(
+        "git",
+        ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "fixture"],
+        { cwd: root },
+      )
+      unlinkSync(join(root, project, "src/deleted.ts"))
+      const result = await checks(root, [RepoPath.parse(`${project}src/deleted.ts`)], {
+        ...CONFIG,
+        checks: { ...CONFIG.checks, typecheck: { bin: "tsc", args: ["--noEmit"], scope } },
+      })
+      expect(result.ok).toBe(false)
+      if (!result.ok) expect(result.errors).toContain("deleted")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  },
+  30_000,
+)
+
+it("checks transitive dependents using dependency fields", async () => {
+  const root = mkdtempSync(join(tmpdir(), "tune-dependents-"))
+  try {
+    const files: Record<string, string> = {
+      "package.json": '{"name":"root"}',
+      "packages/a/package.json": '{"name":"a"}',
+      "packages/b/package.json": '{"name":"b","dependencies":{"a":"*"}}',
+      "packages/c/package.json": '{"name":"c","devDependencies":{"b":"*"}}',
+      "packages/unrelated/package.json": '{"name":"other","description":"a"}',
+      "packages/a/src/deleted.ts": "export {}",
+      ...Object.fromEntries(
+        ["a", "b", "c", "unrelated"].map((name) => [`packages/${name}/tsconfig.json`, "{}"]),
+      ),
+      "node_modules/.bin/check-project": '#!/bin/sh\necho "checked $(basename "$PWD")"\nexit 1\n',
+    }
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(dirname(join(root, path)), { recursive: true })
+      writeFileSync(
+        join(root, path),
+        text,
+        path.endsWith("check-project") ? { mode: 0o755 } : undefined,
+      )
+    }
+    execFileSync("git", ["init", "-q"], { cwd: root })
+    execFileSync("git", ["add", "-f", "."], { cwd: root })
+    execFileSync(
+      "git",
+      ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "fixture"],
+      { cwd: root },
+    )
+    unlinkSync(join(root, "packages/a/src/deleted.ts"))
+    const result = await checks(root, [RepoPath.parse("packages/a/src/deleted.ts")], {
+      ...CONFIG,
+      checks: {
+        ...CONFIG.checks,
+        typecheck: { bin: "check-project", args: [], scope: "workspace" },
+      },
+    })
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.errors).toContain("checked a")
+      expect(result.errors).toContain("checked b")
+      expect(result.errors).toContain("checked c")
+      expect(result.errors).not.toContain("checked unrelated")
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+}, 30_000)
