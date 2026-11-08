@@ -15,7 +15,7 @@ import { dirname, join } from "node:path"
 import { describe, expect, it } from "vitest"
 
 import { RepoPath } from "../variant/model"
-import { checks, deadLinksIn, reasonOf } from "./checks"
+import { argPath, checks, deadLinksIn, reasonOf } from "./checks"
 import { farm } from "./slots"
 import { TuneConfig } from "../core/config"
 import { CONFIG, MODULES } from "./test-fixtures"
@@ -212,4 +212,11 @@ it("uses app-local commands and paths in the checkout being checked", async () =
   } finally {
     rmSync(parent, { recursive: true, force: true })
   }
+})
+
+it("passes a file outside the app to its checks by absolute path, never with ..", () => {
+  expect(argPath("/repo/examples/next", "/repo/examples/next/app/page.tsx")).toBe("app/page.tsx")
+  expect(argPath("/repo/examples/next", "/repo/examples/shared/tour.tsx")).toBe(
+    "/repo/examples/shared/tour.tsx",
+  )
 })

@@ -72,6 +72,15 @@ export function commandAt(root: string, workspace: string, app: string, bin: str
   return candidates.find(existsSync) ?? candidates[0] ?? bin
 }
 
+/**
+ * `file` as a check's argument from `cwd`: relative inside it, absolute outside, since formatters
+ * such as oxfmt refuse a path with `..` in it.
+ */
+export function argPath(cwd: string, file: string): string {
+  const path = relative(cwd, file)
+  return path.startsWith("..") ? file : path
+}
+
 /** Formats a file with the host's configured command and retains the original failure. */
 export async function formatFile(
   repo: Host,
@@ -82,7 +91,7 @@ export async function formatFile(
   try {
     await promisify(execFile)(
       commandAt(repo.root, repo.config.appRoot, repo.config.appRoot, bin),
-      [...args, relative(cwd, join(repo.root, path))],
+      [...args, argPath(cwd, join(repo.root, path))],
       { cwd },
     )
     return { ok: true }
@@ -198,7 +207,7 @@ export async function checks(
   const formatted = present.filter((path) => FORMATTED.test(path))
   const app = config.appRoot
   const cwd = join(dir, app)
-  const appPaths = (paths: readonly string[]) => paths.map((path) => relative(cwd, join(dir, path)))
+  const appPaths = (paths: readonly string[]) => paths.map((path) => argPath(cwd, join(dir, path)))
   const bin = (name: string, workspace = app) => commandAt(dir, workspace, app, name)
   const { lint: linter, format: formatter, typecheck } = config.checks
 
