@@ -38,7 +38,6 @@ describe("component read sets", () => {
       files,
       childReads: new Set<TokenName>(),
     }))
-    const dirs = components.map((component) => component.slug)
     const tokens = [...graph.values()].filter((node) => node.tier !== "primitive")
     const regexRead = new Map(
       components.map(({ slug, files }) => {
@@ -48,29 +47,26 @@ describe("component read sets", () => {
     )
     for (const { name } of tokens) {
       const touched = [name, ...dependentsOf(graph, [name])]
-      const expected = dirs
-        .map((dir) => ({ dir, via: touched.filter((token) => regexRead.get(dir)?.has(token)) }))
-        .filter((reach) => reach.via.length > 0)
-        .toSorted((a, b) => a.dir.localeCompare(b.dir))
-      const impact = impactOf(graph, [{ token: name, scope: "all", to: "" }], components)
-      expect(
-        impact.components.map((reach) => ({ dir: reach.slug, via: reach.via })),
-        name,
-      ).toEqual(expected)
+      for (const component of components) {
+        const expected = touched.some((token) => regexRead.get(component.slug)?.has(token))
+        expect(impactOf(graph, name, [component]), `${name} ${component.slug}`).toBe(
+          Number(expected),
+        )
+      }
     }
   }, 30_000)
 
   it("reach a block through a design-system component it renders", () => {
     const { tokens, components } = repoCatalog()
-    const impact = impactOf(
-      tokens.graph,
-      [{ token: "--button-px-md", scope: "all", to: "" }],
-      components,
-    )
-    const touch = new Map(impact.components.map((reach) => [reach.slug, reach.touch]))
-    expect(touch.get("button")).toBe("edited")
-    expect(touch.get("order-summary")).toBe("reached")
-    expect(touch.has("badge")).toBe(false)
+    for (const [slug, expected] of [
+      ["button", 1],
+      ["order-summary", 1],
+      ["badge", 0],
+    ] as const) {
+      const component = components.find((entry) => entry.slug === slug)
+      expect(component).toBeDefined()
+      if (component) expect(impactOf(tokens.graph, "--button-px-md", [component])).toBe(expected)
+    }
   })
 })
 

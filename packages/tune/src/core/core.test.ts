@@ -4,14 +4,12 @@ import {
   applyEdits,
   buildTokens,
   chainOf,
-  contrast,
   editError,
   impactOf,
   displayOf,
   previewCss,
   resolveToken,
   stepsFor,
-  withEdits,
   tokensReadIn,
   type TokenEdit,
   type TokenName,
@@ -80,9 +78,7 @@ it("writes into the block that declares the token when a file opens .light twice
   const { tokens: after, written } = rebuilt([
     { token: "--panel-tile-bg", scope: LIGHT, to: "var(--card)" },
   ])
-  expect(resolveToken(after, "--panel-tile-bg", LIGHT)).toBe(
-    resolveToken(tokens, "--card", LIGHT),
-  )
+  expect(resolveToken(after, "--panel-tile-bg", LIGHT)).toBe(resolveToken(tokens, "--card", LIGHT))
   expect(written.changes.map((change) => change.token)).toContain("--panel-tile-bg")
 })
 
@@ -138,21 +134,13 @@ describe("impact", () => {
       reads: new Set(tokensReadIn(source)),
       childReads: new Set<TokenName>(),
     })
-    const impact = impactOf(
-      graph,
-      [{ token: "--secondary", scope: DARK, to: "var(--neutral-700)" }],
-      [
-        component("button", "bg-(--button-secondary-bg)"),
-        component("tag", "className='bg-secondary'"),
-        component("role", "var(--secondary)"),
-        component("card", "bg-secondary-foreground"),
-      ],
-    )
-    expect(impact.components.map(({ slug, touch }) => [slug, touch])).toEqual([
-      ["button", "reached"],
-      ["role", "edited"],
-      ["tag", "reached"],
+    const impact = impactOf(graph, "--secondary", [
+      component("button", "bg-(--button-secondary-bg)"),
+      component("tag", "className='bg-secondary'"),
+      component("role", "var(--secondary)"),
+      component("card", "bg-secondary-foreground"),
     ])
+    expect(impact).toBe(3)
   })
 })
 
@@ -163,13 +151,22 @@ describe("the graph with edits applied", () => {
       { token: "--button-secondary-bg", scope: "all", to: "var(--inverse)" },
       { token: "--secondary", scope: DARK, to: "var(--neutral-700)" },
     ]
-    const overlay = withEdits(tokens, edits)
     const written = rebuilt(edits).tokens
-    for (const token of ["--primary", "--button-secondary-bg", "--secondary"] as const) {
-      for (const theme of [LIGHT, DARK]) {
-        expect(resolveToken(overlay, token, theme)).toBe(resolveToken(written, token, theme))
-      }
+    expect(resolveToken(written, "--primary", LIGHT)).toBe(
+      resolveToken(tokens, "--violet-400", LIGHT),
+    )
+    expect(resolveToken(written, "--primary", DARK)).toBe(resolveToken(tokens, "--primary", DARK))
+    for (const theme of [LIGHT, DARK]) {
+      expect(resolveToken(written, "--button-secondary-bg", theme)).toBe(
+        resolveToken(tokens, "--inverse", theme),
+      )
     }
+    expect(resolveToken(written, "--secondary", DARK)).toBe(
+      resolveToken(tokens, "--neutral-700", DARK),
+    )
+    expect(resolveToken(written, "--secondary", LIGHT)).toBe(
+      resolveToken(tokens, "--secondary", LIGHT),
+    )
     expect(resolveToken(tokens, "--secondary", DARK)).toBe("#262626")
   })
 
@@ -193,10 +190,10 @@ describe("the graph with edits applied", () => {
   })
 
   it("keeps a dark edit when a light edit of the same token follows it", () => {
-    const overlay = withEdits(tokens, [
+    const overlay = rebuilt([
       { token: "--primary", scope: DARK, to: "var(--violet-400)" },
       { token: "--primary", scope: LIGHT, to: "var(--violet-600)" },
-    ])
+    ]).tokens
     expect(resolveToken(overlay, "--primary", DARK)).toBe(
       resolveToken(tokens, "--violet-400", DARK),
     )
@@ -235,8 +232,4 @@ describe("preview", () => {
       ".after.dark, :root.dark .after:not(.light), .after .dark { --secondary: var(--neutral-700) !important; }",
     )
   })
-})
-
-it("measures contrast", () => {
-  expect(contrast([255, 255, 255], [0, 0, 0])).toBeCloseTo(21)
 })

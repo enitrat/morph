@@ -31,9 +31,9 @@ export {
   toWire,
 } from "./design-system"
 export { type Naming, type ThemeName } from "./config"
-export { contrast, parseHex } from "./color"
-export { currentValue, editError, MULTIPLES, stepsFor, type TokenEdit, type Variant } from "./edit"
-export { applyEdits, withEdits } from "./write"
+export { parseHex } from "./color"
+export { currentValue, editError, MULTIPLES, stepsFor, type TokenEdit } from "./edit"
+export { applyEdits } from "./write"
 export { displayOf, type Display, lengthOf } from "./display"
 export { previewCss } from "./preview"
 export { impactOf } from "./impact"

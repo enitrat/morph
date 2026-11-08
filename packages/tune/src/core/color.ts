@@ -39,16 +39,6 @@ const linear = (channel: number) => {
   return c <= 0.040_45 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
 }
 
-function luminance([r, g, b]: Rgb): number {
-  return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
-}
-
-/** WCAG 2 contrast ratio, 1 to 21. */
-export function contrast(a: Rgb, b: Rgb): number {
-  const [hi, lo] = [luminance(a), luminance(b)].toSorted((x, y) => y - x) as [number, number]
-  return (hi + 0.05) / (lo + 0.05)
-}
-
 /** OKLab lightness, 0 to 1: the order a ramp reads in. */
 export function lightness([r, g, b]: Rgb): number {
   const [lr, lg, lb] = [linear(r), linear(g), linear(b)]
@@ -57,11 +47,3 @@ export function lightness([r, g, b]: Rgb): number {
   const s = Math.cbrt(0.088_302_461_9 * lr + 0.281_718_837_6 * lg + 0.629_978_700_5 * lb)
   return 0.210_454_255_3 * l + 0.793_617_785 * m - 0.004_072_046_8 * s
 }
-
-/** WCAG 2 AA: text needs 4.5:1, UI boundaries 3:1. */
-export function contrastGrade(ratio: number): "text" | "ui" | "fail" {
-  if (ratio >= 4.5) return "text"
-  return ratio >= 3 ? "ui" : "fail"
-}
-
-export const GRADE_LABEL = { text: "AA text", ui: "3:1 UI only", fail: "below 3:1" } as const

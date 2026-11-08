@@ -17,14 +17,6 @@ export interface TokenEdit {
   to: string
 }
 
-export interface Variant {
-  id: string
-  title: string
-  /** One sentence in the designer's words: what changes and why it answers the description. */
-  rationale: string
-  edits: readonly TokenEdit[]
-}
-
 const LITERAL_UNITS = /\d(?:px|rem|em|ms|s|deg)\b/
 
 /** The file `scope`'s write would land in, when the repo does not own it. */

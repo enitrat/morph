@@ -110,10 +110,7 @@ function withChange(tokens: Tokens, change: LineChange): Tokens {
  * so a light and a dark edit of a token with no `.dark` declaration add that declaration once.
  * Two changes of one declaration merge into one, from the code's value to the last.
  */
-function planEdits(
-  tokens: Tokens,
-  edits: readonly TokenEdit[],
-): { tokens: Tokens; changes: LineChange[] } {
+function planEdits(tokens: Tokens, edits: readonly TokenEdit[]): LineChange[] {
   let next = tokens
   const changes: LineChange[] = []
   for (const edit of edits) {
@@ -130,12 +127,7 @@ function planEdits(
       else changes.push(change)
     }
   }
-  return { tokens: next, changes }
-}
-
-/** The tokens as they read with `edits` applied, declaration by declaration, as they are written. */
-export function withEdits(tokens: Tokens, edits: readonly TokenEdit[]): Tokens {
-  return edits.length === 0 ? tokens : planEdits(tokens, edits).tokens
+  return changes
 }
 
 /** The files `edits` rewrite, with their new contents, and the line changes behind them. */
@@ -146,7 +138,7 @@ export function applyEdits(
   assertEdits(tokens, edits)
   const read = new Map(tokens.files.map((file) => [file.path, file.css]))
   const out = new Map<string, string>()
-  const { changes } = planEdits(tokens, edits)
+  const changes = planEdits(tokens, edits)
   for (const change of changes) {
     const css = out.get(change.file) ?? read.get(change.file)
     if (css === undefined) throw new Error(`${change.file} was not read`)

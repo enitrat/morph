@@ -1,5 +1,6 @@
 import {
   chainOf,
+  type Component,
   currentValue,
   type Display,
   displayOf,
@@ -13,7 +14,6 @@ import {
   type TokenName,
   type Tokens,
 } from "../core"
-import { type ComponentReads } from "../core/impact"
 import { type Read } from "../inspector/types"
 import { type SourceLoc } from "../variant/model"
 import {
@@ -141,7 +141,7 @@ export function reachOf(row: Row, scope: Scope): Reach | undefined {
 export interface Context {
   tokens: Tokens
   scales: Scales
-  components: readonly ComponentReads[]
+  components: readonly Pick<Component, "slug" | "title" | "reads" | "childReads">[]
   /** The page's theme: what an `all` row reads and displays. */
   theme: ThemeName
 }
@@ -194,8 +194,7 @@ function tokenTrack(context: Context, token: TokenName, scope: Scope): Track | u
   )
   const at = steps.indexOf(current)
   if (at === -1 || steps.length < 2) return undefined
-  const impact = impactOf(tokens.graph, [{ token, scope, to: current }], context.components)
-    .components.length
+  const impact = impactOf(tokens.graph, token, context.components)
   return {
     source: { kind: "token", token, scope, impact, owner: ownerOf(context, token) },
     steps: steps.map((value) => ({ value, display: displayOf(tokens, value, theme), css: null })),
