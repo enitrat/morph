@@ -1,4 +1,4 @@
-import { isTune } from "./target"
+import { isTune, leafAt } from "./target"
 
 /** A rectangle in viewport CSS pixels. */
 export interface MeasureRect {
@@ -178,40 +178,78 @@ function spacesOf(box: MeasuredBox): MeasuredSpace[] {
   return result
 }
 
+function nearbyElements(frame: MeasureRect): Element[] {
+  const found = new Set<Element>()
+  const left = Math.max(0, frame.left)
+  const top = Math.max(0, frame.top)
+  const right = Math.min(window.innerWidth, frame.left + frame.width)
+  const bottom = Math.min(window.innerHeight, frame.top + frame.height)
+  if (right <= left || bottom <= top) return []
+  for (const xPart of [0.1, 0.5, 0.9]) {
+    for (const yPart of [0.1, 0.5, 0.9]) {
+      const x = left + (right - left) * xPart
+      const y = top + (bottom - top) * yPart
+      const leaf = leafAt(x, y)
+      for (const hit of [...(leaf === null ? [] : [leaf]), ...document.elementsFromPoint(x, y)]) {
+        for (
+          let node: Element | null = hit;
+          node !== null && node !== document.body && node !== document.documentElement;
+          node = node.parentElement
+        ) {
+          if (!isTune(node)) found.add(node)
+        }
+      }
+    }
+  }
+  return [...found]
+}
+
 /** Measures a bounded meaningful subset of a region, or a selected element and its descendants. */
 export function measureRegion(frame: MeasureRect, selected: Element | null = null): Measurements {
   const root = selected ?? document.body
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+  const filter: NodeFilter = {
     acceptNode(node) {
       if (!(node instanceof Element) || isTune(node) || node.matches("script,style,link,meta,head"))
         return NodeFilter.FILTER_REJECT
       const style = getComputedStyle(node)
-      return style.display === "none" || style.visibility === "hidden" || style.opacity === "0"
-        ? NodeFilter.FILTER_REJECT
-        : NodeFilter.FILTER_ACCEPT
+      if (style.display === "none" || style.opacity === "0") return NodeFilter.FILTER_REJECT
+      return style.visibility === "hidden" ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_ACCEPT
     },
-  })
+  }
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, filter)
   const boxes: MeasuredBox[] = []
   const signatures = new Set<string>()
   let scanned = 0
-  let node: Node | null = selected ?? walker.nextNode()
-  while (node !== null && scanned++ < 1200 && boxes.length < 32) {
-    if (node instanceof Element) {
-      const measured = measureBox(node)
-      if (
-        measured !== null &&
-        intersects(frame, measured.rect) &&
-        (node === selected || useful(node, measured))
-      ) {
-        const { left, top, width, height } = measured.rect
-        const signature = [left, top, width, height].map(Math.round).join(",")
-        if (!signatures.has(signature)) {
-          signatures.add(signature)
-          boxes.push(measured)
-        }
+  const nearby = selected === null ? nearbyElements(frame) : []
+  const visited = new Set<Element>()
+  const include = (node: Element) => {
+    if (visited.has(node) || boxes.length >= 32) return
+    visited.add(node)
+    const measured = measureBox(node)
+    if (
+      measured !== null &&
+      intersects(frame, measured.rect) &&
+      (node === selected || useful(node, measured))
+    ) {
+      const { left, top, width, height } = measured.rect
+      const signature = [left, top, width, height].map(Math.round).join(",")
+      if (!signatures.has(signature)) {
+        signatures.add(signature)
+        boxes.push(measured)
       }
     }
-    node = walker.nextNode()
+  }
+  for (const node of nearby) include(node)
+  const roots = selected === null ? [...nearby, root] : [root]
+  for (const start of roots) {
+    const current =
+      start === root ? walker : document.createTreeWalker(start, NodeFilter.SHOW_ELEMENT, filter)
+    let node: Node | null = start === selected ? selected : current.nextNode()
+    while (node !== null && scanned++ < 1200 && boxes.length < 32) {
+      if (node instanceof Element) include(node)
+      node = current.nextNode()
+    }
+    if (scanned >= 1200 || boxes.length >= 32) break
   }
   return { boxes, spaces: boxes.flatMap(spacesOf).slice(0, 32) }
 }

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { measureBox, measurementFrame, measureRegion } from "./measure"
 
@@ -17,8 +17,16 @@ function element(style: string, rect = { left: 20, top: 30, width: 200, height: 
   return node
 }
 
+beforeEach(() => {
+  Object.defineProperty(document, "elementsFromPoint", {
+    value: vi.fn(() => []),
+    configurable: true,
+  })
+})
+
 afterEach(() => {
   document.body.replaceChildren()
+  vi.restoreAllMocks()
 })
 
 describe("rendered inspection measurements", () => {
@@ -62,6 +70,24 @@ describe("rendered inspection measurements", () => {
     tune.append(control)
     document.body.append(tune)
     expect(measureRegion({ left: 0, top: 0, width: 600, height: 400 }).boxes).toEqual([])
+  })
+
+  it("finds a visible late target beyond unrelated offscreen document nodes", () => {
+    for (let index = 0; index < 1201; index++) {
+      element("background: red", { left: -1000, top: -1000, width: 100, height: 20 })
+    }
+    const target = element("padding: 20px; background: white")
+    vi.spyOn(document, "elementsFromPoint").mockReturnValue([target, document.body])
+    const measured = measureRegion({ left: 10, top: 20, width: 220, height: 120 })
+    expect(measured.boxes.some((box) => box.element === target)).toBe(true)
+  })
+
+  it("includes children that restore visibility below a hidden ancestor", () => {
+    const parent = element("visibility: hidden")
+    const child = element("visibility: visible; padding: 10px")
+    parent.append(child)
+    const measured = measureRegion({ left: 0, top: 0, width: 600, height: 400 })
+    expect(measured.boxes.map((box) => box.element)).toEqual([child])
   })
 
   it("reads CSS gap without calling distributed child distances gap", () => {
