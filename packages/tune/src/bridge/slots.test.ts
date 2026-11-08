@@ -122,3 +122,43 @@ it("makes ignored workspace build output available in a variant worktree", async
     await release(slot)
   }
 })
+
+it("refreshes dependencies when a slot is reused", async () => {
+  const live = temp()
+  execFileSync("git", ["init", "-q", live])
+  file(live, ".gitignore", "node_modules\n")
+  file(live, "packages/ui/package.json", '{"name":"ui"}')
+  file(live, "packages/ui/node_modules/old/index.js", "old")
+  file(live, "node_modules/.keep")
+  execFileSync("git", ["-C", live, "add", "."])
+  execFileSync("git", [
+    "-C",
+    live,
+    "-c",
+    "user.name=Test",
+    "-c",
+    "user.email=test@example.com",
+    "commit",
+    "-qm",
+    "fixture",
+  ])
+  const repo = await openRepo(live)
+  dirs.push(await slotsRoot(repo))
+  const base = CommitId.parse(
+    execFileSync("git", ["-C", live, "rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+  )
+  const first = await acquire(repo, base)
+  await release(first)
+  rmSync(join(live, "packages/ui/node_modules/old"), { recursive: true })
+  file(live, "packages/ui/node_modules/new/index.js", "new")
+  const second = await acquire(repo, base)
+  try {
+    expect(second.dir).toBe(first.dir)
+    expect(readFileSync(join(second.dir, "packages/ui/node_modules/new/index.js"), "utf8")).toBe(
+      "new",
+    )
+    expect(() => readFileSync(join(second.dir, "packages/ui/node_modules/old/index.js"))).toThrow()
+  } finally {
+    await release(second)
+  }
+})

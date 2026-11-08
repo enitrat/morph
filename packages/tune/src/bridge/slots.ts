@@ -1,7 +1,7 @@
 // oxlint-disable-next-line import/no-nodejs-modules -- slots are git worktrees on disk.
 import { createHash } from "node:crypto"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
-import { cp, mkdir, readdir, realpath, stat, symlink } from "node:fs/promises"
+import { cp, mkdir, readdir, realpath, rm, stat, symlink } from "node:fs/promises"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
 import { tmpdir } from "node:os"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
@@ -37,6 +37,13 @@ export async function farm(live: string, slot: string): Promise<void> {
   const to = join(slot, "node_modules")
   const store = join(from, ".pnpm")
   const hasStore = await exists(store)
+  const workspaces = await workspacesIn(live)
+  await Promise.all([
+    rm(to, { recursive: true, force: true }),
+    ...workspaces.map((workspace) =>
+      rm(join(slot, workspace, "node_modules"), { recursive: true, force: true }),
+    ),
+  ])
   await mkdir(to, { recursive: true })
   if (hasStore) await mkdir(join(to, ".pnpm"), { recursive: true })
   await Promise.all([
@@ -48,7 +55,7 @@ export async function farm(live: string, slot: string): Promise<void> {
         ? copy(join(store, entry), join(to, ".pnpm", entry))
         : symlink(join(store, entry), join(to, ".pnpm", entry)),
     ),
-    ...(await workspacesIn(live)).map(async (workspace) => {
+    ...workspaces.map(async (workspace) => {
       const modules = join(workspace, "node_modules")
       if (await exists(join(live, modules))) await copy(join(live, modules), join(slot, modules))
     }),
@@ -61,7 +68,7 @@ export async function slotsRoot(repo: Repo): Promise<string> {
   return join(await realpath(tmpdir()), `tune-${id}`)
 }
 
-/** Resets the slot to `base`, creating its worktree and dependencies on first use. */
+/** Resets the slot to `base`, creating its worktree on first use and refreshing its dependencies. */
 async function prepare(repo: Repo, dir: string, base: CommitId): Promise<void> {
   if (await exists(join(dir, ".git"))) {
     await git(dir, ["checkout", "--quiet", "--detach", "--force", base])
@@ -70,7 +77,7 @@ async function prepare(repo: Repo, dir: string, base: CommitId): Promise<void> {
     await git(repo.root, ["worktree", "prune"])
     await git(repo.root, ["worktree", "add", "--quiet", "--detach", "--force", dir, base])
   }
-  if (!(await exists(join(dir, "node_modules")))) await farm(repo.root, dir)
+  await farm(repo.root, dir)
   for (const workspace of ["", ...(await workspacesIn(repo.root))]) {
     for (const generated of [
       join(workspace, ".next", "types"),
