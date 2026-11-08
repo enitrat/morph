@@ -26,7 +26,6 @@ interface Family {
   properties: readonly [string, ...string[]]
 }
 
-const SIDES = ["top", "right", "bottom", "left"] as const
 const CORNERS = ["top-left", "top-right", "bottom-right", "bottom-left"] as const
 
 const spacing = (prefix: string, label: string, properties: Family["properties"]): Family => ({
@@ -37,12 +36,16 @@ const spacing = (prefix: string, label: string, properties: Family["properties"]
   properties,
 })
 
-const radius = (prefix: string, label: string, corners: readonly string[]): Family => ({
+const radius = (
+  prefix: string,
+  label: string,
+  [first, ...rest]: readonly [string, ...string[]],
+): Family => ({
   prefix,
   scale: "radius",
   group: "Radius",
   label,
-  properties: corners.map((corner) => `border-${corner}-radius`) as unknown as Family["properties"],
+  properties: [`border-${first}-radius`, ...rest.map((corner) => `border-${corner}-radius`)],
 })
 
 const LISTED: readonly Family[] = [
@@ -80,14 +83,24 @@ const LISTED: readonly Family[] = [
     scale: "color",
     group: "Border",
     label: "Colour",
-    properties: SIDES.map((side) => `border-${side}-color`) as unknown as Family["properties"],
+    properties: [
+      "border-top-color",
+      "border-right-color",
+      "border-bottom-color",
+      "border-left-color",
+    ],
   },
   {
     prefix: "border",
     scale: "border-width",
     group: "Border",
     label: "Width",
-    properties: SIDES.map((side) => `border-${side}-width`) as unknown as Family["properties"],
+    properties: [
+      "border-top-width",
+      "border-right-width",
+      "border-bottom-width",
+      "border-left-width",
+    ],
   },
 ]
 

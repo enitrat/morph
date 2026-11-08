@@ -146,35 +146,23 @@ function readDock(): Dock {
   return { kind: "docked" }
 }
 
-/** The panel's place for this page session, kept in session storage. */
-const dockStore = (() => {
-  let current: Dock | undefined
-  const listeners = new Set<() => void>()
-  return {
-    get: (): Dock => (current ??= readDock()),
-    set: (next: Dock) => {
-      current = next
-      try {
-        sessionStorage.setItem(DOCK_KEY, JSON.stringify(next))
-      } catch {
-        // Without storage the place lasts until the next load.
-      }
-      for (const listener of listeners) listener()
-    },
-    subscribe: (listener: () => void) => {
-      listeners.add(listener)
-      return () => {
-        listeners.delete(listener)
-      }
-    },
-  }
-})()
+/** Retains placement across an intentional remount when session storage is unavailable. */
+let lastDock: Dock | undefined
 
 const clamp = (value: number, max: number) => Math.min(Math.max(EDGE, value), max)
 
 /** Docks the panel clear of what the designer picked and marked; a dropped panel stays put. */
-function usePlace(elements: readonly Element[]): Place {
-  const dock = useSyncExternalStore(dockStore.subscribe, dockStore.get, dockStore.get)
+function usePlace(elements: readonly Element[]): readonly [Place, (next: Dock) => void] {
+  const [dock, setDock] = useState(() => (lastDock ??= readDock()))
+  const place = (next: Dock) => {
+    lastDock = next
+    setDock(next)
+    try {
+      sessionStorage.setItem(DOCK_KEY, JSON.stringify(next))
+    } catch {
+      // The in-memory placement survives remounts even without storage.
+    }
+  }
   const docked = useMemo(() => {
     const boxes = elements
       .map((element) => element.getBoundingClientRect())
@@ -187,7 +175,7 @@ function usePlace(elements: readonly Element[]): Place {
         : PANEL_MAX_HEIGHT
     return { side, room }
   }, [elements])
-  return dock.kind === "dropped" ? dock : { kind: "docked", ...docked }
+  return [dock.kind === "dropped" ? dock : { kind: "docked", ...docked }, place]
 }
 
 /** Drags the panel by its header; a press on a button there stays a press. */
@@ -538,6 +526,7 @@ function Panel({
   actions,
   theme,
   dock,
+  place,
   panel,
 }: {
   stage: Stage
@@ -545,6 +534,7 @@ function Panel({
   actions: Actions
   theme: ShownTheme | null
   dock: Place
+  place: (next: Dock) => void
   panel: RefObject<HTMLElement | null>
 }) {
   const page = usePageTheme(stage, theme?.themes ?? null)
@@ -585,7 +575,7 @@ function Panel({
             className="head"
             title="Drag to move"
             onPointerDown={(event) => {
-              dragFrom(event, dockStore.set)
+              dragFrom(event, place)
             }}
           >
             <span className="title">Tune</span>
@@ -631,6 +621,7 @@ function Panel({
   )
 }
 
+/** The document's development tools, with selection, variant sessions, and fine-tuning. */
 export function Overlay() {
   const [state, dispatch] = useReducer(reduce, initial)
   const { open, stage } = state
@@ -639,7 +630,7 @@ export function Overlay() {
   const { theme, dark } = useHostTheme(useThemes(open, stage.kind, draft.targets))
   const elements = useMemo(() => [...draft.targets, ...markElements(draft)], [draft])
   const panel = useRef<HTMLElement | null>(null)
-  const dock = usePlace(elements)
+  const [dock, place] = usePlace(elements)
   // What the designer draws on: the draft, or the feedback on a shown variant.
   const editing =
     stage.kind === "composing" ? stage : stage.kind === "session" ? stage.refining : null
@@ -771,6 +762,7 @@ export function Overlay() {
           actions={actions}
           theme={theme}
           dock={dock}
+          place={place}
           panel={panel}
         />
       )}

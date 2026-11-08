@@ -1,5 +1,5 @@
 import { referencesOf, type TokenGraph, type TokenName } from "../core"
-import { type RootState } from "../core/config"
+import { alternativesOf, type RootState } from "../core/config"
 import { probe } from "./probe"
 import { type Read, type ReadState } from "./types"
 
@@ -30,30 +30,15 @@ const STATES: readonly [RegExp, ReadState][] = [
  * `padding-inline: var(--button-px-md)`, enumerates as longhands whose values stay empty until
  * computed, so the shorthand is read under its own name, taken from the declaration text.
  */
-export function varDeclarations(style: CSSStyleDeclaration): [property: string, value: string][] {
+export function varDeclarations(
+  style: Pick<CSSStyleDeclaration, "length" | "item" | "cssText" | "getPropertyValue">,
+): [property: string, value: string][] {
   const names = new Set(Array.from({ length: style.length }, (_, at) => style.item(at)))
   for (const [, name = ""] of style.cssText.matchAll(/(?:^|;)\s*([a-z-]+)\s*:/g)) names.add(name)
   return [...names].flatMap((property) => {
     const value = style.getPropertyValue(property).trim()
     return value.includes("var(--") ? [[property, value] as [string, string]] : []
   })
-}
-
-function splitSelectors(text: string): string[] {
-  const out: string[] = []
-  let depth = 0
-  let start = 0
-  for (let index = 0; index < text.length; index++) {
-    const char = text[index]
-    if (char === "(" || char === "[") depth++
-    else if (char === ")" || char === "]") depth--
-    else if (char === "," && depth === 0) {
-      out.push(text.slice(start, index).trim())
-      start = index + 1
-    }
-  }
-  out.push(text.slice(start).trim())
-  return out.filter(Boolean)
 }
 
 function stripState(selector: string): { base: string; state: ReadState } {
@@ -80,13 +65,16 @@ function admits(rule: CSSRule): boolean {
 function collect(rules: CSSRuleList, parents: readonly string[], out: Declared[]): void {
   for (const rule of rules) {
     if (rule instanceof CSSStyleRule) {
-      const selectors = splitSelectors(rule.selectorText).flatMap((selector) =>
-        parents.length === 0
-          ? [selector]
-          : parents.map((parent) =>
-              selector.includes("&") ? selector.replaceAll("&", parent) : `${parent} ${selector}`,
-            ),
-      )
+      const selectors = alternativesOf(rule.selectorText)
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .flatMap((selector) =>
+          parents.length === 0
+            ? [selector]
+            : parents.map((parent) =>
+                selector.includes("&") ? selector.replaceAll("&", parent) : `${parent} ${selector}`,
+              ),
+        )
       for (const [property, value] of varDeclarations(rule.style)) {
         for (const selector of selectors) {
           out.push({ ...stripState(selector), property, value })
