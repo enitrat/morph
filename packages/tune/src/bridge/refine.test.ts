@@ -1,13 +1,20 @@
-import { execFileSync, spawnSync } from "node:child_process"
+import { execFileSync } from "node:child_process"
 import { randomUUID } from "node:crypto"
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { Anchor, type Ask, type Parent, SessionId, trailOf } from "../variant/model"
-import { runClaude } from "./agent"
+import { Anchor, type Ask, type Parent, SessionId, trailOf, VariantId } from "../variant/model"
 import { writeJson } from "./disk"
 import { commitTree } from "./git"
 import { plannerPrompt, variantPrompt } from "./prompt"
@@ -15,33 +22,6 @@ import { ask, discard, jobDir, openSessions, readSessionFile, refine, show } fro
 import { openHost, SPAWNING_TEST_MS } from "./test-fixtures"
 
 vi.setConfig({ testTimeout: SPAWNING_TEST_MS })
-
-vi.mock("./agent", async (original) => ({
-  ...(await original<typeof import("./agent")>()),
-  runClaude: vi.fn(),
-}))
-
-/** Runners are not started: each job gets the pid of a process that already exited. */
-const DEAD = spawnSync("true").pid
-vi.mock("node:child_process", async (original) => {
-  const real = await original<typeof import("node:child_process")>()
-  return {
-    ...real,
-    spawn: (command: string, ...rest: unknown[]): unknown =>
-      command === process.execPath
-        ? { pid: DEAD, unref: () => undefined }
-        : Reflect.apply(real.spawn, undefined, [command, ...rest]),
-  }
-})
-
-const planner = vi.mocked(runClaude)
-const PLANNED = {
-  ok: true as const,
-  writes: [],
-  value: {
-    directions: [1, 2, 3].map((n) => ({ title: `Direction ${n}`, description: "Does it." })),
-  },
-}
 
 const ANCHOR = Anchor.parse({
   source: { path: "src/card.tsx", line: 1, col: 1 },
@@ -57,7 +37,10 @@ const askOf = (id: SessionId, words: string): Ask => ({
 })
 
 const dirs: string[] = []
+const originalPath = process.env.PATH
 afterEach(() => {
+  if (originalPath === undefined) delete process.env.PATH
+  else process.env.PATH = originalPath
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true })
 })
 
@@ -78,7 +61,37 @@ async function fixture() {
   writeFileSync(join(root, "src/card.tsx"), "card\n")
   sh(root, "add", "-A")
   sh(root, "commit", "--quiet", "-m", "base")
-  return { root, repo: await openHost(root) }
+  const bin = temp()
+  const planned = {
+    type: "result",
+    is_error: false,
+    structured_output: {
+      directions: [1, 2, 3].map((n) => ({ title: `Direction ${n}`, description: "Does it." })),
+    },
+  }
+  const failure = {
+    type: "result",
+    is_error: true,
+    result: "planner down",
+    structured_output: null,
+  }
+  const claude = join(bin, "claude")
+  writeFileSync(
+    claude,
+    `#!/bin/sh
+cat > /dev/null
+bin=$(dirname "$0")
+echo run >> "$bin/calls"
+if [ -f "$bin/fail" ]; then
+  echo '${JSON.stringify(failure)}'
+else
+  echo '${JSON.stringify(planned)}'
+fi
+`,
+  )
+  chmodSync(claude, 0o755)
+  process.env.PATH = `${bin}:${originalPath ?? ""}`
+  return { root, repo: await openHost(root), bin }
 }
 
 const card = (root: string) => readFileSync(join(root, "src/card.tsx"), "utf8")
@@ -163,9 +176,18 @@ describe("the prompts of a refine round", () => {
 
 describe("refine", () => {
   it("keeps the variant, plans again after a failed planner, and answers a re-post the same", async () => {
-    const { root, repo } = await fixture()
+    const { root, repo, bin } = await fixture()
     const first = SessionId.parse(randomUUID())
-    planner.mockResolvedValue(PLANNED)
+    const next = SessionId.parse(randomUUID())
+    for (const id of [first, next]) {
+      for (const variant of ["v1", "v2", "v3"]) {
+        await writeJson(join(jobDir(repo, id, VariantId.parse(variant)), "result.json"), {
+          kind: "failed",
+          reason: "interrupted",
+          retryable: true,
+        })
+      }
+    }
     expect((await ask(repo, askOf(first, "make these cards list rows"), signal)).ok).toBe(true)
 
     const session = await readSessionFile(repo, first)
@@ -184,20 +206,24 @@ describe("refine", () => {
       ms: { agent: 0, checks: 0, total: 0 },
     })
 
-    const next = SessionId.parse(randomUUID())
     const request = {
       from: first,
       variant: "v2" as const,
       ask: askOf(next, "make the price bigger"),
     }
-    planner.mockResolvedValueOnce({ ok: false, detail: "planner down" })
+    writeFileSync(join(bin, "fail"), "")
     const failed = await refine(repo, request, signal)
 
-    expect(failed).toMatchObject({ ok: false, kind: "planner-failed" })
+    expect(failed).toMatchObject({
+      ok: false,
+      kind: "planner-failed",
+      detail: "claude failed: planner down",
+    })
     expect(card(root)).toBe("card as a row\n")
     expect(await readSessionFile(repo, first)).toBeNull()
     expect(await openSessions(repo)).toEqual([])
 
+    unlinkSync(join(bin, "fail"))
     const planned = await refine(repo, request, signal)
     expect(planned).toMatchObject({
       ok: true,
@@ -208,9 +234,9 @@ describe("refine", () => {
         ],
       },
     })
-    const calls = planner.mock.calls.length
+    expect(readFileSync(join(bin, "calls"), "utf8").trim().split("\n")).toHaveLength(3)
     expect(await refine(repo, request, signal)).toEqual(planned)
-    expect(planner.mock.calls.length).toBe(calls)
+    expect(readFileSync(join(bin, "calls"), "utf8").trim().split("\n")).toHaveLength(3)
     expect(await openSessions(repo)).toEqual([next])
 
     const round = await readSessionFile(repo, next)
