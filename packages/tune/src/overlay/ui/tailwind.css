@@ -1,0 +1,76 @@
+@layer theme, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* Only the new UI for now: the legacy overlay's class names (flex, border, shadow) would collide. */
+@source "./";
+
+/* px, not rem: rem resolves against the host page's <html> font size. */
+@theme {
+  --spacing: 4px;
+  --text-*: initial;
+  --text-xs: 11px;
+  --text-xs--line-height: 15px;
+  --text-sm: 12px;
+  --text-sm--line-height: 16px;
+  --text-base: 13px;
+  --text-base--line-height: 18px;
+  --text-lg: 15px;
+  --text-lg--line-height: 20px;
+  --text-caption: 11.5px;
+  --text-caption--line-height: 15px;
+  --radius-*: initial;
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-chip: 5px;
+  --font-sans: "Tune Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Tune Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-measure: var(--measure);
+  --color-warn: var(--warn);
+}
+
+.ui {
+  --surface: rgb(22 25 31 / 0.92);
+  --surface-2: rgb(160 190 255 / 0.06);
+  --line: rgb(170 195 255 / 0.12);
+  --ink: #eef2fa;
+  --ink-2: #8892a8;
+  --ink-3: #8892a8;
+  --accent: #7cc4ff;
+  --on-accent: #071523;
+  --focus: rgb(124 196 255 / 0.8);
+  --ring: rgb(124 196 255 / 0.35);
+  --measure: #ff3d8b;
+  --warn: #f5b14a;
+  font: 400 13px/18px var(--font-sans);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
+}
+
+@utility ring-focus {
+  outline: none;
+  &:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+}
+
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+}
