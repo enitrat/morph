@@ -280,7 +280,7 @@ function Composing({
         />
         {draft.targets.length === 1 && draft.targets[0] && theme !== null && (
           <FineTune
-            key={`${keyOf(draft.targets[0])} ${theme.name}`}
+            key={`${keyOf(draft.targets)} ${theme.name}`}
             target={draft.targets[0]}
             theme={theme}
           />

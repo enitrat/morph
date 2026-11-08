@@ -126,15 +126,15 @@ export function locate(element: Element): Promise<Located> {
   return found
 }
 
-const keys = new WeakMap<Element, number>()
+const keys = new WeakMap<object, number>()
 let lastKey = 0
 
-/** A stable React key for an element. */
-export function keyOf(element: Element): number {
-  let key = keys.get(element)
+/** A stable React key for an object. */
+export function keyOf(object: object): number {
+  let key = keys.get(object)
   if (key === undefined) {
     key = ++lastKey
-    keys.set(element, key)
+    keys.set(object, key)
   }
   return key
 }
