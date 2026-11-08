@@ -272,11 +272,8 @@ function step(state: State, event: Event): State {
     case "escape":
       return escape(state)
     case "asked":
-      // The designer goes on to the next component while this one generates. Locating the
-      // target takes a moment, so one already picked meanwhile stays picked.
-      return state.composer === null
-        ? withSessions(state, event)
-        : { ...withSessions(state, event), composer: null, selection: { kind: "none" } }
+      // The designer goes on to the next component while this one generates.
+      return { ...withSessions(state, event), composer: null, selection: { kind: "none" } }
     case "card":
     case "cycled": {
       const next = withSessions(state, event)
@@ -298,6 +295,7 @@ const ANY_TIME = new Set<Event["kind"]>([
   "dropped",
   "measured",
   "retargeted",
+  "located",
   "notice",
   "unnoticed",
 ])

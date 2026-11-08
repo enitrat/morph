@@ -58,18 +58,6 @@ describe("pins", () => {
     expect(state.selection).toEqual({ kind: "none" })
   })
 
-  it("keeps a component picked while the last ask was still being located", () => {
-    const first = document.createElement("div")
-    const next = document.createElement("button")
-    const state = run(
-      { kind: "selected", element: first },
-      { kind: "ask", target: { kind: "element", element: first }, words: "", tool: null },
-      { kind: "selected", element: next },
-      { kind: "asked", pin: pinOf(ids.hero, "Hero") },
-    )
-    expect(state.selection).toEqual({ kind: "element", element: next })
-  })
-
   it("keeps the pin's number through a refine round", () => {
     const state = run(
       { kind: "asked", pin: pinOf(ids.hero, "Hero") },

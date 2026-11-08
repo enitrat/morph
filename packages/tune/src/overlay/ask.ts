@@ -88,8 +88,7 @@ const newId = () => SessionId.parse(crypto.randomUUID())
 export async function ask(draft: AskDraft, dispatch: Dispatch<Event>): Promise<void> {
   const subjects = subjectsOf(draft.target)
   const id = newId()
-  const first = subjects[0]
-  const located = first === undefined ? null : await locate(first)
+  // Before any await, so it closes this composer and not one the designer opened meanwhile.
   dispatch({
     kind: "asked",
     pin: {
@@ -97,7 +96,7 @@ export async function ask(draft: AskDraft, dispatch: Dispatch<Event>): Promise<v
       n: null,
       name: titleOf(draft.target, subjects),
       words: draft.words.trim() || "Apply the sketch marks.",
-      file: located?.anchor ? baseName(located.anchor.source.path) : null,
+      file: null,
       picked: subjects.map(pickedOf),
       baseline: draft.target.kind === "element" ? specOf(draft.target.element) : null,
     },
@@ -107,6 +106,9 @@ export async function ask(draft: AskDraft, dispatch: Dispatch<Event>): Promise<v
     dispatch({ kind: "dropped", id, text: anchors })
     return
   }
+  const first = subjects[0]
+  if (first !== undefined)
+    dispatch({ kind: "located", id, file: baseName(anchors.at(first).source.path) })
   const request: Ask = {
     id,
     words: draft.words.trim() || "Apply the sketch marks.",

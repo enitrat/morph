@@ -72,6 +72,7 @@ export type SessionEvent =
   | { kind: "refining"; id: SessionId; words: string }
   | { kind: "measured"; id: SessionId; baseline: Spec }
   | { kind: "retargeted"; id: SessionId; picked: readonly Picked[] }
+  | { kind: "located"; id: SessionId; file: string }
   | { kind: "notice"; text: string; tone: Tone }
   | { kind: "unnoticed"; key: number }
 
@@ -174,6 +175,8 @@ export function stepSessions(state: Sessions, event: SessionEvent): Sessions {
       return edit(state, event.id, (pin) => ({ ...pin, refine: event.words }))
     case "measured":
       return edit(state, event.id, (pin) => ({ ...pin, baseline: event.baseline }))
+    case "located":
+      return edit(state, event.id, (pin) => ({ ...pin, file: event.file }))
     case "retargeted":
       return edit(state, event.id, (pin) => ({ ...pin, picked: event.picked }))
     case "notice":

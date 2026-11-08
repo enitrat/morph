@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, expect, it, vi } from "vitest"
 
 import { type PageView, type SessionId } from "../variant/model"
+import { ask } from "./ask"
 import { connect } from "./bridge"
 import { useSessions } from "./live"
 import { type Event, initial, reduce } from "./model"
@@ -231,4 +232,17 @@ it("gives sessions a reload left open their pins back from what this browser sto
     (chip) => chip.textContent?.match(/^\d+/)?.[0],
   )
   expect(numbers.filter(Boolean)).toEqual(["4", "5"])
+})
+
+it("pins an ask before locating it, so the next pick is not cleared when the first lands", async () => {
+  connect("/__tune")
+  vi.stubGlobal("fetch", async () => Response.json({ sources: [] }))
+  const element = document.createElement("section")
+  document.body.append(element)
+  const events: Event[] = []
+  const sent = ask({ target: { kind: "element", element }, words: "Calmer", marks: [] }, (event) =>
+    events.push(event),
+  )
+  expect(events.map((event) => event.kind)).toEqual(["asked"])
+  await sent
 })
