@@ -1,3 +1,4 @@
+import { MAX_LOCATE_FRAMES } from "../protocol"
 import {
   fiberOf,
   type Instance,
@@ -82,7 +83,7 @@ async function resolve(element: Element): Promise<Located> {
 }
 
 /** The bridge locates at most 64 frames per call. */
-const FIBERS_PER_CALL = 64 / FRAMES_PER_LINK
+const FIBERS_PER_CALL = MAX_LOCATE_FRAMES / FRAMES_PER_LINK
 
 /** Where each instance's element was written: its JSX call site, or `null` outside the repo. */
 export async function sitesOf(instances: readonly Instance[]): Promise<(SourceLoc | null)[]> {

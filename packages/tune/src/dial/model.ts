@@ -18,7 +18,9 @@ export const DialWrite = z.discriminatedUnion("kind", [
 export type DialWrite = z.infer<typeof DialWrite>
 
 /** `changed: false` when the code already held the value. */
-export interface Dialed {
-  changed: boolean
-  file: string
-}
+export const Dialed = z.object({
+  changed: z.boolean(),
+  file: z.string(),
+  warning: z.string().optional(),
+})
+export type Dialed = z.infer<typeof Dialed>

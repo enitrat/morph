@@ -41,6 +41,16 @@ describe("what the overlay says when the bridge cannot answer", () => {
   it("keeps Tune's own crash report when the bridge itself failed", async () => {
     answering(Response.json({ error: { kind: "crashed", detail: "boom" } }, { status: 500 }))
     const answer = await bridge.discard(ID)
-    expect(answer.ok ? null : explain(answer.error)).toBe("Tune hit a bug and wrote nothing: boom")
+    expect(answer.ok ? null : explain(answer.error)).toBe(
+      "Tune hit a bug; the edit may have been applied: boom",
+    )
   })
+})
+
+it("rejects malformed success and error bodies", async () => {
+  answering(Response.json({ changed: true }))
+  expect((await bridge.discard(ID)).ok).toBe(false)
+  answering(Response.json({ error: { kind: "busy" } }, { status: 409 }))
+  const failure = await bridge.discard(ID)
+  expect(failure.ok ? null : failure.error.kind).toBe("offline")
 })

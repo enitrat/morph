@@ -17,6 +17,9 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { RepoPath, SessionId } from "../variant/model"
 import { dial } from "./dial"
+import config from "./fixtures/acme/tune.config"
+import { tuneHandler } from "./handler"
+import { operations } from "../protocol"
 import { writeJson } from "./disk"
 import { homeOf } from "./git"
 import { DARK, MODULES, openHost, REPO, SPAWNING_TEST_MS } from "./test-fixtures"
@@ -67,6 +70,35 @@ describe("dial", () => {
     expect(first).toEqual({ ok: true, value: { changed: true, file: TILE } })
     expect(again).toEqual({ ok: true, value: { changed: false, file: TILE } })
     expect(readFileSync(join(root, TILE), "utf8")).toBe(TILE_SOURCE.replace("p-4", "p-5"))
+  })
+
+  it("reports an applied HTTP edit when the formatter is missing", async () => {
+    const { root } = await fixture()
+    const handle = tuneHandler(
+      { ...config, checks: { ...config.checks, format: { bin: "missing-formatter", args: [] } } },
+      { dir: root, bundler: { symbolicate: async () => [] } },
+    )
+    vi.stubEnv("NODE_ENV", "development")
+    try {
+      const response = await handle(
+        new Request("http://localhost:3000/api/tune/dial", {
+          method: "POST",
+          headers: { host: "localhost:3000", "x-tune": "1" },
+          body: JSON.stringify({ kind: "utility", site, from: "p-4", to: "p-5" }),
+        }),
+        "dial",
+      )
+      expect(response.status).toBe(200)
+      const result = operations.dial.response.parse(await response.json())
+      expect(result).toMatchObject({
+        changed: true,
+        file: TILE,
+        warning: expect.stringContaining("formatting failed"),
+      })
+      expect(readFileSync(join(root, TILE), "utf8")).toContain("p-5")
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 
   it("writes one dark declaration of a role, and leaves light as it was", async () => {

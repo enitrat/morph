@@ -86,10 +86,12 @@ export const PropWrite = z.object({
 export type PropWrite = z.infer<typeof PropWrite>
 
 /** The call site after the write, which formatting may have moved. */
-export interface PropWritten {
-  changed: boolean
-  site: SourceLoc
-}
+export const PropWritten = z.object({
+  changed: z.boolean(),
+  site: SourceLoc,
+  warning: z.string().optional(),
+})
+export type PropWritten = z.infer<typeof PropWritten>
 
 /** How often a component is rendered as JSX across apps and packages, lab examples apart. */
 export interface ComponentUses {

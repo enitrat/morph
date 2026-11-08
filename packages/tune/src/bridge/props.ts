@@ -121,10 +121,18 @@ async function writeAttribute(repo: Host, write: PropWrite): Promise<Done<PropWr
   if (!set.ok) return refuse({ kind: "invalid", detail: set.reason })
   if (!set.changed) return { ok: true, value: { changed: false, site } }
   await writeFile(file, set.text)
-  await formatFile(repo, site.path)
-  const formatted = await readFile(file, "utf8")
+  let warning: string | undefined
+  try {
+    await formatFile(repo, site.path)
+  } catch (error) {
+    warning = `Edit applied, but formatting failed: ${String(error)}`
+  }
+  const formatted = await readFile(file, "utf8").catch(() => set.text)
   const moved = movedTag(text, formatted, site, tag) ?? site
-  return { ok: true, value: { changed: true, site: { path: site.path, ...moved } } }
+  return {
+    ok: true,
+    value: { changed: true, site: { path: site.path, ...moved }, ...(warning ? { warning } : {}) },
+  }
 }
 
 /**

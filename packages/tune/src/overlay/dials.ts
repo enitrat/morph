@@ -266,11 +266,13 @@ export class Dial {
           : { kind: "utility", site: source.site, from, to },
       )
       if (!answer.ok) {
-        this.show(this.written)
+        if (this.at === at) this.show(this.written)
         for (const listener of this.refusals) listener(explain(answer.error))
-        return
+        if (this.at === this.written) return
+        continue
       }
       this.written = at
+      if (answer.value.warning) for (const listener of this.refusals) listener(answer.value.warning)
       invalidateCatalog()
       invalidateSources()
     }

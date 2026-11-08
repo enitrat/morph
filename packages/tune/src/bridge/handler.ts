@@ -4,9 +4,9 @@ import { realpath } from "node:fs/promises"
 import { z } from "zod"
 
 import { TuneConfigInputSchema, type TuneConfigInput } from "../core/config"
-import { DialWrite } from "../dial/model"
-import { ComponentName, PropWrite } from "../dial/props"
-import { Ask, Choice, Refine, RepoPath, SessionId, SourceLoc, VariantId } from "../variant/model"
+import { operations, type Operation } from "../protocol"
+import { ComponentName } from "../dial/props"
+import { RepoPath, SessionId, SourceLoc } from "../variant/model"
 import { designSystemOf, dial, tagClasses } from "./dial"
 import { configAt, type Host, openRepo } from "./git"
 import { guard } from "./guard"
@@ -34,10 +34,6 @@ const frameIn = (origin: string) =>
       "frames must come from this dev server",
     )
 
-const SessionRef = z.object({ id: SessionId })
-const ChoiceRef = z.object({ id: SessionId, variant: Choice })
-const VariantRef = z.object({ id: SessionId, variant: VariantId })
-
 const STATUS: Record<Refusal["kind"], number> = {
   "not-found": 404,
   busy: 409,
@@ -47,11 +43,15 @@ const STATUS: Record<Refusal["kind"], number> = {
   invalid: 422,
 }
 
-type Answer = Done<unknown>
-
-interface Op {
-  method: "GET" | "POST"
-  run(request: Request, repo: Host, bundler: Bundler): Promise<Answer>
+type Ops = {
+  [K in Operation]: {
+    method: "GET" | "POST"
+    run(
+      request: Request,
+      repo: Host,
+      bundler: Bundler,
+    ): Promise<Done<z.output<(typeof operations)[K]["response"]>>>
+  }
 }
 
 /** The `path`, `line` and `col` search params of a GET that names a JSX tag. */
@@ -66,19 +66,12 @@ function siteOf(request: Request): SourceLoc {
 
 const body = async <T>(request: Request, schema: z.ZodType<T>) => schema.parse(await request.json())
 
-const OPS: Record<string, Op> = {
+const OPS = {
   locate: {
     method: "POST",
     async run(request, repo, bundler) {
-      const { frames } = await body(
-        request,
-        z.object({
-          frames: z
-            .array(frameIn(new URL(request.url).origin))
-            .min(1)
-            .max(64),
-        }),
-      )
+      const { frames: raw } = await body(request, operations.locate.request)
+      const frames = z.array(frameIn(new URL(request.url).origin)).parse(raw)
       return { ok: true, value: { sources: await bundler.symbolicate(repo.root, frames) } }
     },
   },
@@ -122,11 +115,11 @@ const OPS: Record<string, Op> = {
   },
   prop: {
     method: "POST",
-    run: async (request, repo) => writeProp(repo, await body(request, PropWrite)),
+    run: async (request, repo) => writeProp(repo, await body(request, operations.prop.request)),
   },
   dial: {
     method: "POST",
-    run: async (request, repo) => dial(repo, await body(request, DialWrite)),
+    run: async (request, repo) => dial(repo, await body(request, operations.dial.request)),
   },
   session: {
     method: "GET",
@@ -135,35 +128,38 @@ const OPS: Record<string, Op> = {
   },
   ask: {
     method: "POST",
-    run: async (request, repo) => ask(repo, await body(request, Ask), request.signal),
+    run: async (request, repo) =>
+      ask(repo, await body(request, operations.ask.request), request.signal),
   },
   refine: {
     method: "POST",
-    run: async (request, repo) => refine(repo, await body(request, Refine), request.signal),
+    run: async (request, repo) =>
+      refine(repo, await body(request, operations.refine.request), request.signal),
   },
   show: {
     method: "POST",
     async run(request, repo) {
-      const { id, variant } = await body(request, ChoiceRef)
+      const { id, variant } = await body(request, operations.show.request)
       return show(repo, id, variant)
     },
   },
   retry: {
     method: "POST",
     async run(request, repo) {
-      const { id, variant } = await body(request, VariantRef)
+      const { id, variant } = await body(request, operations.retry.request)
       return retry(repo, id, variant)
     },
   },
   keep: {
     method: "POST",
-    run: async (request, repo) => keep(repo, (await body(request, SessionRef)).id),
+    run: async (request, repo) => keep(repo, (await body(request, operations.keep.request)).id),
   },
   discard: {
     method: "POST",
-    run: async (request, repo) => discard(repo, (await body(request, SessionRef)).id),
+    run: async (request, repo) =>
+      discard(repo, (await body(request, operations.discard.request)).id),
   },
-}
+} satisfies Ops
 
 /** The Tune bridge: answers one op of a request, after the guard admits it. */
 export type Handler = (request: Request, op: string) => Promise<Response>
@@ -190,7 +186,7 @@ export function tuneHandler(
     const json = (value: unknown, status = 200) =>
       Response.json(value, { status, headers: admitted.cors })
 
-    const op = OPS[name]
+    const op = Object.entries(OPS).find(([key]) => key === name)?.[1]
     if (op === undefined) return json({ error: { kind: "not-found" } }, 404)
     if (op.method !== request.method) return json({ error: { kind: "method" } }, 405)
     try {

@@ -1,41 +1,19 @@
-import { type DesignSystemWire } from "../core"
-import { type PathRule } from "../core/config"
-import { type Attribute } from "../dial/jsx"
-import { type Dialed, type DialWrite } from "../dial/model"
-import {
-  type ComponentUses,
-  type PropControl,
-  type PropWrite,
-  type PropWritten,
-} from "../dial/props"
+import { z } from "zod"
+import { operations, type Operation, WireError } from "../protocol"
+import { type DialWrite } from "../dial/model"
+import { type PropWrite } from "../dial/props"
 import {
   type Ask,
   type Choice,
   type Refine,
   type RepoPath,
   type SessionId,
-  type SessionView,
   type SourceLoc,
   type VariantId,
 } from "../variant/model"
 
-/** A refusal the bridge answered, or `offline` when it answered nothing usable. */
-type BridgeError =
-  | { kind: "busy"; session: SessionId }
-  | { kind: "not-found" }
-  | { kind: "not-ready"; variant: VariantId }
-  | { kind: "conflict"; files: readonly RepoPath[] }
-  | { kind: "planner-failed"; detail: string }
-  | { kind: "invalid"; detail: string }
-  | { kind: "bad-request"; issues: readonly string[] }
-  | { kind: "offline"; detail: string }
-  | { kind: "unbuilt" }
-  | { kind: "crashed"; detail: string }
-
+type BridgeError = WireError | { kind: "offline"; detail: string } | { kind: "unbuilt" }
 export type Answer<T> = { ok: true; value: T } | { ok: false; error: BridgeError }
-
-const isRefusal = (body: unknown): body is { error: BridgeError } =>
-  typeof body === "object" && body !== null && "error" in body
 
 let base: string | undefined
 
@@ -44,16 +22,30 @@ export function connect(to: string) {
   base = to.replace(/\/+$/, "")
 }
 
-async function call<T>(op: string, init: RequestInit = {}): Promise<Answer<T>> {
+async function call<K extends Operation>(
+  op: K,
+  query = "",
+  init: RequestInit = {},
+): Promise<Answer<z.output<(typeof operations)[K]["response"]>>> {
+  // The indexed schema and output share K; TypeScript widens the indexed access to a union.
+  const schema = operations[op].response as z.ZodType<z.output<(typeof operations)[K]["response"]>>
   if (base === undefined) throw new Error("tune: the overlay called the bridge before connect()")
   try {
-    const response = await fetch(`${base}/${op}`, {
+    const response = await fetch(`${base}/${op}${query}`, {
       ...init,
       headers: { "x-tune": "1", "content-type": "application/json" },
     })
     const body: unknown = await response.json().catch(() => null)
-    if (response.ok) return { ok: true, value: body as T }
-    if (isRefusal(body)) return { ok: false, error: body.error }
+    if (response.ok) {
+      const parsed = schema.safeParse(body)
+      if (parsed.success) return { ok: true, value: parsed.data }
+      return {
+        ok: false,
+        error: { kind: "offline", detail: "the bridge sent an invalid response" },
+      }
+    }
+    const refusal = z.object({ error: WireError }).safeParse(body)
+    if (refusal.success) return { ok: false, error: refusal.data.error }
     // Next's dev server answers every route with its build error page while any module fails to
     // build, so the bridge cannot run until the tree builds again.
     if (response.status === 500) return { ok: false, error: { kind: "unbuilt" } }
@@ -66,8 +58,11 @@ async function call<T>(op: string, init: RequestInit = {}): Promise<Answer<T>> {
   }
 }
 
-const post = <T>(op: string, body: unknown) =>
-  call<T>(op, { method: "POST", body: JSON.stringify(body) })
+type PostOperation = {
+  [K in Operation]: (typeof operations)[K] extends { request: z.ZodType } ? K : never
+}[Operation]
+const post = <K extends PostOperation>(op: K, body: z.input<(typeof operations)[K]["request"]>) =>
+  call(op, "", { method: "POST", body: JSON.stringify(body) })
 
 const siteQuery = (site: SourceLoc) =>
   new URLSearchParams({
@@ -77,28 +72,23 @@ const siteQuery = (site: SourceLoc) =>
   }).toString()
 
 export const bridge = {
-  locate: (frames: readonly string[]) =>
-    post<{ sources: (SourceLoc | null)[] }>("locate", { frames }),
-  ask: (ask: Ask) => post<SessionView>("ask", ask),
-  refine: (refine: Refine) => post<SessionView>("refine", refine),
-  session: (id: SessionId) => call<SessionView>(`session?id=${id}`),
-  show: (id: SessionId, variant: Choice) => post<SessionView>("show", { id, variant }),
-  retry: (id: SessionId, variant: VariantId) => post<SessionView>("retry", { id, variant }),
-  keep: (id: SessionId) => post<null>("keep", { id }),
-  discard: (id: SessionId) => post<null>("discard", { id }),
-  tokens: () => call<DesignSystemWire>("tokens"),
-  plumbing: () => call<{ plumbing: readonly PathRule[] }>("plumbing"),
-  tag: (site: SourceLoc) => call<{ classes: string[] }>(`tag?${siteQuery(site)}`),
-  dial: (write: DialWrite) => post<Dialed>("dial", write),
-  props: (component: string) =>
-    call<{ controls: PropControl[] }>(`props?${new URLSearchParams({ component }).toString()}`),
-  attributes: (site: SourceLoc) =>
-    call<{ tag: { name: string; attributes: Attribute[] } | null }>(
-      `attributes?${siteQuery(site)}`,
-    ),
+  locate: (frames: readonly string[]) => post("locate", { frames: [...frames] }),
+  ask: (ask: Ask) => post("ask", ask),
+  refine: (refine: Refine) => post("refine", refine),
+  session: (id: SessionId) => call("session", `?id=${id}`),
+  show: (id: SessionId, variant: Choice) => post("show", { id, variant }),
+  retry: (id: SessionId, variant: VariantId) => post("retry", { id, variant }),
+  keep: (id: SessionId) => post("keep", { id }),
+  discard: (id: SessionId) => post("discard", { id }),
+  tokens: () => call("tokens"),
+  plumbing: () => call("plumbing"),
+  tag: (site: SourceLoc) => call("tag", `?${siteQuery(site)}`),
+  dial: (write: DialWrite) => post("dial", write),
+  props: (component: string) => call("props", `?${new URLSearchParams({ component })}`),
+  attributes: (site: SourceLoc) => call("attributes", `?${siteQuery(site)}`),
   uses: (component: string, path: RepoPath) =>
-    call<ComponentUses>(`uses?${new URLSearchParams({ component, path }).toString()}`),
-  prop: (write: PropWrite) => post<PropWritten>("prop", write),
+    call("uses", `?${new URLSearchParams({ component, path })}`),
+  prop: (write: PropWrite) => post("prop", write),
 }
 
 export function explain(error: BridgeError): string {
@@ -112,7 +102,9 @@ export function explain(error: BridgeError): string {
     return `Could not plan variants: ${error.detail.split("\n")[0] ?? ""}`
   if (error.kind === "bad-request")
     return `The bridge refused the request: ${error.issues.join("; ")}`
-  if (error.kind === "crashed") return `Tune hit a bug and wrote nothing: ${error.detail}`
+  if (error.kind === "crashed")
+    return `Tune hit a bug; the edit may have been applied: ${error.detail}`
+  if (error.kind === "method") return "The bridge rejected the request method."
   if (error.kind === "unbuilt")
     return "The page doesn't build with this variant. Run pnpm tune discard in a terminal."
   return `The dev server did not answer (${error.detail}).`

@@ -73,7 +73,18 @@ async function writeClass(
   if (!swapped.ok) return refuse({ kind: "invalid", detail: swapped.reason })
   if (swapped.changed) {
     await writeFile(file, swapped.text)
-    await formatFile(repo, site.path)
+    try {
+      await formatFile(repo, site.path)
+    } catch (error) {
+      return {
+        ok: true,
+        value: {
+          changed: true,
+          file: site.path,
+          warning: `Edit applied, but formatting failed: ${String(error)}`,
+        },
+      }
+    }
   }
   return { ok: true, value: { changed: swapped.changed, file: site.path } }
 }

@@ -84,21 +84,14 @@ function Choices({
         }}
       >
         {control.options.map((option) => (
-          <option
-            key={option}
-            value={option}
-          >
+          <option key={option} value={option}>
             {option}
           </option>
         ))}
       </select>
     )
   return (
-    <span
-      className="segments"
-      role="radiogroup"
-      aria-label={label}
-    >
+    <span className="segments" role="radiogroup" aria-label={label}>
       {control.options.map((option) => (
         <button
           key={option}
@@ -165,6 +158,7 @@ function PropLine({
     }
     invalidateCatalog()
     invalidateSources()
+    if (answer.value.warning) setRefused(answer.value.warning)
     setRow({ control, value, at: { ...at, site: answer.value.site, written: to } })
     setBefore(undo)
   }
@@ -224,10 +218,7 @@ function PropLine({
         </span>
       )}
       {refused !== null && (
-        <span
-          className="notice"
-          role="alert"
-        >
+        <span className="notice" role="alert">
           {refused}
         </span>
       )}
@@ -250,24 +241,12 @@ function Ask({
     write.current?.focus({ preventScroll: true })
   }, [])
   return (
-    <span
-      className="confirm"
-      role="alert"
-    >
+    <span className="confirm" role="alert">
       <span>{question}</span>
-      <button
-        ref={write}
-        type="button"
-        className="link"
-        onClick={onWrite}
-      >
+      <button ref={write} type="button" className="link" onClick={onWrite}>
         Write it
       </button>
-      <button
-        type="button"
-        className="link quiet"
-        onClick={onCancel}
-      >
+      <button type="button" className="link quiet" onClick={onCancel}>
         Cancel
       </button>
     </span>
@@ -290,21 +269,14 @@ export function Props({ target }: { target: Element }) {
   if (props === undefined || props === null) return null
   if (typeof props === "string")
     return (
-      <p
-        className="notice"
-        role="alert"
-      >
+      <p className="notice" role="alert">
         {props}
       </p>
     )
   const first = props.rows.find((row) => row.at !== null)?.at
   const shared = first ? reachOf(first) : null
   return (
-    <div
-      className="props"
-      role="group"
-      aria-label={`${props.component} props`}
-    >
+    <div className="props" role="group" aria-label={`${props.component} props`}>
       <span className="group-label">{props.component} props</span>
       {shared !== null && <span className="dial-source">{shared}</span>}
       {props.rows.map((row) => (

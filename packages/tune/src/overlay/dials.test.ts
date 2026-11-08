@@ -58,6 +58,21 @@ describe("a Fine-tune dial", () => {
     expect(bridge.dial).toHaveBeenCalledOnce()
   })
 
+  it("keeps the applied value and displays a formatting warning", async () => {
+    vi.mocked(bridge.dial).mockResolvedValueOnce({
+      ok: true,
+      value: { changed: true, file: "x.css", warning: "Formatting failed" },
+    })
+    const dial = dialOf("Button", 1, undefined, 1)
+    const messages: string[] = []
+    dial.onRefused((message) => messages.push(message))
+    dial.step(1)
+    dial.release()
+    await settled()
+    expect(dial.revert()).toBe(1)
+    expect(messages).toEqual(["Formatting failed"])
+  })
+
   it("asks before a shared role writes, then writes once confirmed", async () => {
     const dial = dialOf(null)
     dial.step(1)

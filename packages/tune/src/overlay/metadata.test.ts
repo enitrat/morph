@@ -43,12 +43,32 @@ it("retries a failed source lookup and resolves the same element again after a s
   expect(fetch.mock.calls.filter(([url]) => url.endsWith("/locate"))).toHaveLength(3)
 })
 
+const tokens = (title: string) => ({
+  files: [],
+  themes: { shared: [], list: [{ name: "light", selectors: [":root"] }] },
+  plumbing: [],
+  components: [
+    {
+      slug: "card",
+      title,
+      group: "ui",
+      naming: "own",
+      href: null,
+      importFrom: null,
+      exports: ["Card"],
+      namedExports: ["Card"],
+      files: [],
+      reads: [],
+      childReads: [],
+      props: { kind: "none" },
+    },
+  ],
+})
+
 describe("token metadata", () => {
   it("shares an in-flight fetch and refreshes the catalog on the next load", async () => {
     let title = "First"
-    const fetch = vi.fn(async () =>
-      Response.json({ components: [{ title, naming: "own", exports: ["Card"] }] }),
-    )
+    const fetch = vi.fn(async () => Response.json(tokens(title)))
     vi.stubGlobal("fetch", fetch)
     await Promise.all([loadTokens(), loadTokens()])
     expect(fetch).toHaveBeenCalledTimes(1)
@@ -70,14 +90,12 @@ describe("token metadata", () => {
         return new Promise<Response>((resolve) => {
           finish = resolve
         })
-      return Promise.resolve(
-        Response.json({ components: [{ title: "New", naming: "own", exports: ["Card"] }] }),
-      )
+      return Promise.resolve(Response.json(tokens("New")))
     })
     const old = loadTokens()
     invalidateCatalog()
     await loadTokens()
-    finish(Response.json({ components: [{ title: "Old", naming: "own", exports: ["Card"] }] }))
+    finish(Response.json(tokens("Old")))
     await old
     expect(catalogNow().get("Card")?.title).toBe("New")
   })
