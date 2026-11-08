@@ -28,11 +28,6 @@ export interface Located {
   site: SourceLoc | null
 }
 
-interface Link {
-  name: string | undefined
-  frames: string[]
-}
-
 /** The creation frames of an instance's element that the bridge can map to source. */
 function framesOf(instance: Instance): string[] {
   const lines = stackOf(instance)?.stack?.split("\n").slice(1) ?? []
@@ -46,33 +41,23 @@ function framesOf(instance: Instance): string[] {
     .slice(0, FRAMES_PER_LINK)
 }
 
-/** The element's fiber, then each owner that created it: their names and creation frames. */
-function chainOf(element: Element): Link[] {
-  const chain: Link[] = []
+/** The element's fiber, then each owner that created it. */
+function chainOf(element: Element): Instance[] {
+  const chain: Instance[] = []
   for (
     let instance: Instance | null = fiberOf(element) ?? null;
     instance && chain.length < CHAIN_MAX;
     instance = ownerOf(instance)
   ) {
-    const name = instanceName(instance)
-    chain.push({ name: isComponentName(name) ? name : undefined, frames: framesOf(instance) })
+    chain.push(instance)
   }
   return chain
 }
 
 async function resolve(element: Element): Promise<Located> {
   const chain = chainOf(element)
-  const names = [...new Set(chain.flatMap((link) => link.name ?? []))]
-  const frames = chain.flatMap((link) => link.frames)
-  if (frames.length === 0) return { anchor: null, site: null }
-  const located = await bridge.locate(frames)
-  if (!located.ok) return { anchor: null, site: null }
-  let next = 0
-  const linked = chain.map((link) => {
-    const sources = located.value.sources.slice(next, next + link.frames.length)
-    next += link.frames.length
-    return sources.find((source): source is SourceLoc => source !== null) ?? null
-  })
+  const names = [...new Set(chain.map(instanceName).filter(isComponentName))]
+  const linked = await sitesOf(chain)
   const sites = linked.filter((site): site is SourceLoc => site !== null)
   const own = linked[0] ?? null
   const plumbing = await Promise.all(sites.map((site) => plumbingAt(site.path)))
