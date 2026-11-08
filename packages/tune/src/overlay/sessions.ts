@@ -46,6 +46,8 @@ export interface Sessions {
   /** The session whose thread card is open. */
   card: SessionId | null
   notice: Notice | null
+  /** The highest number a pin has had, so a number is never given to a second session. */
+  numbered: number
 }
 
 export const NO_SESSIONS: Sessions = {
@@ -53,6 +55,7 @@ export const NO_SESSIONS: Sessions = {
   pins: {},
   card: null,
   notice: null,
+  numbered: 0,
 }
 
 /** A pin as an ask or a reload makes it, before the overlay numbers it. */
@@ -76,14 +79,12 @@ export type SessionEvent =
   | { kind: "notice"; text: string; tone: Tone }
   | { kind: "unnoticed"; key: number }
 
-const nextN = (pins: Sessions["pins"]) =>
-  Math.max(0, ...Object.values(pins).map((pin) => pin?.n ?? 0)) + 1
-
 function add(state: Sessions, pin: NewPin, joined: boolean): Sessions {
-  const n = pin.n ?? state.pins[pin.id]?.n ?? nextN(state.pins)
+  const n = pin.n ?? state.pins[pin.id]?.n ?? state.numbered + 1
   return {
     ...state,
     pins: { ...state.pins, [pin.id]: { ...pin, n, joined, refine: "" } },
+    numbered: Math.max(state.numbered, n),
   }
 }
 

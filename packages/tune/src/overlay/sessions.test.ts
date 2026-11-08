@@ -71,6 +71,23 @@ describe("pins", () => {
     expect(state.sessions.pins[ids.card]).toMatchObject({ refine: "", words: "warmer" })
   })
 
+  it("never gives a kept session's number to the next ask", () => {
+    const state = run(
+      { kind: "asked", pin: pinOf(ids.hero, "Hero") },
+      { kind: "asked", pin: pinOf(ids.button, "Button") },
+      {
+        kind: "page",
+        page: page(
+          session(ids.hero, { kind: "original" }),
+          session(ids.button, { kind: "original" }),
+        ),
+      },
+      { kind: "page", page: page(session(ids.hero, { kind: "original" })) },
+      { kind: "asked", pin: pinOf(ids.card, "Card") },
+    )
+    expect(numbers(state)).toEqual(["1 Hero", "3 Card"])
+  })
+
   it("rejoins sessions after a reload with their stored numbers, numbering the rest after them", () => {
     const state = run({
       kind: "rejoined",
