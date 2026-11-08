@@ -34,9 +34,9 @@ const MULTIPLES = [
   52, 56, 60, 64, 72, 80, 96,
 ]
 
-/** The step of `scale` a value sits on, to the half pixel; `null` when it is off the scale. */
-export function tokenAt(px: number, scale: readonly Step[]): string | null {
-  return scale.find((step) => Math.abs(step.px - px) < 0.5)?.name ?? null
+/** The step of `scale` a value sits on, within `within` pixels; `null` when it is off the scale. */
+export function tokenAt(px: number, scale: readonly Step[], within = 0.5): string | null {
+  return scale.find((step) => Math.abs(step.px - px) < within)?.name ?? null
 }
 
 /** The step of `scale` nearest a value; `null` for an empty scale. */
@@ -53,10 +53,13 @@ export type Match =
   | { kind: "off"; near: string }
   | { kind: "none" }
 
-/** Zero is never off the scale, and nothing is when the design system has no scale for it. */
-export function matchOf(px: number, scale: readonly Step[]): Match {
+/**
+ * Zero is never off the scale, and nothing is when the design system has no scale for it.
+ * `within` widens a token match for distances between boxes, which land on subpixels.
+ */
+export function matchOf(px: number, scale: readonly Step[], within = 0.5): Match {
   if (px === 0 || scale.length === 0) return { kind: "none" }
-  const name = tokenAt(px, scale)
+  const name = tokenAt(px, scale, within)
   if (name !== null) return { kind: "token", name }
   const near = nearestTo(px, scale)
   return near === null ? { kind: "none" } : { kind: "off", near: near.name }

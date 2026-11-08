@@ -204,8 +204,11 @@ function between(a: Box, b: Box, scales: Scales, lines: Line[], labels: Label[])
   }
 }
 
+/** A distance between boxes lands on subpixels, so it matches a token less than a pixel away. */
+const SUBPIXEL = 1
+
 function Value({ label }: { label: Label }) {
-  const match = matchOf(label.px, label.scale)
+  const match = matchOf(label.px, label.scale, SUBPIXEL)
   return (
     <div
       className={`tnum absolute flex h-[17px] -translate-x-1/2 -translate-y-1/2 items-center gap-1 whitespace-nowrap rounded-[4px] px-1.5 font-mono text-[10.5px] font-semibold shadow-[0_1px_3px_rgb(0_0_0/0.25)] ${
@@ -215,7 +218,14 @@ function Value({ label }: { label: Label }) {
     >
       {fmt(label.px)}
       {match.kind === "token" && <i className="font-medium not-italic opacity-75">{match.name}</i>}
-      {match.kind === "off" && <i className="font-medium not-italic opacity-75">≈ {match.near}</i>}
+      {match.kind === "off" && (
+        <i
+          className="font-medium not-italic opacity-75"
+          title={`Off the scale; nearest ${match.near}`}
+        >
+          off-scale
+        </i>
+      )}
     </div>
   )
 }
