@@ -81,27 +81,39 @@ const PropSource = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("lab-meta"), meta: z.string() }),
   z.object({ kind: z.literal("cva"), file: z.string() }),
 ])
+/** Where a component's settable props come from. */
 export type PropSource = z.infer<typeof PropSource>
 
-const strings = z.array(z.string()).transform((values): readonly string[] => values)
+const strings: z.ZodType<readonly string[]> = z.array(z.string())
 const ComponentWire = z.object({
+  /** Its folder or file stem: `button`. */
   slug: z.string(),
   title: z.string(),
+  /** Free label from the config: `atom`, `block`, `ui`. */
   group: z.string(),
+  /** How a pointed element is named by it. */
   naming: Naming,
+  /** Its lab page, or null when the app has no catalogue. */
   href: z.string().nullable(),
+  /** Its import specifier, or null when the agent is never offered it. */
   importFrom: z.string().nullable(),
+  /** The React names its files export. */
   exports: strings,
+  /** Names importable with named import syntax, when known. */
   namedExports: strings,
   files: strings,
+  /** Every token its own files read. */
   reads: strings,
+  /** Every token the components it renders read, closed over what those render. */
   childReads: strings,
   props: PropSource,
 })
 
 /** A component's metadata and the token sets its files read. */
 export type Component = Omit<z.infer<typeof ComponentWire>, "reads" | "childReads"> & {
+  /** Every token its own files read. */
   reads: ReadonlySet<TokenName>
+  /** Every token the components it renders read, closed over what those render. */
   childReads: ReadonlySet<TokenName>
 }
 
@@ -117,17 +129,20 @@ export const isPlumbing = (plumbing: readonly PathRule[], path: string): boolean
     (rule) => path.startsWith(rule.prefix) && !rule.except.some((part) => path.includes(part)),
   )
 
+const tokenFiles: z.ZodType<readonly TokenFile[]> = z.array(
+  z.object({ path: z.string(), css: z.string(), tier: Tier, owned: z.boolean() }),
+)
+const components: z.ZodType<readonly z.infer<typeof ComponentWire>[]> = z.array(ComponentWire)
+const plumbing: z.ZodType<readonly PathRule[]> = TuneConfig.shape.plumbing
+
 /** The model as `GET tokens` sends it: sources rather than a graph, arrays rather than sets. */
 export const DesignSystemWire = z.object({
-  files: z
-    .array(z.object({ path: z.string(), css: z.string(), tier: Tier, owned: z.boolean() }))
-    .transform((files): readonly TokenFile[] => files),
+  files: tokenFiles,
   themes: CssTokens.shape.themes,
-  components: z
-    .array(ComponentWire)
-    .transform((components): readonly z.infer<typeof ComponentWire>[] => components),
-  plumbing: TuneConfig.shape.plumbing.transform((plumbing): readonly PathRule[] => plumbing),
+  components,
+  plumbing,
 })
+/** The model sent by `GET tokens`. */
 export type DesignSystemWire = z.infer<typeof DesignSystemWire>
 
 export const toWire = (ds: DesignSystem, themes: ThemesConfig): DesignSystemWire => ({
@@ -146,7 +161,9 @@ export const fromWire = (wire: DesignSystemWire): DesignSystem => ({
   tokens: buildTokens(wire.files, themeModelOf(wire.themes)),
   components: wire.components.map((component) => ({
     ...component,
+    // SAFETY: The bridge emits token names, but the wire parser also accepts arbitrary strings.
     reads: new Set(component.reads as TokenName[]),
+    // SAFETY: This has the same trust assumption as the component's own reads.
     childReads: new Set(component.childReads as TokenName[]),
   })),
   plumbing: wire.plumbing,
