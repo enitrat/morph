@@ -6,6 +6,8 @@ import { cp, mkdir, readdir, realpath, rm, stat, symlink } from "node:fs/promise
 import { tmpdir } from "node:os"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
 import { join } from "node:path"
+// oxlint-disable-next-line import/no-nodejs-modules -- see above.
+import { setTimeout as sleep } from "node:timers/promises"
 
 import { type CommitId } from "../variant/model"
 import { absent, git, type Repo } from "./git"
@@ -102,22 +104,34 @@ async function prepare(repo: Repo, dir: string, base: CommitId, appRoot: string)
   }
 }
 
-/** Takes a free slot for this process and checks `base` out in it. */
-export async function acquire(repo: Repo, base: CommitId, appRoot = ""): Promise<Slot> {
+const POLL_MS = 250
+
+/**
+ * Takes a free slot for this process and checks `base` out in it. With several sessions open there
+ * are more jobs than slots, so a job waits here until a slot frees or `signal` aborts.
+ */
+export async function acquire(
+  repo: Repo,
+  base: CommitId,
+  appRoot = "",
+  signal?: AbortSignal,
+): Promise<Slot> {
   const root = await slotsRoot(repo)
-  for (const id of SLOT_IDS) {
-    const dir = join(root, `slot-${id}`)
-    const lock = await tryLock(`${dir}.lock`)
-    if (!lock) continue
-    try {
-      await prepare(repo, dir, base, appRoot)
-      return { id, dir, lock }
-    } catch (error) {
-      await unlock(lock)
-      throw error
+  for (;;) {
+    for (const id of SLOT_IDS) {
+      const dir = join(root, `slot-${id}`)
+      const lock = await tryLock(`${dir}.lock`)
+      if (!lock) continue
+      try {
+        await prepare(repo, dir, base, appRoot)
+        return { id, dir, lock }
+      } catch (error) {
+        await unlock(lock)
+        throw error
+      }
     }
+    await sleep(POLL_MS, undefined, { signal })
   }
-  throw new Error("tune: every slot is busy")
 }
 
 export async function release(slot: Slot): Promise<void> {
