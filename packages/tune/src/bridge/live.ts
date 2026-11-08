@@ -38,10 +38,22 @@ async function replace(file: string, bytes: Buffer | string, scratch: string): P
   await rename(tmp, file)
 }
 
+/**
+ * What the single-session engine left when nothing was on the page. A repo that used it keeps the
+ * file, so reading it as an empty journal lets that repo start sessions again.
+ */
+const LEGACY_IDLE = JSON.stringify({ kind: "steady", applied: null })
+
 /** The journal as it is on disk, read without the lock: a move may be under way. */
 export async function readJournal(repo: Repo): Promise<Journal> {
   const text = await readFile(journalPath(repo), "utf8").catch(absent)
-  return text === null ? EMPTY_JOURNAL : Journal.parse(JSON.parse(text))
+  if (text === null || text.trim() === LEGACY_IDLE) return EMPTY_JOURNAL
+  const raw: unknown = JSON.parse(text)
+  if (typeof raw === "object" && raw !== null && "applied" in raw)
+    throw new Error(
+      `tune: ${journalPath(repo)} is from an older Tune that still shows a variant; restore its files with git, then delete it`,
+    )
+  return Journal.parse(raw)
 }
 
 async function writeJournal(repo: Repo, journal: Journal): Promise<void> {

@@ -118,6 +118,21 @@ async function run(repo: Repo, offers: readonly Offer[], request: Request) {
 }
 
 describe("converge", () => {
+  it("reads the idle journal an older Tune left as empty, so the repo can start sessions", async () => {
+    const { repo, variant } = await fixture()
+    writeFileSync(
+      join(homeOf(repo), "live.json"),
+      JSON.stringify({ kind: "steady", applied: null }),
+    )
+    const s = id()
+    const offers = [
+      offer(s, 1, await variant(s, "v1", { "src/a.tsx": edit(BASE["src/a.tsx"]!, 2, "A") })),
+    ]
+    expect(await run(repo, offers, { kind: "show", session: s, choice: "v1" })).toEqual({
+      [s]: { kind: "shown", variant: "v1" },
+    })
+  })
+
   it("does not touch any file when the shown variant is shown again or the page settles", async () => {
     const { root, repo, variant } = await fixture()
     const s = id()
