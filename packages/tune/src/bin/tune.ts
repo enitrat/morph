@@ -69,12 +69,14 @@ async function gc() {
   let slots = 0
   for (const id of SLOT_IDS) {
     const dir = join(root, `slot-${id}`)
-    if (!existsSync(dir) || !(await tryLock(`${dir}.lock`))) continue
+    if (!existsSync(dir)) continue
+    const lock = await tryLock(`${dir}.lock`)
+    if (!lock) continue
     try {
       await git(repo.root, ["worktree", "remove", "--force", dir])
       slots++
     } finally {
-      await unlock(`${dir}.lock`)
+      await unlock(lock)
     }
   }
   await git(repo.root, ["worktree", "prune"])

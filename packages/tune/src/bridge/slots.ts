@@ -9,7 +9,7 @@ import { join } from "node:path"
 
 import { type CommitId } from "../variant/model"
 import { absent, git, type Repo } from "./git"
-import { tryLock, unlock } from "./lock"
+import { tryLock, unlock, type Lock } from "./lock"
 import { workspacesIn } from "./workspaces"
 
 export const SLOT_IDS = [0, 1, 2] as const
@@ -18,6 +18,7 @@ type SlotId = (typeof SLOT_IDS)[number]
 interface Slot {
   readonly id: SlotId
   readonly dir: string
+  readonly lock: Lock
 }
 
 const exists = async (path: string) => (await stat(path).catch(absent)) !== null
@@ -104,12 +105,13 @@ export async function acquire(repo: Repo, base: CommitId): Promise<Slot> {
   const root = await slotsRoot(repo)
   for (const id of SLOT_IDS) {
     const dir = join(root, `slot-${id}`)
-    if (!(await tryLock(`${dir}.lock`))) continue
+    const lock = await tryLock(`${dir}.lock`)
+    if (!lock) continue
     try {
       await prepare(repo, dir, base)
-      return { id, dir }
+      return { id, dir, lock }
     } catch (error) {
-      await unlock(`${dir}.lock`)
+      await unlock(lock)
       throw error
     }
   }
@@ -117,5 +119,5 @@ export async function acquire(repo: Repo, base: CommitId): Promise<Slot> {
 }
 
 export async function release(slot: Slot): Promise<void> {
-  await unlock(`${slot.dir}.lock`)
+  await unlock(slot.lock)
 }
