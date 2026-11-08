@@ -1,4 +1,4 @@
-@layer theme, utilities;
+@layer legacy, theme, base, utilities;
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
@@ -61,6 +61,30 @@
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   color-scheme: dark;
+}
+
+/* Tailwind's preflight would reset the host-agnostic UA styles, but globally; this resets only the new UI. */
+@layer base {
+  .ui *,
+  .ui ::before,
+  .ui ::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid;
+  }
+  .ui :where(button, input, textarea, select) {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+  }
+  .ui :where(button) {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .ui :where(svg) {
+    display: block;
+  }
 }
 
 @utility ring-focus {

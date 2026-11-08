@@ -43,6 +43,7 @@ import {
 } from "./state"
 import { OVERLAY_CSS } from "./styles"
 import { UI_CSS } from "./ui/css"
+import { Launcher } from "./ui/Launcher"
 import { type Side, sideFor, type ShownTheme, useCollapsed, usePageTheme, useThemes } from "./view"
 
 const POLL_MS = 1000
@@ -724,8 +725,9 @@ export function Overlay() {
 
   return (
     <div className="root" data-theme={dark ? "dark" : "light"}>
-      <style>{OVERLAY_CSS}</style>
+      <style>{`@layer legacy {${OVERLAY_CSS}}`}</style>
       <style>{UI_CSS}</style>
+      <Launcher />
       <button
         type="button"
         className="tab"
