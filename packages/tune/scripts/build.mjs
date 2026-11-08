@@ -1,7 +1,7 @@
 import { build } from "esbuild"
 import { copyFile, mkdir, readFile, rm } from "node:fs/promises"
 
-import { uiCss } from "./ui-css.mjs"
+import { uiCss, uiFonts } from "./ui-css.mjs"
 
 await rm("dist", { recursive: true, force: true })
 
@@ -35,7 +35,10 @@ await Promise.all([
     platform: "browser",
     entryPoints: { widget: "src/widget/index.tsx" },
     banner: { js: '"use client";' },
-    define: { __TUNE_UI_CSS__: JSON.stringify(await uiCss()) },
+    define: {
+      __TUNE_UI_CSS__: JSON.stringify(await uiCss()),
+      __TUNE_UI_FONTS__: JSON.stringify(await uiFonts()),
+    },
   }),
 ])
 

@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client"
 
 import { connect } from "../overlay/bridge"
 import { Overlay } from "../overlay/overlay"
+import { registerFonts } from "../overlay/ui/fonts"
 import { SENTINEL } from "./sentinel"
 
 const MOUNTED = Symbol.for("tune.overlay")
@@ -21,6 +22,7 @@ interface Holder {
  */
 export function mountTune(base: string) {
   connect(base)
+  registerFonts()
   const holder = window as Holder
   const mounted = holder[MOUNTED]
   if (mounted?.host.isConnected) {
