@@ -27,15 +27,13 @@ export const WireError = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("crashed"), detail: z.string() }),
 ])
 export type WireError = z.infer<typeof WireError>
-const sessionView: z.ZodType<SessionView> = SessionView
-const designSystem: z.ZodType<DesignSystemWire> = DesignSystemWire
 
 export const operations = {
   locate: {
     request: z.object({ frames: z.array(z.string()).min(1).max(MAX_LOCATE_FRAMES) }),
     response: z.object({ sources: z.array(SourceLoc.nullable()) }),
   },
-  tokens: { response: designSystem },
+  tokens: { response: DesignSystemWire },
   plumbing: { response: z.object({ plumbing: TuneConfig.shape.plumbing }) },
   tag: { response: z.object({ classes: z.array(z.string()) }) },
   props: { response: z.object({ controls: z.array(PropControl) }) },
@@ -47,11 +45,11 @@ export const operations = {
   },
   prop: { request: PropWrite, response: PropWritten },
   dial: { request: DialWrite, response: Dialed },
-  session: { response: sessionView },
-  ask: { request: Ask, response: sessionView },
-  refine: { request: Refine, response: sessionView },
-  show: { request: ChoiceRef, response: sessionView },
-  retry: { request: VariantRef, response: sessionView },
+  session: { response: SessionView },
+  ask: { request: Ask, response: SessionView },
+  refine: { request: Refine, response: SessionView },
+  show: { request: ChoiceRef, response: SessionView },
+  retry: { request: VariantRef, response: SessionView },
   keep: { request: SessionRef, response: z.null() },
   discard: { request: SessionRef, response: z.null() },
 } satisfies Record<string, { request?: z.ZodType; response: z.ZodType }>

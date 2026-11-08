@@ -5,7 +5,7 @@ import { instancesOf, isTune } from "../inspector/target"
 import { type SourceLoc } from "../variant/model"
 import { bridge, explain } from "./bridge"
 import { catalogNow, loadTokens, plumbingAt } from "./catalog"
-import { sitesOf } from "./source"
+import { sitesOf, sameSite } from "./source"
 
 /** Wrappers a prop is followed through, from the instance up. */
 const CHAIN_MAX = 6
@@ -52,9 +52,6 @@ function ownersOf(instance: Instance): Instance[] {
     chain.push(owner)
   return chain
 }
-
-const sameSite = (a: SourceLoc | null, b: SourceLoc) =>
-  a !== null && a.path === b.path && a.line === b.line && a.col === b.col
 
 const valueOf = (control: PropControl, instance: Instance): PropValue => {
   const value = propsOf(instance)[control.name]

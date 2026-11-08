@@ -75,7 +75,6 @@ export interface Tokens {
 /** What an edit writes: every theme's value, or one theme's. */
 export type Scope = "all" | ThemeName
 
-/** Where a component's settable props come from. */
 const PropSource = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("none") }),
   z.object({ kind: z.literal("lab-meta"), meta: z.string() }),
@@ -162,9 +161,9 @@ export const fromWire = (wire: DesignSystemWire): DesignSystem => ({
   components: wire.components.map((component) => ({
     ...component,
     // SAFETY: The bridge emits token names, but the wire parser also accepts arbitrary strings.
-    reads: new Set(component.reads as TokenName[]),
+    reads: new Set(component.reads as readonly TokenName[]),
     // SAFETY: This has the same trust assumption as the component's own reads.
-    childReads: new Set(component.childReads as TokenName[]),
+    childReads: new Set(component.childReads as readonly TokenName[]),
   })),
   plumbing: wire.plumbing,
 })

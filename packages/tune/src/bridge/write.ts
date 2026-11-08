@@ -19,21 +19,32 @@ import { readDesignSystem } from "./design-system"
 import type { Host } from "./git"
 import { withLive } from "./live"
 import { propControls } from "./props"
-import { openSessions } from "./session"
-import type { Done } from "./session"
+import { openSessions, type Done } from "./session"
 
 const refuse = (refusal: Refusal): Done<never> => ({ ok: false, ...refusal })
 type UtilityWrite = Extract<DialWrite, { kind: "utility" }>
 type Command = DialWrite | { kind: "prop"; write: PropWrite }
 /** A dependency failed while reading or writing the released edit. */
-export type WriteFailure = { ok: false; failure: unknown }
+export type WriteFailure = {
+  ok: false
+  kind: "write-failed"
+  operation: "read-design-system" | "load-controls" | "read-source" | "write-source"
+  resource: string
+  cause: unknown
+}
 type WriteResult<T> = Done<T> | WriteFailure
 
 function tokensOf(repo: Host) {
   try {
     return { ok: true, tokens: readDesignSystem(repo.root, repo.config).tokens } as const
   } catch (cause) {
-    return { ok: false, failure: cause } as const
+    return {
+      ok: false,
+      kind: "write-failed",
+      operation: "read-design-system",
+      resource: repo.root,
+      cause,
+    } as const
   }
 }
 
@@ -60,7 +71,7 @@ function writeToken(repo: Host, edit: TokenEdit): WriteResult<Dialed> {
     try {
       writeFileSync(join(repo.root, path), css)
     } catch (cause) {
-      return { ok: false, failure: cause }
+      return { ok: false, kind: "write-failed", operation: "write-source", resource: path, cause }
     }
   }
   return { ok: true, value: { changed: true, file: [...written.files.keys()].join(", ") } }
@@ -83,7 +94,13 @@ async function writeJsx(
     try {
       controls = await propControls(repo, component)
     } catch (cause) {
-      return { ok: false, failure: cause }
+      return {
+        ok: false,
+        kind: "write-failed",
+        operation: "load-controls",
+        resource: component,
+        cause,
+      }
     }
     const control = controls.find((entry) => entry.name === name)
     if (control === undefined)
@@ -107,7 +124,7 @@ async function writeJsx(
       (cause.code === "ENOENT" || cause.code === "ENOTDIR")
     )
       return refuse({ kind: "not-found" })
-    return { ok: false, failure: cause }
+    return { ok: false, kind: "write-failed", operation: "read-source", resource: site.path, cause }
   }
   const edited =
     command.kind === "utility"
@@ -123,12 +140,18 @@ async function writeJsx(
   try {
     await writeFile(file, edited.text)
   } catch (cause) {
-    return { ok: false, failure: cause }
+    return {
+      ok: false,
+      kind: "write-failed",
+      operation: "write-source",
+      resource: site.path,
+      cause,
+    }
   }
   const formattedResult = await formatFile(repo, site.path)
   const warning = formattedResult.ok
     ? undefined
-    : `Edit applied, but formatting failed: ${String(formattedResult.error)}`
+    : `Edit applied, but formatting failed: ${String(formattedResult.cause)}`
   if (command.kind === "utility")
     return { ok: true, value: { changed: true, file: site.path, ...(warning ? { warning } : {}) } }
   const formatted = await readFile(file, "utf8").catch(() => edited.text)

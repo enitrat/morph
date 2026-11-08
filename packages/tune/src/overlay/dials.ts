@@ -27,7 +27,7 @@ import { type SourceLoc } from "../variant/model"
 import { bridge, explain } from "./bridge"
 import { invalidateCatalog, loadTokens } from "./catalog"
 import { clearPreview, previewClass, previewToken } from "./preview"
-import { invalidateSources, locate } from "./source"
+import { invalidateSources, locate, sameSite } from "./source"
 
 type Base = Omit<Context, "theme">
 
@@ -100,9 +100,6 @@ function tokenPlaces(
   }
   return found.size
 }
-
-const sameSite = (a: SourceLoc | null, b: SourceLoc) =>
-  a !== null && a.path === b.path && a.line === b.line && a.col === b.col
 
 /** How many page elements one JSX tag renders, as a list renders the same tag once per item. */
 async function sitePlaces(element: Element, site: SourceLoc, root: ParentNode): Promise<number> {

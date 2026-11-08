@@ -76,7 +76,7 @@ export function commandAt(root: string, workspace: string, app: string, bin: str
 export async function formatFile(
   repo: Host,
   path: string,
-): Promise<{ ok: true } | { ok: false; error: unknown }> {
+): Promise<{ ok: true } | { ok: false; kind: "format-failed"; path: string; cause: unknown }> {
   const { bin, args } = repo.config.checks.format
   const cwd = join(repo.root, repo.config.appRoot)
   try {
@@ -87,7 +87,7 @@ export async function formatFile(
     )
     return { ok: true }
   } catch (cause) {
-    return { ok: false, error: cause }
+    return { ok: false, kind: "format-failed", path, cause }
   }
 }
 

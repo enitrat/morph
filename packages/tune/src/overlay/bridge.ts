@@ -27,8 +27,7 @@ async function call<K extends Operation>(
   query = "",
   init: RequestInit = {},
 ): Promise<Answer<z.output<(typeof operations)[K]["response"]>>> {
-  // The indexed schema and output share K; TypeScript widens the indexed access to a union.
-  const schema = operations[op].response as z.ZodType<z.output<(typeof operations)[K]["response"]>>
+  const schema = operations[op].response
   if (base === undefined) throw new Error("tune: the overlay called the bridge before connect()")
   try {
     const response = await fetch(`${base}/${op}${query}`, {
@@ -38,7 +37,9 @@ async function call<K extends Operation>(
     const body: unknown = await response.json().catch(() => null)
     if (response.ok) {
       const parsed = schema.safeParse(body)
-      if (parsed.success) return { ok: true, value: parsed.data }
+      if (parsed.success)
+        // SAFETY: Parsing used this operation's response schema; indexing widens its output to a union.
+        return { ok: true, value: parsed.data as z.output<(typeof operations)[K]["response"]> }
       return {
         ok: false,
         error: { kind: "offline", detail: "the bridge sent an invalid response" },

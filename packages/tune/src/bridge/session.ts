@@ -170,8 +170,6 @@ export async function readSession(repo: Repo, id: SessionId): Promise<SessionVie
   }
 }
 
-export type { Refusal } from "../variant/model"
-
 export type Done<T> = { ok: true; value: T } | ({ ok: false } & Refusal)
 
 const refuse = (refusal: Refusal): Done<never> => ({ ok: false, ...refusal })
@@ -357,7 +355,6 @@ async function stopJobs(repo: Repo, id: SessionId): Promise<void> {
     const job = await readJob(repo, id, variant)
     if (job.kind !== "running") continue
     try {
-      // Each runner leads its own process group, which holds its agent and checks.
       process.kill(-job.pid, "SIGTERM")
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error

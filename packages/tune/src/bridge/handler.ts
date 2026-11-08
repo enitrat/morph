@@ -6,12 +6,12 @@ import { z } from "zod"
 import { TuneConfigInputSchema, type TuneConfigInput } from "../core/config"
 import { operations, type Operation } from "../protocol"
 import { ComponentName } from "../dial/props"
-import { RepoPath, SessionId, SourceLoc } from "../variant/model"
+import { RepoPath, SessionId, SourceLoc, type Refusal } from "../variant/model"
 import { designSystemOf, tagClasses } from "./dial"
 import { configAt, type Host, openRepo } from "./git"
 import { guard } from "./guard"
 import { componentUses, propControls, tagAttributes } from "./props"
-import { ask, discard, type Done, keep, look, refine, type Refusal, retry, show } from "./session"
+import { ask, discard, type Done, keep, look, refine, retry, show } from "./session"
 import { type Bundler, type Frame } from "./symbolicate"
 import { writeReleased, type WriteFailure } from "./write"
 
@@ -204,7 +204,7 @@ export function tuneHandler(
     try {
       const answer = await op.run(request, await opened(), bundler)
       if (answer.ok) return json(answer.value)
-      if ("failure" in answer) return failed(answer.failure)
+      if (answer.kind === "write-failed") return failed(answer.cause)
       const { ok: _, ...refusal } = answer
       return json({ error: refusal }, STATUS[refusal.kind])
     } catch (error) {

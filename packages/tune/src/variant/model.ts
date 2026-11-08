@@ -156,11 +156,9 @@ export const Session = z.object({
 export type Session = z.infer<typeof Session>
 
 /** One kept variant on the way to a round, and the feedback the next round asked of it. */
-export interface Step {
-  variant: VariantId
-  title: string
-  feedback: string
-}
+export const Step = z.object({ variant: VariantId, title: z.string(), feedback: z.string() })
+/** One kept variant and the feedback that follows it. */
+export type Step = z.infer<typeof Step>
 
 /** The kept variants a round with these `words` stands on, oldest first. */
 export function trailOf(words: string, parent: Parent | null): Step[] {
@@ -223,9 +221,7 @@ export const VariantView = z.discriminatedUnion("state", [
 export type VariantView = z.infer<typeof VariantView>
 
 const variantViews: z.ZodType<readonly VariantView[]> = z.array(VariantView)
-const steps: z.ZodType<readonly Step[]> = z.array(
-  z.object({ variant: VariantId, title: z.string(), feedback: z.string() }),
-)
+const steps: z.ZodType<readonly Step[]> = z.array(Step)
 
 /** Everything the overlay renders, derived once on the bridge. */
 export const SessionView = z.object({

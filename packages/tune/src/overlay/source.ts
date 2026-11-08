@@ -123,3 +123,7 @@ export function keyOf(object: object): number {
   }
   return key
 }
+
+/** Whether two mapped locations name the same JSX tag. */
+export const sameSite = (a: SourceLoc | null, b: SourceLoc): boolean =>
+  a !== null && a.path === b.path && a.line === b.line && a.col === b.col

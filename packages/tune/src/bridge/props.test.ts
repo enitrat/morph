@@ -109,6 +109,31 @@ describe("writing a prop", () => {
     ])
   })
 
+  it("returns the moved tag after formatting so the next edit still reaches it", async () => {
+    const { root, repo } = await fixture()
+    const compact = PAGE_SOURCE.replace(/\s*\n\s*/g, "")
+    writeFileSync(join(root, PAGE), compact)
+    const moved = await writeReleased(repo, {
+      kind: "prop",
+      write: {
+        ...write,
+        site: { path: site.path, line: 1, col: compact.indexOf("<Button") + 1 },
+        name: "size",
+        to: "lg",
+      },
+    })
+    expect(moved).toEqual({ ok: true, value: { changed: true, site } })
+    if (!moved.ok) throw new Error("expected the first prop edit to succeed")
+    const next = await writeReleased(repo, {
+      kind: "prop",
+      write: { ...write, site: moved.value.site, name: "size", to: "md" },
+    })
+    expect(next.ok).toBe(true)
+    expect(readFileSync(join(root, PAGE), "utf8")).toBe(
+      PAGE_SOURCE.replace('size="sm"', 'size="md"'),
+    )
+  })
+
   it("keeps an applied edit and reports a formatter failure through the handler", async () => {
     const { root } = await fixture()
     const handle = tuneHandler(
@@ -174,7 +199,13 @@ describe("writing a prop", () => {
       kind: "prop",
       write: { ...write, name: "size", to: "lg" },
     })
-    expect(result).toMatchObject({ ok: false, failure: { code: "EISDIR" } })
+    expect(result).toMatchObject({
+      ok: false,
+      kind: "write-failed",
+      operation: "read-source",
+      resource: PAGE,
+      cause: { code: "EISDIR" },
+    })
     const handle = tuneHandler(config, {
       dir: root,
       bundler: { symbolicate: async () => [] },

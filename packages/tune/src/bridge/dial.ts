@@ -1,17 +1,15 @@
-// oxlint-disable-next-line import/no-nodejs-modules -- the dial writes working-tree files.
+// oxlint-disable-next-line import/no-nodejs-modules -- reads JSX from the working tree.
 import { readFile } from "node:fs/promises"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
 import { join } from "node:path"
 
-import { applyEdits } from "../core/write"
-import { type DesignSystemWire, toWire, } from "../core/design-system"
-import { editError, type TokenEdit } from "../core/edit"
-import { normalizeValue } from "../core/graph"
+import { type DesignSystemWire, toWire } from "../core/design-system"
 import { classesIn } from "../dial/jsx"
 import type { SourceLoc } from "../variant/model"
 import { readDesignSystem } from "./design-system"
 import { absent, type Host, type Repo } from "./git"
 
+/** The current design system serialized for the browser. */
 export const designSystemOf = (repo: Host): DesignSystemWire =>
   toWire(readDesignSystem(repo.root, repo.config), repo.config.tokens.themes)
 
