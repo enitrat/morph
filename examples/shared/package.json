@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     "./page": "./page.tsx",
+    "./tour": "./tour.tsx",
     "./ui/*": "./ui/*.tsx",
     "./styles.css": "./styles.css"
   },
