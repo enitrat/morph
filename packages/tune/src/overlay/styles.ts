@@ -307,7 +307,7 @@ kbd {
 .inspection-box { fill: var(--accent-soft); stroke: currentColor; stroke-opacity: .65; stroke-width: 1; }
 .inspection-padding { fill: currentColor; fill-opacity: .12; }
 .inspection-space { fill: currentColor; fill-opacity: .09; stroke: currentColor; stroke-opacity: .4; stroke-dasharray: 2 2; }
-.inspection-label rect, .inspection-size rect { fill: var(--accent); }
+.inspection-label rect, .inspection-size rect { fill: color-mix(in srgb, var(--accent) 85%, #000); }
 .inspection-label text, .inspection-size text { fill: var(--on-accent); font: 500 10px ui-monospace, "SF Mono", Menlo, Consolas, monospace; text-anchor: middle; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .inspection-blueprint[data-phase="fading"] { transition: none; } }
 @media (max-width: 400px) { .tool { gap: 3px; padding-left: 4px; padding-right: 4px; font-size: 11px; } }
