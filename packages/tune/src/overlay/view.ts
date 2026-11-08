@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 
 import { type ThemeModel, themeModelOf, type ThemeName } from "../core"
 import { loadTokens } from "./catalog"
+import { EDGE, PANEL_WIDTH, TAB } from "./geometry"
 import { endThemePreview, previewTheme } from "./preview"
 import { askedTheme, type Stage } from "./state"
 
@@ -12,10 +13,18 @@ export interface ShownTheme {
 }
 
 /** The design system's themes once the bridge answers; `null` until then, or while it cannot. */
-export function useThemes(): ThemeModel | null {
+export function useThemes(
+  open: boolean,
+  stage: Stage["kind"],
+  targets: readonly Element[],
+): ThemeModel | null {
   const [themes, setThemes] = useState<ThemeModel | null>(null)
   useEffect(() => {
     const stop = new AbortController()
+    if (!open)
+      return () => {
+        stop.abort()
+      }
     void (async () => {
       const answer = await loadTokens()
       if (!stop.signal.aborted && answer.ok) setThemes(themeModelOf(answer.value.themes))
@@ -23,7 +32,7 @@ export function useThemes(): ThemeModel | null {
     return () => {
       stop.abort()
     }
-  }, [])
+  }, [open, stage, targets])
   return themes
 }
 
@@ -59,13 +68,6 @@ export function usePageTheme(
     },
   }
 }
-
-/** Must match the panel's width, max height and edge offset in the overlay stylesheet. */
-export const PANEL_WIDTH = 340
-export const PANEL_MAX_HEIGHT = 560
-export const EDGE = 16
-/** The room the Tune tab keeps on the right edge. */
-const TAB = 44
 
 export type Side = "left" | "right" | "bottom"
 

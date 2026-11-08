@@ -18,13 +18,14 @@ import { isPointShortcut, isTyping, startPointing } from "../inspector/pointer"
 import { above, below } from "../inspector/target"
 import { type Anchor, type Ask, type Choice, type Mark, SessionId } from "../variant/model"
 import { bridge, explain } from "./bridge"
-import { catalogNow, labelNow, loadTokens } from "./catalog"
+import { catalogNow, invalidateCatalog, labelNow } from "./catalog"
+import { EDGE, PANEL_MAX_HEIGHT, PANEL_WIDTH } from "./geometry"
 import { Icon } from "./icons"
 import { type Actions, PageTheme, PanelBody, Pill, statusOf, Trail } from "./panel"
 import { THEME_PREVIEW } from "./preview"
 import { pickedOf, repicked } from "./repick"
 import { Marks, reaimed, SketchLayer } from "./sketch"
-import { locate } from "./source"
+import { invalidateSources, locate } from "./source"
 import {
   canRefine,
   climbsOnArrow,
@@ -40,17 +41,7 @@ import {
   unsettled,
 } from "./state"
 import { OVERLAY_CSS } from "./styles"
-import {
-  EDGE,
-  PANEL_MAX_HEIGHT,
-  PANEL_WIDTH,
-  type Side,
-  sideFor,
-  type ShownTheme,
-  useCollapsed,
-  usePageTheme,
-  useThemes,
-} from "./view"
+import { type Side, sideFor, type ShownTheme, useCollapsed, usePageTheme, useThemes } from "./view"
 
 const POLL_MS = 1000
 const SESSION_KEY = "tune:session"
@@ -305,13 +296,15 @@ function actionsOf(stage: Stage, dispatch: Dispatch<Event>): Actions {
     if (open === null) return
     dispatch({ kind: "pending", pending: { kind }, at: Date.now() })
     const done = await bridge[kind](open.id)
-    if (done.ok || done.error.kind === "not-found")
+    if (done.ok || done.error.kind === "not-found") {
+      invalidateCatalog()
+      invalidateSources()
       dispatch(
         kind === "keep"
           ? { kind: "ended", kept: true, targets: repicked(open.picked) }
           : { kind: "ended", kept: false },
       )
-    else dispatch({ kind: "settled", view: null, notice: explain(done.error) })
+    } else dispatch({ kind: "settled", view: null, notice: explain(done.error) })
   }
   const send = async () => {
     if (stage.kind !== "composing") return
@@ -631,12 +624,7 @@ function Panel({
             </button>
           </header>
           {stage.kind === "session" && <Trail view={stage.view} />}
-          <PanelBody
-            stage={stage}
-            dispatch={dispatch}
-            actions={actions}
-            theme={theme}
-          />
+          <PanelBody stage={stage} dispatch={dispatch} actions={actions} theme={theme} />
         </>
       )}
     </section>
@@ -648,7 +636,7 @@ export function Overlay() {
   const { open, stage } = state
   const { draft } = stage
   const actions = actionsOf(stage, dispatch)
-  const { theme, dark } = useHostTheme(useThemes())
+  const { theme, dark } = useHostTheme(useThemes(open, stage.kind, draft.targets))
   const elements = useMemo(() => [...draft.targets, ...markElements(draft)], [draft])
   const panel = useRef<HTMLElement | null>(null)
   const dock = usePlace(elements)
@@ -674,9 +662,6 @@ export function Overlay() {
 
   const climb = useClimb(draft, dispatch)
 
-  useEffect(() => {
-    if (open) void loadTokens()
-  }, [open])
   usePolling(stage, dispatch)
   useStoredSession(stage, dispatch)
 
@@ -745,10 +730,7 @@ export function Overlay() {
   }, [tool])
 
   return (
-    <div
-      className="root"
-      data-theme={dark ? "dark" : "light"}
-    >
+    <div className="root" data-theme={dark ? "dark" : "light"}>
       <style>{OVERLAY_CSS}</style>
       <button
         type="button"
@@ -764,12 +746,7 @@ export function Overlay() {
       </button>
       {open && !variantShown && <Targets targets={draft.targets} />}
       {tool !== null && tool !== "point" && (
-        <SketchLayer
-          key={tool}
-          tool={tool}
-          dispatch={dispatch}
-          onArrow={setAimed}
-        />
+        <SketchLayer key={tool} tool={tool} dispatch={dispatch} onArrow={setAimed} />
       )}
       {open && !variantShown && (
         <Marks

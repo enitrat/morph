@@ -105,14 +105,22 @@ export async function sitesOf(instances: readonly Instance[]): Promise<(SourceLo
   return found.flat()
 }
 
-const cache = new WeakMap<Element, Promise<Located>>()
+let cache = new WeakMap<Element, Promise<Located>>()
 
-/** Where an element's JSX lives, resolved once per element. */
+/** Detach source requests started before a write. */
+export function invalidateSources(): void {
+  cache = new WeakMap()
+}
+
+/** Where an element's JSX lives, sharing concurrent lookups only. */
 export function locate(element: Element): Promise<Located> {
   let found = cache.get(element)
   if (found === undefined) {
-    found = resolve(element)
-    cache.set(element, found)
+    const current = cache
+    found = resolve(element).finally(() => {
+      current.delete(element)
+    })
+    current.set(element, found)
   }
   return found
 }

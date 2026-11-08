@@ -7,17 +7,27 @@ let tokens: Promise<Answer<DesignSystemWire>> | undefined
 let plumbing: ReturnType<typeof bridge.plumbing> | undefined
 let catalog: Catalog = new Map()
 
-/** The bridge's token sources and catalog, fetched once per page; a failure is asked again. */
+/** Fetch fresh metadata, sharing only requests that are still in flight. */
 export function loadTokens(): Promise<Answer<DesignSystemWire>> {
-  tokens ??= bridge.tokens().then((answer) => {
-    if (answer.ok)
-      catalog = catalogOf(
-        answer.value.components.map(({ title, naming, exports }) => ({ title, naming, exports })),
-      )
-    else tokens = undefined
+  if (tokens !== undefined) return tokens
+  const request = bridge.tokens().then((answer) => {
+    if (tokens === request) {
+      tokens = undefined
+      if (answer.ok)
+        catalog = catalogOf(
+          answer.value.components.map(({ title, naming, exports }) => ({ title, naming, exports })),
+        )
+    }
     return answer
   })
-  return tokens
+  tokens = request
+  return request
+}
+
+/** Detach requests started before a source write. */
+export function invalidateCatalog(): void {
+  tokens = undefined
+  plumbing = undefined
 }
 
 /**
@@ -25,10 +35,13 @@ export function loadTokens(): Promise<Answer<DesignSystemWire>> {
  * marks nothing, so locating still works without it.
  */
 export async function plumbingAt(path: string): Promise<boolean> {
-  plumbing ??= bridge.plumbing().then((answer) => {
-    if (!answer.ok) plumbing = undefined
-    return answer
-  })
+  if (plumbing === undefined) {
+    const request = bridge.plumbing().then((answer) => {
+      if (plumbing === request) plumbing = undefined
+      return answer
+    })
+    plumbing = request
+  }
   const answer = await plumbing
   return answer.ok && isPlumbing(answer.value.plumbing, path)
 }

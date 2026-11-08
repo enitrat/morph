@@ -1,3 +1,5 @@
+import { EDGE, PANEL_MAX_HEIGHT, PANEL_WIDTH, TAB } from "./geometry"
+
 /** The overlay's stylesheet, scoped by its shadow root; nothing of the host page reaches it. */
 export const OVERLAY_CSS = `
 :host { all: initial; }
@@ -49,14 +51,14 @@ button { touch-action: manipulation; cursor: pointer; }
 .tab svg { width: 15px; height: 15px; }
 
 .panel {
-  position: fixed; z-index: 2147483646; width: 340px; max-height: min(560px, calc(100vh - 32px));
+  position: fixed; z-index: 2147483646; width: ${PANEL_WIDTH}px; max-height: min(${PANEL_MAX_HEIGHT}px, calc(100vh - ${2 * EDGE}px));
   display: flex; flex-direction: column; background: var(--bg); border-radius: 12px;
   box-shadow: var(--shadow); overflow: hidden;
   transition: opacity 150ms ease-out, translate 150ms cubic-bezier(0.32, 0.72, 0, 1);
 }
-.panel[data-x="right"] { right: 44px; }
-.panel[data-x="left"] { left: 16px; }
-.panel[data-x="bottom"] { left: calc(50% - 170px); }
+.panel[data-x="right"] { right: ${TAB}px; }
+.panel[data-x="left"] { left: ${EDGE}px; }
+.panel[data-x="bottom"] { left: calc(50% - ${PANEL_WIDTH / 2}px); }
 @starting-style { .panel { opacity: 0; translate: 0 6px; } }
 
 .head {

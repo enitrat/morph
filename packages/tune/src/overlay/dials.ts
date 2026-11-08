@@ -10,7 +10,6 @@ import {
   type ThemeName,
   type TokenGraph,
   type TokenName,
-  withEdits,
 } from "../core"
 import { type Context, questionOf, type Row, rowsOf, type Track } from "../dial/rows"
 import { declarationsOf, scalesOf, utilityOf } from "../dial/utilities"
@@ -19,27 +18,20 @@ import { readsOf, RuleIndex } from "../inspector/reads"
 import { isTune } from "../inspector/target"
 import { type SourceLoc } from "../variant/model"
 import { bridge, explain } from "./bridge"
-import { loadTokens } from "./catalog"
+import { invalidateCatalog, loadTokens } from "./catalog"
 import { clearPreview, previewClass, previewToken } from "./preview"
-import { locate } from "./source"
+import { invalidateSources, locate } from "./source"
 
 type Base = Omit<Context, "theme">
 
-let base: Promise<Base | string> | undefined
 let index: RuleIndex | undefined
 
-/** The token graph and component reads, fetched once per page; a failure is retried next pick. */
-function loadBase(): Promise<Base | string> {
-  base ??= (async () => {
-    const answer = await loadTokens()
-    if (!answer.ok) {
-      base = undefined
-      return explain(answer.error)
-    }
-    const { tokens, components } = fromWire(answer.value)
-    return { tokens, scales: scalesOf(tokens), components }
-  })()
-  return base
+/** The token graph and component reads for this derivation. */
+async function loadBase(): Promise<Base | string> {
+  const answer = await loadTokens()
+  if (!answer.ok) return explain(answer.error)
+  const { tokens, components } = fromWire(answer.value)
+  return { tokens, scales: scalesOf(tokens), components }
 }
 
 /** Whether `className` is what the element's computed style shows, not a class it overrides. */
@@ -190,17 +182,6 @@ export async function deriveRows(element: Element, theme: ThemeName): Promise<Di
   }))
 }
 
-/** After a token write, the graph reads the written value, as the next fetch would. */
-function wrote(token: TokenName, scope: Scope, to: string) {
-  const loaded = base
-  if (loaded === undefined) return
-  base = loaded.then((now) => {
-    if (typeof now === "string") return now
-    const tokens = withEdits(now.tokens, [{ token, scope, to }])
-    return { ...now, tokens, scales: scalesOf(tokens) }
-  })
-}
-
 /**
  * Moves one track: `step` previews at once, `release` writes the step the dial rests on. Writes
  * run one at a time; a release while one is in flight writes the latest step after it. A track
@@ -290,7 +271,8 @@ export class Dial {
         return
       }
       this.written = at
-      if (source.kind === "token") wrote(source.token, source.scope, to)
+      invalidateCatalog()
+      invalidateSources()
     }
   }
 }

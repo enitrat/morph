@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react"
 import { type PropValue, writeOf } from "../dial/props"
 import { type SourceLoc } from "../variant/model"
 import { bridge, explain } from "./bridge"
+import { invalidateCatalog } from "./catalog"
+import { invalidateSources } from "./source"
 import { deriveProps, type InstanceProps, type PropRow, type PropSite, type Wrapper } from "./props"
 
 /** A segmented control up to this many options; a select past it. */
@@ -161,6 +163,8 @@ function PropLine({
       setRefused(explain(answer.error))
       return
     }
+    invalidateCatalog()
+    invalidateSources()
     setRow({ control, value, at: { ...at, site: answer.value.site, written: to } })
     setBefore(undo)
   }
