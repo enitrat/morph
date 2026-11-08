@@ -115,3 +115,66 @@ export function quadText([top, right, bottom, left]: Quad): string {
     return top === right ? fmt(top) : `${fmt(top)} ${fmt(right)}`
   return [top, right, bottom, left].map(fmt).join(" ")
 }
+
+/** One value a variant changed against the original. */
+export type Change =
+  | { kind: "length"; label: string; was: number; now: number; match: Match }
+  | { kind: "color"; label: string; was: string | null; now: string | null; role: string | null }
+  | { kind: "text"; label: string; was: string; now: string }
+
+const SIDES = ["top", "right", "bottom", "left"] as const
+
+/**
+ * What a variant changed on an element against the original's measurement: spacing, size, radius,
+ * type and colours, each length matched against its scale so an off-scale value shows.
+ */
+export function deltaOf(was: Spec, now: Spec, scales: Scales): Change[] {
+  const changes: Change[] = []
+  const length = (label: string, a: number, b: number, scale: Scales["space"] | null) => {
+    if (Math.abs(a - b) >= 0.5)
+      changes.push({
+        kind: "length",
+        label,
+        was: a,
+        now: b,
+        match: scale === null ? { kind: "none" } : matchOf(b, scale),
+      })
+  }
+  const quad = (label: string, a: Quad, b: Quad) => {
+    const [at, ar, ab, al] = a
+    const [bt, br, bb, bl] = b
+    if (at === ab && bt === bb) length(`${label} y`, at, bt, scales.space)
+    else
+      for (const side of [0, 2])
+        length(`${label} ${SIDES[side]}`, a[side] ?? 0, b[side] ?? 0, scales.space)
+    if (ar === al && br === bl) length(`${label} x`, ar, br, scales.space)
+    else
+      for (const side of [3, 1])
+        length(`${label} ${SIDES[side]}`, a[side] ?? 0, b[side] ?? 0, scales.space)
+  }
+  quad("padding", was.padding, now.padding)
+  length("gap", was.gap ?? 0, now.gap ?? 0, scales.space)
+  quad("margin", was.margin, now.margin)
+  length("radius", was.radius, now.radius, now.radius >= 500 ? null : scales.radius)
+  length("width", was.width, now.width, null)
+  length("height", was.height, now.height, null)
+  length("font size", was.font.size, now.font.size, null)
+  if (was.font.weight !== now.font.weight)
+    changes.push({ kind: "text", label: "weight", was: was.font.weight, now: now.font.weight })
+  if (was.display !== now.display)
+    changes.push({ kind: "text", label: "display", was: was.display, now: now.display })
+  const color = (label: string, a: string | null, b: string | null) => {
+    if (a !== b)
+      changes.push({
+        kind: "color",
+        label,
+        was: a,
+        now: b,
+        role: b === null ? null : (scales.colors.get(b) ?? null),
+      })
+  }
+  color("fill", was.fill, now.fill)
+  color("text", was.text, now.text)
+  color("border", was.stroke, now.stroke)
+  return changes
+}
