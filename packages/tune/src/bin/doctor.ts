@@ -101,6 +101,19 @@ export async function doctor(app: string): Promise<boolean> {
     }
   }
 
+  const viteConfig = ["ts", "js", "mjs", "cjs", "mts", "cts"].some((ext) =>
+    existsSync(join(app, `vite.config.${ext}`)),
+  )
+  const nextConfigExists = ["ts", "js", "mjs", "cjs"].some((ext) =>
+    existsSync(join(app, `next.config.${ext}`)),
+  )
+  if (viteConfig && !nextConfigExists) {
+    console.log(
+      "Vite wiring was not checked. Start the app to verify the bridge; build your app and inspect the output to verify production exclusion.",
+    )
+    return failures === 0
+  }
+
   const apps = ["app", "src/app"].filter((dir) => existsSync(join(app, dir, "layout.tsx")))
   check(
     apps.length === 1,
@@ -144,7 +157,7 @@ export async function doctor(app: string): Promise<boolean> {
     'Configure pageExtensions to include "dev.ts" only in development; see the Tune README.',
   )
   console.log(
-    "Next wiring checks inspect source text only. Start the app to verify the bridge and run check:prod to verify production exclusion.",
+    "Next wiring checks inspect source text only. Start the app to verify the bridge and build your app and inspect the output to verify production exclusion.",
   )
   return failures === 0
 }

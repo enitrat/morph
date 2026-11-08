@@ -198,7 +198,7 @@ export class Dial {
   private written: number
   private confirmed: boolean
   private writing: Promise<void> | null = null
-  private readonly refusals = new Set<(message: string) => void>()
+  private readonly notices = new Set<(message: string) => void>()
 
   constructor(track: Track, preview: Preview, question: string | null, reach: string) {
     this.track = track
@@ -227,11 +227,11 @@ export class Dial {
     return this.at
   }
 
-  /** Tells `listener` when a refused write moves the dial back to the step the code holds. */
-  onRefused(listener: (message: string) => void): () => void {
-    this.refusals.add(listener)
+  /** Reports a refused write or a warning after an applied write. */
+  onNotice(listener: (message: string) => void): () => void {
+    this.notices.add(listener)
     return () => {
-      this.refusals.delete(listener)
+      this.notices.delete(listener)
     }
   }
 
@@ -267,12 +267,12 @@ export class Dial {
       )
       if (!answer.ok) {
         if (this.at === at) this.show(this.written)
-        for (const listener of this.refusals) listener(explain(answer.error))
+        for (const listener of this.notices) listener(explain(answer.error))
         if (this.at === this.written) return
         continue
       }
       this.written = at
-      if (answer.value.warning) for (const listener of this.refusals) listener(answer.value.warning)
+      if (answer.value.warning) for (const listener of this.notices) listener(answer.value.warning)
       invalidateCatalog()
       invalidateSources()
     }

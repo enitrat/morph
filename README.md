@@ -11,6 +11,7 @@ Tune writes only to your working tree, and only while the dev server runs.
 
 - React 19 in development, on Next.js with the App Router or on Vite. On Next, Server Components
   and client components both work.
+- Node.js ^22.18.0 or >=24.11.0.
 - A git checkout. Variants are built in worktrees and kept as refs.
 - Design tokens as CSS custom properties, Tailwind CSS 4 style (`@theme`, `:root`, `.dark`).
 - The [`claude` CLI](https://docs.claude.com/en/docs/claude-code), signed in, on your `PATH`.
@@ -64,8 +65,9 @@ leaves existing files alone and prints the remaining layout and configuration st
 create the files manually. After completing the layout and configuration steps, run `pnpm exec tune
 doctor` from the app root. It checks the config, local tools, Git checkout, Claude executable, and
 recognizable Next wiring. It reads source text, so passing does not prove that the bridge is running
-or that a production build excludes it. Start the app to check the bridge and run `pnpm check:prod`
-for the production build check. Doctor loads the config as code; use it only with a trusted config.
+or that a production build excludes it. Start the app to check the bridge, then build your app and
+inspect its output for Tune. The repository-only `pnpm check:prod` checks the example builds.
+Doctor loads the config as code; use it only with a trusted config.
 
 1. Add the bridge route at `app/api/tune/[op]/route.dev.ts`:
 
@@ -124,6 +126,10 @@ export default defineConfig({
   plugins: [/* react(), tailwindcss(), … */ tune(tuneConfig)],
 })
 ```
+
+`pnpm exec tune doctor` checks common prerequisites for Vite apps but does not inspect Vite wiring.
+It loads the config as code; use it only with a trusted config. Start the app to check the bridge,
+then build your app and inspect its output for Tune.
 
 The plugin runs under `vite` only, never under `vite build`. It serves the bridge at `/__tune` and
 adds the widget to `index.html`, so a single-page app needs no other change.

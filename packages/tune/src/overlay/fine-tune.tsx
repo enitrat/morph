@@ -275,23 +275,23 @@ function DialControl({
   const [at, setAt] = useState(dial.at)
   // Held as state, since the dial itself changes outside React, where a render cannot see it.
   const [asking, setAsking] = useState(false)
-  const [refused, setRefused] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const drag = useRef<{ x: number; moved: number } | null>(null)
   const slider = useRef<HTMLDivElement>(null)
   const settle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(
     () =>
-      dial.onRefused((message) => {
+      dial.onNotice((message) => {
         setAt(dial.at)
-        setRefused(message)
+        setNotice(message)
       }),
     [dial],
   )
   useOpened(dial, focused, slider)
 
   const step = (delta: number) => {
-    setRefused(null)
+    setNotice(null)
     setAt(dial.step(delta))
     setAsking(dial.unconfirmed)
   }
@@ -402,12 +402,12 @@ function DialControl({
           }}
         />
       )}
-      {refused !== null && (
+      {notice !== null && (
         <span
           className="notice"
           role="alert"
         >
-          {refused}
+          {notice}
         </span>
       )}
     </>

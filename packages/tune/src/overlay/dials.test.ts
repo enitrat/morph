@@ -65,7 +65,7 @@ describe("a Fine-tune dial", () => {
     })
     const dial = dialOf("Button", 1, undefined, 1)
     const messages: string[] = []
-    dial.onRefused((message) => messages.push(message))
+    dial.onNotice((message) => messages.push(message))
     dial.step(1)
     dial.release()
     await settled()

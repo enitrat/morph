@@ -10,6 +10,9 @@
     "dist"
   ],
   "type": "module",
+  "engines": {
+    "node": "^22.18.0 || >=24.11.0"
+  },
   "sideEffects": false,
   "exports": {
     "./config": {
