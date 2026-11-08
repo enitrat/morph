@@ -452,7 +452,7 @@ function ThreadCard({
         {...appear}
         role="dialog"
         aria-label={`Pin ${pin.n}, ${pin.name}`}
-        className="glass pointer-events-auto absolute grid gap-2.5 rounded-xl p-3"
+        className="glass pointer-events-auto absolute grid grid-cols-[minmax(0,1fr)] gap-2.5 rounded-xl p-3"
         style={{
           left: spot.x,
           top: spot.y,

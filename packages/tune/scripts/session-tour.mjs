@@ -76,6 +76,7 @@ async function clickAt(locator, dy = 0) {
   await page.mouse.up()
 }
 const pin = (number) => inTune(`button[aria-label^="Pin ${number},"]`)
+const chip = (name) => inTune("[role=toolbar] button[aria-pressed]", { hasText: name })
 const card = () => inTune("[role=dialog][aria-label^=Pin]")
 const row = (letter) => card().locator("button[aria-pressed]").filter({ hasText: new RegExp(`^${letter}`) })
 
@@ -188,8 +189,8 @@ try {
   await until("feature waits on hero", (v) => v.sessions.some((s) => s.place.kind === "waiting"))
   await page.waitForTimeout(2500)
   await shot("hero-takes-the-file")
-  await pin(1).click()
-  await page.waitForTimeout(600)
+  await chip("FeatureCard").click()
+  await page.waitForTimeout(1200)
   await shot("feature-waiting")
 
   await page.keyboard.press("2")
