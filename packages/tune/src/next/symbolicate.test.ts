@@ -89,6 +89,10 @@ it("resolves a Server Component frame through the server chunk on disk", async (
   expect(await symbolicate([{ url, line: 2, col: 5 }])).toEqual([
     { path: "apps/site/app/page.tsx", line: 12, col: 7 },
   ])
+  const edited = `about://React/Server/${pathToFileURL(join(chunks, "%5Broot%5D__a._.js")).href}?id=%255Bproject%255D/apps/site/app/page.tsx+%255Bapp-rsc%255D+(ecmascript)?39`
+  expect(await symbolicate([{ url: edited, line: 2, col: 5 }])).toEqual([
+    { path: "apps/site/app/page.tsx", line: 12, col: 7 },
+  ])
   expect(
     await symbolicate([{ url: "about://React/Server/file:///etc/hosts?1", line: 1, col: 1 }]),
   ).toEqual([null])

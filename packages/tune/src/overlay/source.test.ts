@@ -77,3 +77,19 @@ it("keeps the own site while selecting the first non-plumbing owner", async () =
     anchor: { source: site(2), owner: ["Example"], text: "Hello there" },
   })
 })
+
+it("sends a Server Component frame whose URL Turbopack tagged with (ecmascript) after an edit", async () => {
+  connect("/__tune")
+  const sent: string[] = []
+  vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+    const body: { frames: string[] } = JSON.parse(String(init.body))
+    sent.push(...body.frames)
+    return Response.json({ sources: body.frames.map(() => null) })
+  })
+  const server =
+    "about://React/Server/file:///app/.next/dev/server/chunks/ssr/%255Broot%255D__a._.js?id=%255Bproject%255D/tour.tsx+%255Bapp-rsc%255D+(ecmascript)?39:31:433"
+  const instance = fiber([])
+  instance._debugStack = Object.assign(new Error(), { stack: `Error\n    at Hero (${server})` })
+  await sitesOf([instance])
+  expect(sent).toEqual([server])
+})

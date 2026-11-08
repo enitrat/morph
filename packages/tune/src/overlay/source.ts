@@ -13,9 +13,10 @@ import { plumbingAt } from "./catalog"
 
 /**
  * `at Name (<url>:1:2)` or `at <url>:1:2`, for code the dev server served or a Server Component
- * frame React replays in the browser (`about://React/Server/file:///…`).
+ * frame React replays in the browser (`about://React/Server/file:///…`). Once a Server Component
+ * file is edited, Turbopack's frame URLs carry `?id=…(ecmascript)`, so a URL may hold parentheses.
  */
-const FRAME = /^\s*at (?:.*? \()?((?:https?|about|rsc):\/\/[^)\s]+?:\d+:\d+)\)?$/
+const FRAME = /^\s*at (?:.*? \()?((?:https?|about|rsc):\/\/\S+?:\d+:\d+)\)?$/
 const SERVER_FRAME = /^(?:about|rsc):\/\/React\//
 const CHAIN_MAX = 8
 const FRAMES_PER_LINK = 4

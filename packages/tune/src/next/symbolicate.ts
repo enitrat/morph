@@ -46,8 +46,14 @@ export function nextBundler(app: string): Bundler {
     symbolicate: (root, frames) =>
       mapFrames(root, frames, { project: root, context: app }, (url) => {
         const server = SERVER_FRAME.exec(url)?.[1]
-        if (server !== undefined) return serverMap(root, fileURLToPath(server))
-        return /^https?:/.test(url) ? clientMap(url) : Promise.resolve(null)
+        if (server === undefined)
+          return /^https?:/.test(url) ? clientMap(url) : Promise.resolve(null)
+        // Once a Server Component file is edited, Turbopack encodes the chunk path twice.
+        const file = fileURLToPath(server)
+        return serverMap(root, file).then(
+          (found) =>
+            found ?? (file.includes("%") ? serverMap(root, decodeURIComponent(file)) : null),
+        )
       }),
   }
 }
