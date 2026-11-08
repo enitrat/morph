@@ -13,13 +13,14 @@ import { movedTag, setAttribute, swapClass } from "../dial/jsx"
 import type { Dialed, DialWrite } from "../dial/model"
 import type { PropWrite, PropWritten } from "../dial/props"
 import { scalesOf, swapError } from "../dial/utilities"
-import type { Refusal } from "../variant/model"
+import { type Journal, type Refusal, RepoPath } from "../variant/model"
+import { holdersOf } from "../variant/swap"
 import { formatFile } from "./checks"
 import { readDesignSystem } from "./design-system"
 import type { Host } from "./git"
 import { withLive } from "./live"
 import { propControls } from "./props"
-import { openSessions, type Done } from "./session"
+import { type Done } from "./session"
 
 const refuse = (refusal: Refusal): Done<never> => ({ ok: false, ...refusal })
 type UtilityWrite = Extract<DialWrite, { kind: "utility" }>
@@ -48,7 +49,7 @@ function tokensOf(repo: Host) {
   }
 }
 
-function writeToken(repo: Host, edit: TokenEdit): WriteResult<Dialed> {
+function writeToken(repo: Host, now: Journal, edit: TokenEdit): WriteResult<Dialed> {
   const found = tokensOf(repo)
   if (!found.ok) return found
   const { tokens } = found
@@ -67,6 +68,11 @@ function writeToken(repo: Host, edit: TokenEdit): WriteResult<Dialed> {
   const error = editError(tokens, edit)
   if (error !== undefined) return refuse({ kind: "invalid", detail: error })
   const written = applyEdits(tokens, [edit])
+  const on = holdersOf(
+    now.leases,
+    [...written.files.keys()].map((path) => RepoPath.parse(path)),
+  )
+  if (on.length > 0) return refuse({ kind: "held", on })
   for (const [path, css] of written.files) {
     try {
       writeFileSync(join(repo.root, path), css)
@@ -79,6 +85,7 @@ function writeToken(repo: Host, edit: TokenEdit): WriteResult<Dialed> {
 
 async function writeJsx(
   repo: Host,
+  now: Journal,
   command: UtilityWrite | { kind: "prop"; write: PropWrite },
 ): Promise<WriteResult<Dialed | PropWritten>> {
   const write = command.kind === "prop" ? command.write : command
@@ -112,6 +119,8 @@ async function writeJsx(
   }
   if (!/\.(?:tsx|jsx)$/.test(site.path))
     return refuse({ kind: "invalid", detail: `${site.path} is not JSX` })
+  const on = holdersOf(now.leases, [site.path])
+  if (on.length > 0) return refuse({ kind: "held", on })
   const file = join(repo.root, site.path)
   let text: string
   try {
@@ -163,7 +172,7 @@ async function writeJsx(
 }
 
 /**
- * Writes a released dial or prop under the live lock, refusing while a session owns the tree.
+ * Writes a released dial or prop under the live lock, refusing only a file a shown variant holds.
  * Dependency failures are returned with their original cause; lock and unexpected failures throw.
  */
 export function writeReleased(repo: Host, command: DialWrite): Promise<WriteResult<Dialed>>
@@ -175,9 +184,7 @@ export function writeReleased(
   repo: Host,
   command: Command,
 ): Promise<WriteResult<Dialed | PropWritten>> {
-  return withLive(repo, async (now) => {
-    const open = now.applied?.session ?? (await openSessions(repo))[0]
-    if (open !== undefined) return refuse({ kind: "busy", session: open })
-    return command.kind === "token" ? writeToken(repo, command) : writeJsx(repo, command)
-  })
+  return withLive(repo, async (now) =>
+    command.kind === "token" ? writeToken(repo, now, command) : writeJsx(repo, now, command),
+  )
 }

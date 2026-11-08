@@ -153,7 +153,9 @@ describe("mark captions", () => {
 
   it("reads a box as what goes where, before and after it has words", () => {
     expect(boxCaption("", "before", "‘Top region’")).toBe("Something new above ‘Top region’")
-    expect(boxCaption("Notice", "inside", "SalesOverview")).toBe("New ‘Notice’ inside SalesOverview")
+    expect(boxCaption("Notice", "inside", "SalesOverview")).toBe(
+      "New ‘Notice’ inside SalesOverview",
+    )
   })
 
   it("reads a box drawn over content as around that content", () => {

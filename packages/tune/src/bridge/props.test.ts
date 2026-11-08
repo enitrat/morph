@@ -244,20 +244,16 @@ describe("writing a prop", () => {
     expect(readFileSync(join(root, PAGE), "utf8")).toBe(PAGE_SOURCE)
   })
 
-  it("refuses to write while a session is open", async () => {
+  it("refuses a write to a file a shown variant holds, naming the session", async () => {
     const { root, repo } = await fixture()
     const id = SessionId.parse(randomUUID())
-    await writeJson(join(homeOf(repo), "sessions", id, "session.json"), {
-      id,
-      base: "0".repeat(40),
-      ask: {
-        id,
-        words: "x",
-        targets: [{ source: site, owner: [], text: "" }],
-        marks: [],
-        count: 1,
-      },
-      directions: [{ title: "X", description: "X." }],
+    const blob = "0".repeat(40)
+    await writeJson(join(homeOf(repo), "live.json"), {
+      seq: 1,
+      want: {},
+      leases: { [PAGE]: { session: id, variant: "v1", before: blob, after: blob } },
+      stuck: [],
+      moving: null,
     })
 
     const refused = await writeReleased(repo, {
@@ -265,7 +261,11 @@ describe("writing a prop", () => {
       write: { ...write, name: "size", to: "lg" },
     })
 
-    expect(refused).toEqual({ ok: false, kind: "busy", session: id })
+    expect(refused).toEqual({
+      ok: false,
+      kind: "held",
+      on: [{ session: id, variant: "v1", files: [PAGE] }],
+    })
     expect(readFileSync(join(root, PAGE), "utf8")).toBe(PAGE_SOURCE)
   })
 })

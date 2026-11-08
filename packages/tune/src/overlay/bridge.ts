@@ -76,10 +76,10 @@ export const bridge = {
   locate: (frames: readonly string[]) => post("locate", { frames: [...frames] }),
   ask: (ask: Ask) => post("ask", ask),
   refine: (refine: Refine) => post("refine", refine),
-  session: (id: SessionId) => call("session", `?id=${id}`),
+  page: () => call("page"),
   show: (id: SessionId, variant: Choice) => post("show", { id, variant }),
   retry: (id: SessionId, variant: VariantId) => post("retry", { id, variant }),
-  keep: (id: SessionId) => post("keep", { id }),
+  keep: (id: SessionId, variant: VariantId) => post("keep", { id, variant }),
   discard: (id: SessionId) => post("discard", { id }),
   tokens: () => call("tokens"),
   plumbing: () => call("plumbing"),
@@ -93,7 +93,9 @@ export const bridge = {
 }
 
 export function explain(error: BridgeError): string {
-  if (error.kind === "busy") return "A Tune session is open. Keep or discard it first."
+  if (error.kind === "held")
+    return `Another Ask shows ${[...new Set(error.on.flatMap((hold) => hold.files))].join(", ")}. Discard or keep it first.`
+  if (error.kind === "not-shown") return `${error.variant} is not on the page.`
   if (error.kind === "invalid") return error.detail
   if (error.kind === "not-found") return "That session is gone. Start again."
   if (error.kind === "not-ready") return `${error.variant} is not ready yet.`

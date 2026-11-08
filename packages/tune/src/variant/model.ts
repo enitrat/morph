@@ -46,37 +46,69 @@ export interface Target {
   readonly files: readonly RepoPath[]
 }
 
-const AppliedFile = z.object({ path: RepoPath, before: Content, after: Content })
-export type AppliedFile = z.infer<typeof AppliedFile>
-
-/** The single record of what the live tree holds on top of no variant. */
-export const Applied = z.object({
-  session: SessionId,
-  variant: VariantId,
-  /** `before` is the content without any variant, `after` what the tool last wrote. */
-  files: z.array(AppliedFile).readonly(),
-})
-export type Applied = z.infer<typeof Applied>
-
 export const FileWrite = z.object({ path: RepoPath, expect: Content, write: Content })
 export type FileWrite = z.infer<typeof FileWrite>
 
-/** The write-ahead journal: written before any working-tree file, by one writer under a lock. */
-export const Journal = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("steady"), applied: Applied.nullable() }),
-  z.object({
-    kind: z.literal("moving"),
-    to: Applied.nullable(),
-    writes: z.array(FileWrite).readonly(),
-  }),
-  /** Recovery met files that are neither the expected nor the written content. */
-  z.object({
-    kind: z.literal("stuck"),
-    applied: Applied.nullable(),
-    conflicts: z.array(RepoPath).readonly(),
-  }),
-])
+/** The journal's clock: orders wants and sessions, so no two processes compare wall clocks. */
+export const Seq = z.int().nonnegative().brand<"Seq">()
+export type Seq = z.infer<typeof Seq>
+
+/** One file a shown variant holds: `before` is the file without it, `after` what the tool last wrote. */
+export const Lease = z.object({
+  session: SessionId,
+  variant: VariantId,
+  before: Content,
+  after: Content,
+})
+export type Lease = z.infer<typeof Lease>
+
+/** Who asked for a want. `auto` shows a session's first ready variant and never displaces a designer. */
+export const By = z.enum(["auto", "designer"])
+export type By = z.infer<typeof By>
+
+/** What a session should show. A session with no want shows its first ready variant once one is. */
+export const Want = z.object({ choice: Choice, by: By, at: Seq })
+export type Want = z.infer<typeof Want>
+
+/**
+ * The write-ahead journal, written only under the live lock and before any working-tree file.
+ * `leases` is keyed by path, so a file has one holder at most. `moving` lists the writes of a move
+ * that may not all be on disk yet; `want` and `leases` already describe where that move ends.
+ */
+export const Journal = z
+  .object({
+    seq: Seq,
+    want: z.record(SessionId, Want),
+    leases: z.record(RepoPath, Lease),
+    /** Paths a recovery found holding neither the expected nor the written content. */
+    stuck: z.array(RepoPath).readonly(),
+    moving: z.array(FileWrite).readonly().nullable(),
+  })
+  .refine((journal) => {
+    const variants = new Map<SessionId, VariantId>()
+    for (const { session, variant } of Object.values(journal.leases)) {
+      if ((variants.get(session) ?? variant) !== variant) return false
+      variants.set(session, variant)
+    }
+    return true
+  }, "a session's leases name two variants")
 export type Journal = z.infer<typeof Journal>
+
+export const EMPTY_JOURNAL: Journal = {
+  seq: Seq.parse(0),
+  want: {},
+  leases: {},
+  stuck: [],
+  moving: null,
+}
+
+/** A session showing a variant over files another session wants. */
+export const Hold = z.object({
+  session: SessionId,
+  variant: VariantId,
+  files: z.array(RepoPath).min(1).readonly(),
+})
+export type Hold = z.infer<typeof Hold>
 
 /** A JSX call site in the repo, 1-based. */
 export const SourceLoc = z.object({
@@ -94,14 +126,14 @@ export const Anchor = z.object({
 })
 export type Anchor = z.infer<typeof Anchor>
 
-const Place = z.enum(["before", "after", "inside"])
+const MarkPlace = z.enum(["before", "after", "inside"])
 const BoxPlace = z.enum(["before", "after", "inside", "around"])
 
 export const Mark = z.discriminatedUnion("kind", [
   /** "a Notice goes here" */
   z.object({ kind: z.literal("box"), at: Anchor, place: BoxPlace, label: z.string() }),
   /** this element moves there */
-  z.object({ kind: z.literal("arrow"), from: Anchor, to: Anchor, place: Place }),
+  z.object({ kind: z.literal("arrow"), from: Anchor, to: Anchor, place: MarkPlace }),
   z.object({ kind: z.literal("note"), at: Anchor, text: z.string() }),
 ])
 export type Mark = z.infer<typeof Mark>
@@ -148,6 +180,8 @@ export type Refine = z.infer<typeof Refine>
 export const Session = z.object({
   id: SessionId,
   base: CommitId,
+  /** Its place in the open order, from the journal's clock when its base was taken. */
+  opened: Seq,
   ask: Ask,
   directions: z.array(Direction).min(1).max(3).readonly(),
   /** The kept variant this round refines; sessions written before refining existed have none. */
@@ -223,22 +257,53 @@ export type VariantView = z.infer<typeof VariantView>
 const variantViews: z.ZodType<readonly VariantView[]> = z.array(VariantView)
 const steps: z.ZodType<readonly Step[]> = z.array(Step)
 
-/** Everything the overlay renders, derived once on the bridge. */
+/** Where a session stands on the page, derived on every poll and never stored. */
+export const Place = z.discriminatedUnion("kind", [
+  /** It shows `variant`. `edited`: the designer changed a shown file after the tool wrote it. */
+  z.object({ kind: z.literal("shown"), variant: VariantId, edited: z.boolean() }),
+  /** It wants the code as it was and shows nothing. */
+  z.object({ kind: z.literal("original") }),
+  /** It wants `variant`, whose files other sessions show; it shows once they let go. */
+  z.object({ kind: z.literal("waiting"), variant: VariantId, on: z.array(Hold).min(1).readonly() }),
+  /**
+   * The tool cannot move its `files` toward `want`: the code there changed over the same lines,
+   * by hand or by a kept session. `showing` stays on the page meanwhile.
+   */
+  z.object({
+    kind: z.literal("conflict"),
+    want: Choice,
+    files: repoPaths,
+    showing: VariantId.nullable(),
+  }),
+])
+export type Place = z.infer<typeof Place>
+
+/** One open session as the overlay renders it. */
 export const SessionView = z.object({
   id: SessionId,
-  /** `edited`: the designer changed a shown file after the tool wrote it. */
-  live: z.object({ variant: VariantId, edited: z.boolean() }).nullable(),
+  place: Place,
   variants: variantViews,
-  stuck: repoPaths.nullable(),
   /** Empty in a first round. */
   trail: steps,
+  /** Files its variants touch that changed since it was asked; showing merges onto them. */
+  drift: repoPaths,
 })
-/** Everything the overlay renders, derived once on the bridge. */
 export type SessionView = z.infer<typeof SessionView>
+
+/** Every open session, oldest ask first, from one settled state: what every operation answers. */
+export const PageView = z.object({
+  sessions: z.array(SessionView).readonly(),
+  /** Files a crashed write left neither as expected nor as written. */
+  stuck: repoPaths,
+})
+export type PageView = z.infer<typeof PageView>
 
 /** Application failures the bridge can return to the overlay. */
 export const Refusal = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("busy"), session: SessionId }),
+  /** Other sessions show the files this needs. */
+  z.object({ kind: z.literal("held"), on: z.array(Hold).min(1).readonly() }),
+  /** A keep named a variant the session neither shows nor waits to show. */
+  z.object({ kind: z.literal("not-shown"), variant: VariantId }),
   z.object({ kind: z.literal("not-found") }),
   z.object({ kind: z.literal("not-ready"), variant: VariantId }),
   z.object({

@@ -15,7 +15,7 @@ import { afterEach, expect, it } from "vitest"
 
 import { CommitId } from "../variant/model"
 import { openRepo } from "./git"
-import { acquire, farm, release, slotsRoot } from "./slots"
+import { acquire, farm, release, SLOT_IDS, slotsRoot } from "./slots"
 
 const dirs: string[] = []
 afterEach(() => {
@@ -160,6 +160,51 @@ it("refreshes dependencies when a slot is reused", async () => {
     expect(() => readFileSync(join(second.dir, "packages/ui/node_modules/old/index.js"))).toThrow()
   } finally {
     await release(second)
+  }
+})
+
+it("waits for a slot to free when every slot is taken, and stops waiting on abort", async () => {
+  const live = temp()
+  execFileSync("git", ["init", "-q", live])
+  file(live, "page.tsx", "page")
+  execFileSync("git", ["-C", live, "add", "."])
+  execFileSync("git", [
+    "-C",
+    live,
+    "-c",
+    "user.name=Test",
+    "-c",
+    "user.email=test@example.com",
+    "commit",
+    "-qm",
+    "fixture",
+  ])
+  const repo = await openRepo(live)
+  dirs.push(await slotsRoot(repo))
+  const base = CommitId.parse(
+    execFileSync("git", ["-C", live, "rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+  )
+  const taken = []
+  for (const _ of SLOT_IDS) taken.push(await acquire(repo, base))
+
+  const stopped = new AbortController()
+  const abandoned = acquire(repo, base, "", stopped.signal)
+  stopped.abort("discarded")
+  await expect(abandoned).rejects.toBeDefined()
+
+  let waited = false
+  const queued = acquire(repo, base).then((slot) => {
+    waited = true
+    return slot
+  })
+  await new Promise((resolve) => setTimeout(resolve, 600))
+  expect(waited).toBe(false)
+  await release(taken[1]!)
+  const slot = await queued
+  try {
+    expect(slot.dir).toBe(taken[1]!.dir)
+  } finally {
+    for (const held of [taken[0]!, taken[2]!, slot]) await release(held)
   }
 })
 

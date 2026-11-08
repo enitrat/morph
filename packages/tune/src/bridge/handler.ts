@@ -6,12 +6,12 @@ import { z } from "zod"
 import { TuneConfigInputSchema, type TuneConfigInput } from "../core/config"
 import { operations, type Operation } from "../protocol"
 import { ComponentName } from "../dial/props"
-import { RepoPath, SessionId, SourceLoc, type Refusal } from "../variant/model"
+import { RepoPath, SourceLoc, type Refusal } from "../variant/model"
 import { designSystemOf, tagClasses } from "./dial"
 import { configAt, type Host, openRepo } from "./git"
 import { guard } from "./guard"
 import { componentUses, propControls, tagAttributes } from "./props"
-import { ask, discard, type Done, keep, look, refine, retry, show } from "./session"
+import { ask, discard, type Done, keep, page, refine, retry, show } from "./session"
 import { type Bundler, type Frame } from "./symbolicate"
 import { writeReleased, type WriteFailure } from "./write"
 
@@ -37,7 +37,8 @@ const frameIn = (origin: string) =>
 
 const STATUS: Record<Refusal["kind"], number> = {
   "not-found": 404,
-  busy: 409,
+  held: 409,
+  "not-shown": 409,
   "not-ready": 409,
   conflict: 409,
   "planner-failed": 502,
@@ -123,11 +124,7 @@ const OPS = {
     method: "POST",
     run: async (request, repo) => writeReleased(repo, await body(request, operations.dial.request)),
   },
-  session: {
-    method: "GET",
-    run: (request, repo) =>
-      look(repo, SessionId.parse(new URL(request.url).searchParams.get("id"))),
-  },
+  page: { method: "GET", run: (_, repo) => page(repo) },
   ask: {
     method: "POST",
     run: async (request, repo) =>
@@ -154,7 +151,10 @@ const OPS = {
   },
   keep: {
     method: "POST",
-    run: async (request, repo) => keep(repo, (await body(request, operations.keep.request)).id),
+    async run(request, repo) {
+      const { id, variant } = await body(request, operations.keep.request)
+      return keep(repo, id, variant)
+    },
   },
   discard: {
     method: "POST",

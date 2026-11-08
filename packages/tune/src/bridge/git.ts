@@ -124,8 +124,14 @@ export async function openRepo(dir: string): Promise<Repo> {
   return { root, dir: gitDir }
 }
 
-/** Commits the working tree as it is now, untracked files included, without touching the index. */
-export async function snapshot(repo: Repo): Promise<CommitId> {
+/**
+ * Commits the working tree as it is now, untracked files included, without touching the index.
+ * Each of `overrides` replaces that path's content (`null` leaves it out).
+ */
+export async function snapshot(
+  repo: Repo,
+  overrides: ReadonlyMap<RepoPath, Content> = new Map(),
+): Promise<CommitId> {
   const index = join(homeOf(repo), `index-${randomUUID()}`)
   await mkdir(homeOf(repo), { recursive: true })
   // Starting from the real index lets `add -A` skip files whose stat is unchanged.
@@ -136,6 +142,21 @@ export async function snapshot(repo: Repo): Promise<CommitId> {
   try {
     const env = { GIT_INDEX_FILE: index }
     await git(repo.root, ["add", "-A"], env)
+    for (const [path, content] of overrides) {
+      if (content === null) {
+        await git(repo.root, ["update-index", "--force-remove", "--", path], env)
+        continue
+      }
+      const staged = (await git(repo.root, ["ls-files", "--stage", "--", path], env))
+        .toString()
+        .trim()
+      const mode = staged === "" ? "100644" : staged.split(" ")[0]
+      await git(
+        repo.root,
+        ["update-index", "--add", "--cacheinfo", `${mode},${content},${path}`],
+        env,
+      )
+    }
     const tree = (await git(repo.root, ["write-tree"], env)).toString().trim()
     return CommitId.parse(
       await line(repo.root, ["commit-tree", tree, "-p", "HEAD", "-m", "tune base"]),

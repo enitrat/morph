@@ -56,7 +56,8 @@ it("rejects malformed success and error bodies", async () => {
 })
 
 it("rejects malformed variant and attribute responses", async () => {
-  const session = { id: ID, live: null, variants: [], stuck: null, trail: [] }
+  const session = { id: ID, place: { kind: "original" }, variants: [], trail: [], drift: [] }
+  const page = (view: object) => Response.json({ sessions: [view], stuck: [] })
   const direction = { title: "Option", description: "Change the layout" }
   for (const variant of [
     { id: "v1", direction, state: "pending", phase: "unknown" },
@@ -71,13 +72,16 @@ it("rejects malformed variant and attribute responses", async () => {
     },
     { id: "v1", direction, state: "failed", reason: "failed", retryable: "yes" },
   ]) {
-    answering(Response.json({ ...session, variants: [variant] }))
-    const answer = await bridge.session(ID)
+    answering(page({ ...session, variants: [variant] }))
+    const answer = await bridge.page()
     expect(answer.ok ? null : answer.error.kind).toBe("offline")
   }
-  answering(Response.json({ ...session, trail: [{ variant: "v1", title: "kept" }] }))
-  const trail = await bridge.session(ID)
+  answering(page({ ...session, trail: [{ variant: "v1", title: "kept" }] }))
+  const trail = await bridge.page()
   expect(trail.ok ? null : trail.error.kind).toBe("offline")
+  answering(page({ ...session, place: { kind: "waiting", variant: "v1", on: [] } }))
+  const waiting = await bridge.page()
+  expect(waiting.ok ? null : waiting.error.kind).toBe("offline")
 
   const site = SourceLoc.parse({ path: "src/app.tsx", line: 1, col: 1 })
   for (const attribute of [
@@ -93,7 +97,8 @@ it("rejects malformed variant and attribute responses", async () => {
 
 it("rejects malformed application refusals", async () => {
   for (const error of [
-    { kind: "busy", session: "invalid" },
+    { kind: "held", on: [] },
+    { kind: "not-shown", variant: "original" },
     { kind: "not-ready", variant: "v4" },
     { kind: "conflict", files: ["../escape"] },
     { kind: "planner-failed", detail: 1 },
@@ -103,4 +108,35 @@ it("rejects malformed application refusals", async () => {
     const answer = await bridge.discard(ID)
     expect(answer.ok ? null : answer.error.kind).toBe("offline")
   }
+})
+
+it("names the files another session holds when a write is refused", async () => {
+  const other = SessionId.parse("0e7c5f3a-1b2c-4d5e-8f90-a1b2c3d4e5f6")
+  answering(
+    Response.json(
+      {
+        error: {
+          kind: "held",
+          on: [{ session: other, variant: "v2", files: ["app/page.tsx", "app/card.tsx"] }],
+        },
+      },
+      { status: 409 },
+    ),
+  )
+  const answer = await bridge.keep(ID, "v1")
+  expect(answer.ok ? null : explain(answer.error)).toBe(
+    "Another Ask shows app/page.tsx, app/card.tsx. Discard or keep it first.",
+  )
+})
+
+it("reads the page every session operation answers", async () => {
+  const view = {
+    id: ID,
+    place: { kind: "shown", variant: "v1", edited: false },
+    variants: [],
+    trail: [],
+    drift: ["app/page.tsx"],
+  }
+  answering(Response.json({ sessions: [view], stuck: [] }))
+  expect(await bridge.show(ID, "v1")).toEqual({ ok: true, value: { sessions: [view], stuck: [] } })
 })
