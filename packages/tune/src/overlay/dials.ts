@@ -11,7 +11,15 @@ import {
   type TokenGraph,
   type TokenName,
 } from "../core"
-import { type Context, questionOf, type Row, rowsOf, type Track } from "../dial/rows"
+import {
+  type Context,
+  questionOf,
+  reachOf,
+  type Reach,
+  type Row,
+  rowsOf,
+  type Track,
+} from "../dial/rows"
 import { declarationsOf, scalesOf, utilityOf } from "../dial/utilities"
 import { probe } from "../inspector/probe"
 import { readsOf, RuleIndex } from "../inspector/reads"
@@ -47,9 +55,8 @@ function wins(element: Element, className: string, context: Context): boolean {
 }
 
 /** A row and a dial for each scope it can be edited in. */
-export interface Dialed {
-  row: Row
-  dials: Partial<Record<Scope, Dial>>
+export interface Dialed extends Omit<Row, "tracks"> {
+  entries: readonly { scope: Scope; dial: Dial; reach: Reach }[]
 }
 
 const PSEUDO_ELEMENT = /::[\w-]+(?:\([^)]*\))?/g
@@ -152,33 +159,36 @@ export async function deriveRows(element: Element, theme: ThemeName): Promise<Di
   )
   const rules = index
   const rows = rowsOf({ site, classes, reads }, context)
-  const utility = rows.some((row) => row.tracks.all?.source.kind === "utility")
+  const utility = rows.some((row) => row.tracks.some((track) => track.source.kind === "utility"))
   // Locating every look-alike costs a bridge call each, so only a class row counts them.
   // The lab repeats a specimen across its page; a designer counts what the stage they point in shows.
   const root: ParentNode = element.closest("[data-tune-stage]") ?? document
   const here = site !== null && utility ? await sitePlaces(element, site, root) : 1
   return rows.map((row) => ({
-    row,
-    dials: Object.fromEntries(
-      Object.entries(row.tracks).flatMap(([scope, track]) => {
-        if (track === undefined) return []
-        const { source } = track
-        const preview: Preview =
-          source.kind === "utility"
-            ? { kind: "class", element }
-            : {
-                kind: "token",
-                themes: context.tokens.themes,
-                token: source.token,
-                scope: source.scope,
-                within: readersOf(graph, rules, source.token),
-              }
-        const places =
-          source.kind === "utility" ? here : tokenPlaces(graph, rules, source.token, root)
-        const reach = `${row.key} ${scope}${source.kind === "utility" ? ` ${source.site.path}:${source.site.line}` : ""}`
-        return [[scope, new Dial(track, preview, questionOf(track, places), reach)] as const]
-      }),
-    ),
+    key: row.key,
+    group: row.group,
+    label: row.label,
+    entries: row.tracks.map((track) => {
+      const { source, scope } = track
+      const preview: Preview =
+        source.kind === "utility"
+          ? { kind: "class", element }
+          : {
+              kind: "token",
+              themes: context.tokens.themes,
+              token: source.token,
+              scope,
+              within: readersOf(graph, rules, source.token),
+            }
+      const places =
+        source.kind === "utility" ? here : tokenPlaces(graph, rules, source.token, root)
+      const key = `${row.key} ${scope}${source.kind === "utility" ? ` ${source.site.path}:${source.site.line}` : ""}`
+      return {
+        scope,
+        dial: new Dial(track, preview, questionOf(track, places), key),
+        reach: reachOf(row, track),
+      }
+    }),
   }))
 }
 
@@ -262,7 +272,7 @@ export class Dial {
       const { source } = this.track
       const answer = await bridge.dial(
         source.kind === "token"
-          ? { kind: "token", token: source.token, scope: source.scope, to }
+          ? { kind: "token", token: source.token, scope: this.track.scope, to }
           : { kind: "utility", site: source.site, from, to },
       )
       if (!answer.ok) {

@@ -6,7 +6,7 @@ import { lightness } from "../core/color"
 import { resolve } from "../core/graph"
 import { type Read } from "../inspector/types"
 import { RepoPath } from "../variant/model"
-import { type Context, isShared, reachOf, rowsOf, type Seen } from "./rows"
+import { type Context, isShared, reachOf, type Row, rowsOf, type Seen } from "./rows"
 import { scalesOf } from "./utilities"
 
 const { tokens, components } = repoCatalog()
@@ -20,6 +20,8 @@ const read = (property: string, token: string, via: Read["via"] = "rule"): Read 
   via,
 })
 const seen = (over: Partial<Seen>): Seen => ({ site, classes: [], reads: [], ...over })
+const trackOf = (row: Row | undefined, scope: Context["theme"] | "all") =>
+  row?.tracks.find((track) => track.scope === scope)
 
 describe("fine-tune rows", () => {
   it("makes a class row from a class the tag writes, and a token row from a token read", () => {
@@ -27,11 +29,11 @@ describe("fine-tune rows", () => {
       seen({ classes: ["p-4"], reads: [read("padding-inline", "--button-px-md")] }),
       context,
     )
-    expect(rows.map((row) => [row.group, row.label, row.tracks.all?.source.kind])).toEqual([
+    expect(rows.map((row) => [row.group, row.label, trackOf(row, "all")?.source.kind])).toEqual([
       ["Padding", "Padding", "utility"],
       ["Padding", "Padding x", "token"],
     ])
-    const token = rows[1]?.tracks.all
+    const token = trackOf(rows[1], "all")
     expect(token?.steps[token.at]?.value).toBe("calc(var(--spacing) * 4)")
     expect(token?.steps[token.at + 1]?.value).toBe("calc(var(--spacing) * 5)")
   })
@@ -42,7 +44,7 @@ describe("fine-tune rows", () => {
       context,
     )
     expect(rows).toHaveLength(1)
-    expect(rows[0]?.tracks.all?.source.kind).toBe("utility")
+    expect(trackOf(rows[0], "all")?.source.kind).toBe("utility")
   })
 
   it("edits a component colour for all themes and the role under it per theme", () => {
@@ -50,9 +52,9 @@ describe("fine-tune rows", () => {
       seen({ reads: [read("background-color", "--button-secondary-bg")] }),
       context,
     )
-    expect(fill?.tracks.all?.source).toMatchObject({ token: "--button-secondary-bg", scope: "all" })
-    expect(fill?.tracks[DARK]?.source).toMatchObject({ token: "--secondary", scope: "dark" })
-    const dark = fill?.tracks[DARK]
+    expect(trackOf(fill, "all")?.source).toMatchObject({ token: "--button-secondary-bg" })
+    expect(trackOf(fill, DARK)?.source).toMatchObject({ token: "--secondary" })
+    const dark = trackOf(fill, DARK)
     expect(dark?.steps[dark.at]?.value).toBe("var(--neutral-800)")
     expect(dark?.steps.every((step) => step.display.kind === "color")).toBe(true)
   })
@@ -65,15 +67,18 @@ describe("fine-tune rows", () => {
       })[0]
     const fill = fillOf(LIGHT)
     if (fill === undefined) throw new Error("no fill row")
-    expect(fill.order).toEqual(["all", "light", "dark"])
-    expect(fillOf(DARK)?.order).toEqual(["all", "dark", "light"])
+    expect(fill.tracks.map((track) => track.scope)).toEqual(["all", "light", "dark"])
+    expect(fillOf(DARK)?.tracks.map((track) => track.scope)).toEqual(["all", "dark", "light"])
 
-    const own = reachOf(fill, "all")
+    const ownTrack = trackOf(fill, "all")
+    const darkTrack = trackOf(fill, DARK)
+    if (ownTrack === undefined || darkTrack === undefined) throw new Error("missing tracks")
+    const own = reachOf(fill, ownTrack)
     expect(own).toMatchObject({ segment: "Button", detail: "--button-secondary-bg", note: null })
     expect(own?.line).toMatch(/^Every Button · \d+ components$/)
 
-    const dark = reachOf(fill, DARK)
-    const darkSource = fill.tracks[DARK]?.source
+    const dark = reachOf(fill, darkTrack)
+    const darkSource = trackOf(fill, DARK)?.source
     const reached = darkSource?.kind === "token" && darkSource.impact
     expect(dark?.segment).toBe("Shared dark")
     expect(dark?.line).toBe(`Every secondary surface in dark mode · ${reached} components`)
@@ -86,8 +91,9 @@ describe("fine-tune rows", () => {
       seen({ reads: [read("background-color", "--button-secondary-bg")] }),
       context,
     )
-    expect(fill?.tracks.all && isShared(fill.tracks.all)).toBe(false)
-    const darkTrack = fill?.tracks[DARK]
+    const own = trackOf(fill, "all")
+    expect(own && isShared(own)).toBe(false)
+    const darkTrack = trackOf(fill, DARK)
     expect(darkTrack && isShared(darkTrack)).toBe(true)
   })
 
@@ -98,7 +104,7 @@ describe("fine-tune rows", () => {
     )
     const scopes = ["all", LIGHT, DARK] as const
     for (const scope of scopes) {
-      const track = fill?.tracks[scope]
+      const track = trackOf(fill, scope)
       expect(track, scope).toBeDefined()
       const theme = scope === "all" ? context.theme : scope
       const lightnesses = (track?.steps ?? []).map((step) => {
@@ -112,7 +118,7 @@ describe("fine-tune rows", () => {
 
   it("counts the components a token reaches, once per pick", () => {
     const [row] = rowsOf(seen({ reads: [read("padding-inline", "--button-px-md")] }), context)
-    const source = row?.tracks.all?.source
+    const source = trackOf(row, "all")?.source
     expect(source?.kind === "token" && source.impact).toBeGreaterThan(0)
   })
 

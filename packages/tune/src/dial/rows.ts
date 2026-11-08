@@ -39,11 +39,12 @@ export interface Step {
  * restyles everything that reads it; `impact`: how many components an edit reaches.
  */
 export type Source =
-  | { kind: "token"; token: TokenName; scope: Scope; impact: number; owner: string | null }
+  | { kind: "token"; token: TokenName; impact: number; owner: string | null }
   | { kind: "utility"; site: SourceLoc }
 
 /** One thing a dial moves: a token in one scope, or one class. `at` is the step the code holds. */
 export interface Track {
+  scope: Scope
   source: Source
   steps: readonly Step[]
   at: number
@@ -54,9 +55,8 @@ export interface Row {
   key: string
   group: Group
   label: string
-  tracks: Readonly<Partial<Record<Scope, Track>>>
-  /** The scopes it has, narrowest reach first; the row opens on the first. */
-  order: readonly Scope[]
+  /** Tracks in narrowest reach order; the row opens on the first. */
+  tracks: readonly Track[]
 }
 
 /** Whether a write reaches past the picked component: a shared role restyles all its readers. */
@@ -100,10 +100,9 @@ export interface Reach {
 
 const components = (count: number) => (count === 1 ? "1 component" : `${count} components`)
 
-export function reachOf(row: Row, scope: Scope): Reach | undefined {
-  const track = row.tracks[scope]
-  if (track === undefined) return undefined
-  const { source } = track
+/** Describe an existing track and its reach in the context of its row. */
+export function reachOf(row: Row, track: Track): Reach {
+  const { source, scope } = track
   if (source.kind === "utility") {
     const file = `${source.site.path.split("/").at(-1)}:${source.site.line}`
     return {
@@ -123,8 +122,8 @@ export function reachOf(row: Row, scope: Scope): Reach | undefined {
     }
   const role = source.token.replace(/^--/, "").replaceAll("-", " ")
   const theme = scope === "all" ? "Shared" : `Shared ${scope}`
-  const own = Object.values(row.tracks).find(
-    (other) => other?.source.kind === "token" && other.source.owner !== null,
+  const own = row.tracks.find(
+    (other) => other.source.kind === "token" && other.source.owner !== null,
   )
   const owner = own?.source.kind === "token" ? own.source.owner : null
   return {
@@ -196,7 +195,8 @@ function tokenTrack(context: Context, token: TokenName, scope: Scope): Track | u
   if (at === -1 || steps.length < 2) return undefined
   const impact = impactOf(tokens.graph, token, context.components)
   return {
-    source: { kind: "token", token, scope, impact, owner: ownerOf(context, token) },
+    scope,
+    source: { kind: "token", token, impact, owner: ownerOf(context, token) },
     steps: steps.map((value) => ({ value, display: displayOf(tokens, value, theme), css: null })),
     at,
   }
@@ -206,24 +206,24 @@ function tokenTrack(context: Context, token: TokenName, scope: Scope): Track | u
  * A colour's tracks: the first token of its chain that is not a Tailwind alias, edited for all
  * themes, and the role under it edited per theme, since a component token never splits by theme.
  */
-function colorTracks(context: Context, read: TokenName): Partial<Record<Scope, Track>> {
+function colorTracks(context: Context, read: TokenName): Track[] {
   const { graph } = context.tokens
   const chain = chainOf(context.tokens, read, context.theme).filter((name) => {
     const node = graph.get(name)
     return node === undefined || !isUtilityAlias(node)
   })
   const [head] = chain
-  if (head === undefined) return {}
+  if (head === undefined) return []
   const role = graph.get(head)?.tier === "component" ? chain[1] : head
   const split =
     role !== undefined && graph.get(role)?.declarations.some((entry) => entry.block !== "shared")
-  const tracks: Partial<Record<Scope, Track>> = {}
-  const add = (scope: Scope, track: Track | undefined) => {
-    if (track !== undefined) tracks[scope] = track
+  const tracks: Track[] = []
+  const add = (track: Track | undefined) => {
+    if (track !== undefined) tracks.push(track)
   }
-  if (head !== role || !split) add("all", tokenTrack(context, head, "all"))
+  if (head !== role || !split) add(tokenTrack(context, head, "all"))
   if (role !== undefined && split)
-    for (const { name } of context.tokens.themes.list) add(name, tokenTrack(context, role, name))
+    for (const { name } of context.tokens.themes.list) add(tokenTrack(context, role, name))
   return tracks
 }
 
@@ -247,8 +247,7 @@ function utilityRow(context: Context, site: SourceLoc, className: string): Row |
     key: `class:${family.prefix}:${family.scale}`,
     group: family.group,
     label: family.label,
-    tracks: { all: { source: { kind: "utility", site }, steps, at } },
-    order: ["all"],
+    tracks: [{ scope: "all", source: { kind: "utility", site }, steps, at }],
   }
 }
 
@@ -256,19 +255,18 @@ function utilityRow(context: Context, site: SourceLoc, className: string): Row |
  * The scopes of `tracks`, narrowest first: the component's own before a shared role, fewer
  * components reached before more, the page's theme before the other.
  */
-function narrowestFirst(tracks: Partial<Record<Scope, Track>>, theme: ThemeName): Scope[] {
-  const rank = (scope: Scope, track: Track) => [
+function narrowestFirst(tracks: readonly Track[], theme: ThemeName): Track[] {
+  const rank = (track: Track) => [
     isShared(track) ? 1 : 0,
     track.source.kind === "token" ? track.source.impact : 0,
-    scope === "all" || scope === theme ? 0 : 1,
+    track.scope === "all" || track.scope === theme ? 0 : 1,
   ]
-  return (Object.entries(tracks) as [Scope, Track | undefined][])
-    .flatMap(([scope, track]) => (track === undefined ? [] : [{ scope, key: rank(scope, track) }]))
-    .toSorted((a, b) => {
-      const at = a.key.findIndex((value, index) => value !== b.key[index])
-      return at === -1 ? 0 : (a.key[at] ?? 0) - (b.key[at] ?? 0)
-    })
-    .map((entry) => entry.scope)
+  return tracks.toSorted((a, b) => {
+    const left = rank(a)
+    const right = rank(b)
+    const at = left.findIndex((value, index) => value !== right[index])
+    return at === -1 ? 0 : (left[at] ?? 0) - (right[at] ?? 0)
+  })
 }
 
 /** Fine-tune rows for what the element was seen to use, a class row before a token row. */
@@ -293,11 +291,11 @@ export function rowsOf(seen: Seen, context: Context): Row[] {
     covered.add(key)
     const tracks = isColor(group, label)
       ? colorTracks(context, read.token)
-      : { all: tokenTrack(context, read.token, "all") }
-    const order = narrowestFirst(tracks, context.theme)
-    if (order.length === 0) continue
+      : [tokenTrack(context, read.token, "all")].filter((track) => track !== undefined)
+    const ordered = narrowestFirst(tracks, context.theme)
+    if (ordered.length === 0) continue
     covered.add(`${group}:${label}`)
-    rows.push({ key, group, label, tracks, order })
+    rows.push({ key, group, label, tracks: ordered })
   }
   return rows.toSorted((a, b) => GROUPS.indexOf(a.group) - GROUPS.indexOf(b.group))
 }

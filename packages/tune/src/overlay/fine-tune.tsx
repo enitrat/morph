@@ -10,7 +10,7 @@ import {
 } from "react"
 
 import { type Display, type Scope } from "../core"
-import { reachOf, type Row, type Step } from "../dial/rows"
+import { type Row, type Step } from "../dial/rows"
 import { type Dial, type Dialed, deriveRows } from "./dials"
 import { Icon } from "./icons"
 import { clearPreview, endThemePreview, previewTheme } from "./preview"
@@ -49,12 +49,7 @@ function Value({ step, from }: { step: Step; from: Step | undefined }) {
   const { display } = step
   return (
     <>
-      {display.kind === "color" && (
-        <span
-          className="swatch"
-          style={{ background: display.css }}
-        />
-      )}
+      {display.kind === "color" && <span className="swatch" style={{ background: display.css }} />}
       <span className="dial-text num">{textOf(display, step, from)}</span>
     </>
   )
@@ -84,93 +79,72 @@ function useThemeWhileFocused(scope: Scope, theme: ShownTheme) {
 }
 
 /** `Text colour`, `Padding x`: what a row tunes, without a group heading over it. */
-const nameOf = (row: Row) =>
+const nameOf = (row: Pick<Row, "group" | "label">) =>
   (row.group === "Text" || row.group === "Border") &&
   !row.label.toLowerCase().startsWith(row.group.toLowerCase())
     ? `${row.group} ${row.label.toLowerCase()}`
     : row.label
 
 /** The dial a row opens on: its narrowest reach. */
-const firstDial = ({ row, dials }: Dialed) =>
-  row.order.map((scope) => dials[scope]).find((dial) => dial !== undefined)
+const firstDial = (row: Dialed) => row.entries[0]?.dial
 
 /** A row folded to one line showing step `at`, the one its dial rests on; a click opens it. */
-function RowLine({ row, dials, at, onOpen }: Dialed & { at: number; onOpen: () => void }) {
-  const dial = firstDial({ row, dials })
+function RowLine({ row, at, onOpen }: { row: Dialed; at: number; onOpen: () => void }) {
+  const dial = firstDial(row)
   const step = dial?.track.steps[at]
   if (dial === undefined || step === undefined) return null
   return (
-    <button
-      type="button"
-      className="dial-line"
-      aria-expanded="false"
-      onClick={onOpen}
-    >
+    <button type="button" className="dial-line" aria-expanded="false" onClick={onOpen}>
       <span className="dial-label">{nameOf(row)}</span>
-      <Value
-        step={step}
-        from={dial.track.steps[dial.track.at]}
-      />
+      <Value step={step} from={dial.track.steps[dial.track.at]} />
     </button>
   )
 }
 
 function DialRow({
   row,
-  dials,
   theme,
   opened,
-}: Dialed & {
+}: {
+  row: Dialed
   theme: ShownTheme
   /** Opened by a click on its folded line: the value takes the focus. */
   opened: boolean
 }) {
-  const scopes = row.order.filter((scope) => dials[scope] !== undefined)
-  const [scope, setScope] = useState<Scope>(scopes[0] ?? "all")
+  const [scope, setScope] = useState<Scope>(row.entries[0]?.scope ?? "all")
   const focus = useThemeWhileFocused(scope, theme)
-  const dial = dials[scope]
-  const reach = reachOf(row, scope)
-  if (dial === undefined || reach === undefined) return null
+  const selected = row.entries.find((entry) => entry.scope === scope)
+  if (selected === undefined) return null
+  const { dial, reach } = selected
   return (
-    <div
-      className="dial"
-      {...focus}
-    >
+    <div className="dial" {...focus}>
       <div className="dial-head">
         <span className="dial-label">{nameOf(row)}</span>
-        {scopes.length > 1 && (
+        {row.entries.length > 1 && (
           <span
             className="segments"
             role="radiogroup"
             aria-label={`What ${row.label.toLowerCase()} changes`}
           >
-            {scopes.map((option) => (
+            {row.entries.map((option) => (
               <button
-                key={option}
+                key={option.scope}
                 type="button"
                 role="radio"
                 className="segment"
-                aria-checked={scope === option}
+                aria-checked={scope === option.scope}
                 onClick={() => {
-                  setScope(option)
+                  setScope(option.scope)
                 }}
               >
-                {reachOf(row, option)?.segment}
+                {option.reach.segment}
               </button>
             ))}
           </span>
         )}
       </div>
-      <DialControl
-        key={scope}
-        dial={dial}
-        label={nameOf(row)}
-        focused={opened}
-      >
-        <span
-          className="dial-source"
-          title={reach.detail}
-        >
+      <DialControl key={scope} dial={dial} label={nameOf(row)} focused={opened}>
+        <span className="dial-source" title={reach.detail}>
           {reach.line}
         </span>
         {reach.note !== null && <span className="hint">{reach.note}</span>}
@@ -195,11 +169,7 @@ function Confirm({ dial, onAnswer }: { dial: Dial; onAnswer: (at: number) => voi
     write.current?.focus({ preventScroll: true })
   }, [])
   return (
-    <span
-      ref={box}
-      className="confirm"
-      role="alert"
-    >
+    <span ref={box} className="confirm" role="alert">
       <span>{dial.question}</span>
       <button
         ref={write}
@@ -374,10 +344,7 @@ function DialControl({
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
-          <Value
-            step={current}
-            from={track.steps[track.at]}
-          />
+          <Value step={current} from={track.steps[track.at]} />
         </div>
         <button
           type="button"
@@ -403,10 +370,7 @@ function DialControl({
         />
       )}
       {notice !== null && (
-        <span
-          className="notice"
-          role="alert"
-        >
+        <span className="notice" role="alert">
           {notice}
         </span>
       )}
@@ -436,18 +400,9 @@ export function FineTune({ target, theme }: { target: Element; theme: ShownTheme
   useEffect(() => clearPreview, [])
 
   return (
-    <div
-      className="fine-tune"
-      aria-label="Fine-tune"
-      role="group"
-    >
+    <div className="fine-tune" aria-label="Fine-tune" role="group">
       <Props target={target} />
-      <StyleRows
-        rows={rows}
-        open={open}
-        setOpen={setOpen}
-        theme={theme}
-      />
+      <StyleRows rows={rows} open={open} setOpen={setOpen} theme={theme} />
     </div>
   )
 }
@@ -466,10 +421,7 @@ function StyleRows({
   if (rows === null) return <p className="hint">Reading what it uses…</p>
   if (typeof rows === "string")
     return (
-      <p
-        className="notice"
-        role="alert"
-      >
+      <p className="notice" role="alert">
         {rows}
       </p>
     )
@@ -478,27 +430,18 @@ function StyleRows({
       <p className="hint">Nothing here reads a spacing or colour token. Ask for it in words.</p>
     )
   return rows.map((entry) =>
-    entry.row.key === open ? (
-      <DialRow
-        key={entry.row.key}
-        row={entry.row}
-        dials={entry.dials}
-        theme={theme}
-        opened
-      />
+    entry.key === open ? (
+      <DialRow key={entry.key} row={entry} theme={theme} opened />
     ) : (
       <RowLine
-        key={entry.row.key}
-        row={entry.row}
-        dials={entry.dials}
+        key={entry.key}
+        row={entry}
         at={firstDial(entry)?.at ?? 0}
         onOpen={() => {
           // The row closing drops a step it never wrote before its folded line shows it.
-          for (const dial of Object.values(
-            rows.find((other) => other.row.key === open)?.dials ?? {},
-          ))
-            if (dial?.unconfirmed) dial.revert()
-          setOpen(entry.row.key)
+          for (const { dial } of rows.find((other) => other.key === open)?.entries ?? [])
+            if (dial.unconfirmed) dial.revert()
+          setOpen(entry.key)
         }}
       />
     ),

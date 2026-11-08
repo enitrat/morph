@@ -14,7 +14,8 @@ const steps = ["var(--neutral-800)", "var(--neutral-700)", "var(--neutral-600)"]
 }))
 
 const track = (token: TokenName, owner: string | null, impact = 57): Track => ({
-  source: { kind: "token", token, scope: DARK, impact, owner },
+  scope: DARK,
+  source: { kind: "token", token, impact, owner },
   steps,
   at: 0,
 })
@@ -27,7 +28,8 @@ let respond = () => Promise.resolve(Response.json({ changed: true, file: "x.css"
 const dialOf = (owner: string | null, places = 1, reach = `row ${++rows}`, impact = 57) => {
   const shown = track(owner === null ? "--secondary" : "--button-secondary-bg", owner, impact)
   if (shown.source.kind !== "token") throw new Error("a token track")
-  const { token, scope } = shown.source
+  const { token } = shown.source
+  const { scope } = shown
   return new Dial(
     shown,
     { kind: "token", themes: themeModelOf(CONFIG.tokens.themes), token, scope, within: null },
@@ -126,6 +128,21 @@ describe("a Fine-tune dial", () => {
       { kind: "token", token: "--button-secondary-bg", scope: "dark", to: "var(--neutral-600)" },
     ])
     expect(dial.revert()).toBe(2)
+  })
+
+  it("restores the written step when a write is refused", async () => {
+    respond = () =>
+      Promise.resolve(
+        Response.json({ error: { kind: "invalid", detail: "Cannot write" } }, { status: 400 }),
+      )
+    const dial = dialOf("Button", 1, undefined, 1)
+    const messages: string[] = []
+    dial.onNotice((message) => messages.push(message))
+    dial.step(1)
+    dial.release()
+    await settled()
+    expect(dial.at).toBe(0)
+    expect(messages).toEqual(["Cannot write"])
   })
 
   it("reports a refused pending write and still writes the newer desired step", async () => {

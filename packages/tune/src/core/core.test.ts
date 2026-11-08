@@ -145,7 +145,7 @@ describe("impact", () => {
 })
 
 describe("the graph with edits applied", () => {
-  it("reads like the graph rebuilt from the written files", () => {
+  it("writes multiple edits without mutating the original graph", () => {
     const edits: TokenEdit[] = [
       { token: "--primary", scope: LIGHT, to: "var(--violet-400)" },
       { token: "--button-secondary-bg", scope: "all", to: "var(--inverse)" },
@@ -187,6 +187,18 @@ describe("the graph with edits applied", () => {
     expect(resolveToken(written, "--primary", DARK)).toBe(
       resolveToken(tokens, "--violet-400", DARK),
     )
+  })
+
+  it("writes the last of two edits to the same declaration", () => {
+    const { tokens: after, written } = rebuilt([
+      { token: "--primary", scope: LIGHT, to: "var(--violet-400)" },
+      { token: "--primary", scope: LIGHT, to: "var(--violet-600)" },
+    ])
+    expect(resolveToken(after, "--primary", LIGHT)).toBe(
+      resolveToken(tokens, "--violet-600", LIGHT),
+    )
+    expect(resolveToken(after, "--primary", DARK)).toBe(resolveToken(tokens, "--primary", DARK))
+    expect(written.changes.filter((change) => change.block === LIGHT)).toHaveLength(1)
   })
 
   it("keeps a dark edit when a light edit of the same token follows it", () => {
