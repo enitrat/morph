@@ -5,18 +5,22 @@ import { readFile, writeFile } from "node:fs/promises"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
 import { join } from "node:path"
 
-import { applyEdits, declarationFor, editError, normalizeValue, type TokenEdit } from "../core"
+import { declarationFor } from "../core/design-system"
+import { editError, type TokenEdit } from "../core/edit"
+import { normalizeValue } from "../core/graph"
+import { applyEdits } from "../core/write"
 import { movedTag, setAttribute, swapClass } from "../dial/jsx"
 import type { Dialed, DialWrite } from "../dial/model"
 import type { PropWrite, PropWritten } from "../dial/props"
 import { scalesOf, swapError } from "../dial/utilities"
+import type { Refusal } from "../variant/model"
 import { formatFile } from "./checks"
 import { readDesignSystem } from "./design-system"
 import type { Host } from "./git"
 import { withLive } from "./live"
 import { propControls } from "./props"
 import { openSessions } from "./session"
-import type { Done, Refusal } from "./session"
+import type { Done } from "./session"
 
 const refuse = (refusal: Refusal): Done<never> => ({ ok: false, ...refusal })
 type UtilityWrite = Extract<DialWrite, { kind: "utility" }>
