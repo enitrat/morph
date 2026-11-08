@@ -22,6 +22,8 @@ export interface Bundler {
 export interface Mapped {
   map: RawSourceMap
   dir: string | null
+  /** Lines before the first line the frames count from, when they count from a module, not the file. */
+  offset?: number
 }
 
 /** The folders a bundler's `project` and `context` source names start from. */
@@ -60,7 +62,7 @@ export async function mapFrames(
 ): Promise<(SourceLoc | null)[]> {
   const found = new Map<
     string,
-    Promise<{ consumer: SourceMapConsumer; dir: string | null } | null>
+    Promise<{ consumer: SourceMapConsumer; dir: string | null; offset: number } | null>
   >()
   return Promise.all(
     frames.map(async ({ url, line, col }) => {
@@ -68,11 +70,20 @@ export async function mapFrames(
         found.set(
           url,
           mapOf(url).then((mapped) =>
-            mapped ? { consumer: new SourceMapConsumer(mapped.map), dir: mapped.dir } : null,
+            mapped
+              ? {
+                  consumer: new SourceMapConsumer(mapped.map),
+                  dir: mapped.dir,
+                  offset: mapped.offset ?? 0,
+                }
+              : null,
           ),
         )
       const mapped = await found.get(url)
-      const at = mapped?.consumer.originalPositionFor({ line, column: col - 1 })
+      const at = mapped?.consumer.originalPositionFor({
+        line: line + mapped.offset,
+        column: col - 1,
+      })
       // An unmapped position comes back with a null source, whatever the typings say.
       if (!mapped || !at?.source) return null
       const file = sourceFileOf(at.source)

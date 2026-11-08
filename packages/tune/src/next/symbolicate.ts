@@ -25,8 +25,24 @@ async function clientMap(url: string): Promise<Mapped | null> {
 
 const inside = (root: string, file: string) => !relative(root, file).startsWith("..")
 
-/** A server chunk Next wrote below the repo, read from disk with the map beside it. */
-async function serverMap(root: string, file: string): Promise<Mapped | null> {
+/**
+ * The module a Server Component frame counts its lines from. Once a file is edited, Turbopack
+ * evaluates its module on its own and tags the frame `?id=<module id>`, encoded twice.
+ */
+function moduleOf(url: string): string | null {
+  const id = /[?&]id=([^?#]+)/.exec(url)?.[1]
+  return id === undefined ? null : decodeURIComponent(decodeURIComponent(id.replaceAll("+", " ")))
+}
+
+/**
+ * A server chunk Next wrote below the repo, read from disk with the map beside it. For a frame of
+ * `module`, lines count from the line its factory starts on in the chunk.
+ */
+async function serverMap(
+  root: string,
+  file: string,
+  module: string | null,
+): Promise<Mapped | null> {
   if (!inside(root, file) || !file.endsWith(".js")) return null
   const code = await readFile(file, "utf8").catch(absent)
   const link = code === null ? undefined : mapLinkOf(code)
@@ -34,7 +50,11 @@ async function serverMap(root: string, file: string): Promise<Mapped | null> {
   const mapFile = resolve(dirname(file), decodeURIComponent(link))
   if (!inside(root, mapFile)) return null
   const map = await readFile(mapFile, "utf8").catch(absent)
-  return map === null ? null : { map: JSON.parse(map) as RawSourceMap, dir: dirname(file) }
+  if (map === null) return null
+  const mapped: Mapped = { map: JSON.parse(map) as RawSourceMap, dir: dirname(file) }
+  if (module === null || code === null) return mapped
+  const offset = code.split("\n").findIndex((line) => line.startsWith(`${JSON.stringify(module)},`))
+  return offset === -1 ? null : { ...mapped, offset }
 }
 
 /**
@@ -50,9 +70,11 @@ export function nextBundler(app: string): Bundler {
           return /^https?:/.test(url) ? clientMap(url) : Promise.resolve(null)
         // Once a Server Component file is edited, Turbopack encodes the chunk path twice.
         const file = fileURLToPath(server)
-        return serverMap(root, file).then(
+        const module = moduleOf(url)
+        return serverMap(root, file, module).then(
           (found) =>
-            found ?? (file.includes("%") ? serverMap(root, decodeURIComponent(file)) : null),
+            found ??
+            (file.includes("%") ? serverMap(root, decodeURIComponent(file), module) : null),
         )
       }),
   }

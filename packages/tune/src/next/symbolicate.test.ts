@@ -89,9 +89,18 @@ it("resolves a Server Component frame through the server chunk on disk", async (
   expect(await symbolicate([{ url, line: 2, col: 5 }])).toEqual([
     { path: "apps/site/app/page.tsx", line: 12, col: 7 },
   ])
-  const edited = `about://React/Server/${pathToFileURL(join(chunks, "%5Broot%5D__a._.js")).href}?id=%255Bproject%255D/apps/site/app/page.tsx+%255Bapp-rsc%255D+(ecmascript)?39`
+  writeFileSync(
+    join(chunks, "[root]__b._.js"),
+    'head\n"[project]/apps/site/app/page.tsx [app-rsc] (ecmascript)", ((ctx) => {\ncode\n//# sourceMappingURL=%5Broot%5D__b._.js.map\n',
+  )
+  writeFileSync(
+    join(chunks, "[root]__b._.js.map"),
+    mapOf("[root]__b._.js", { 3: ["turbopack:///[project]/apps/site/app/page.tsx", 40] }),
+  )
+  // After an edit the chunk path is encoded twice and lines count from the module's first line.
+  const edited = `about://React/Server/${pathToFileURL(join(chunks, "%5Broot%5D__b._.js")).href}?id=%255Bproject%255D/apps/site/app/page.tsx+%255Bapp-rsc%255D+(ecmascript)?39`
   expect(await symbolicate([{ url: edited, line: 2, col: 5 }])).toEqual([
-    { path: "apps/site/app/page.tsx", line: 12, col: 7 },
+    { path: "apps/site/app/page.tsx", line: 40, col: 7 },
   ])
   expect(
     await symbolicate([{ url: "about://React/Server/file:///etc/hosts?1", line: 1, col: 1 }]),
