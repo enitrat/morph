@@ -105,19 +105,11 @@ function Chip({ element, onRemove }: { element: Element; onRemove?: () => void }
   const missing = located?.anchor === null
   const source = located?.anchor?.source
   return (
-    <span
-      className="chip"
-      title={source && `${source.path}:${source.line}`}
-    >
+    <span className="chip" title={source && `${source.path}:${source.line}`}>
       <span className="chip-name">{labelNow(element)}</span>
       {missing && <span className="chip-where">Code not found</span>}
       {onRemove && (
-        <button
-          type="button"
-          className="icon"
-          aria-label="Remove target"
-          onClick={onRemove}
-        >
+        <button type="button" className="icon" aria-label="Remove target" onClick={onRemove}>
           <Icon name="close" />
         </button>
       )}
@@ -127,7 +119,12 @@ function Chip({ element, onRemove }: { element: Element; onRemove?: () => void }
 
 const TOOLS: readonly { tool: Tool; label: string; icon: IconName; hint: string }[] = [
   { tool: "point", label: "Point", icon: "point", hint: "Pick what to change" },
-  { tool: "inspect", label: "Inspect", icon: "inspect", hint: "Drag to reveal measurements · Click to pin · Esc exits" },
+  {
+    tool: "inspect",
+    label: "Inspect",
+    icon: "inspect",
+    hint: "Drag to reveal measurements · Click to pin · Esc exits",
+  },
   { tool: "box", label: "Box", icon: "box", hint: "Drag where something goes" },
   {
     tool: "arrow",
@@ -155,11 +152,7 @@ function Tools({
   dispatch: Dispatch<Event>
 }) {
   return (
-    <div
-      className="tools"
-      role="toolbar"
-      aria-label="Tools"
-    >
+    <div className="tools" role="toolbar" aria-label="Tools">
       {TOOLS.filter((entry) => tools.includes(entry.tool)).map((entry) => (
         <button
           key={entry.tool}
@@ -184,10 +177,7 @@ function MarkList({ marks, dispatch }: { marks: readonly Sketch[]; dispatch: Dis
   return (
     <div className="marks">
       {marks.map((mark) => (
-        <div
-          key={mark.key}
-          className="mark-row"
-        >
+        <div key={mark.key} className="mark-row">
           <span>{markLine(mark)}</span>
           <button
             type="button"
@@ -256,15 +246,8 @@ function Composing({
             ))}
           </div>
         )}
-        <Tools
-          tools={ALL_TOOLS}
-          tool={tool}
-          dispatch={dispatch}
-        />
-        <MarkList
-          marks={draft.marks}
-          dispatch={dispatch}
-        />
+        <Tools tools={ALL_TOOLS} tool={tool} dispatch={dispatch} />
+        <MarkList marks={draft.marks} dispatch={dispatch} />
         <textarea
           className="field"
           placeholder="What should change?"
@@ -336,17 +319,11 @@ function Slot({
     return (
       <div className="slot failed">
         <span className="key">{key}</span>
-        <span
-          className="slot-main"
-          title={variant.reason}
-        >
+        <span className="slot-main" title={variant.reason}>
           <span className="slot-title">{variant.direction.title}</span>
           <span className="slot-sub">{headline}</span>
           {why.map((line) => (
-            <span
-              key={line}
-              className="slot-why mono"
-            >
+            <span key={line} className="slot-why mono">
               {line}
             </span>
           ))}
@@ -380,24 +357,15 @@ function Slot({
       <span className="key">{key}</span>
       {variant.state === "pending" ? (
         <span className="slot-main">
-          <span
-            className="slot-title"
-            title={variant.direction.description}
-          >
+          <span className="slot-title" title={variant.direction.description}>
             {variant.direction.title}
           </span>
-          <Progress
-            phase={PHASES[variant.phase]}
-            since={since}
-          />
+          <Progress phase={PHASES[variant.phase]} since={since} />
         </span>
       ) : (
         <span className="slot-main">
           <span className="slot-title">{variant.title}</span>
-          <span
-            className="slot-sub clamp"
-            title={variant.summary}
-          >
+          <span className="slot-sub clamp" title={variant.summary}>
             {variant.summary}
           </span>
         </span>
@@ -433,10 +401,7 @@ function Request({ draft, words = true }: { draft: Draft; words?: boolean }) {
     <div className="quote">
       {said && <p>{draft.words}</p>}
       {draft.marks.map((mark) => (
-        <p
-          key={mark.key}
-          className="quote-mark"
-        >
+        <p key={mark.key} className="quote-mark">
           {markLine(mark)}
         </p>
       ))}
@@ -503,15 +468,8 @@ function Feedback({
           if (ready) actions.sendRefine()
         }}
       />
-      <Tools
-        tools={SKETCH_TOOLS}
-        tool={refining.tool}
-        dispatch={dispatch}
-      />
-      <MarkList
-        marks={refining.draft.marks}
-        dispatch={dispatch}
-      />
+      <Tools tools={SKETCH_TOOLS} tool={refining.tool} dispatch={dispatch} />
+      <MarkList marks={refining.draft.marks} dispatch={dispatch} />
     </div>
   )
 }
@@ -533,10 +491,7 @@ function Session({
   return (
     <>
       <div className="body">
-        <Request
-          draft={stage.draft}
-          words={kept === undefined}
-        />
+        <Request draft={stage.draft} words={kept === undefined} />
         {refining !== null && (
           <Feedback
             key={refining.variant}
@@ -552,11 +507,7 @@ function Session({
             Opening the session…
           </p>
         ) : (
-          <div
-            className="slots"
-            role="radiogroup"
-            aria-label="Variants"
-          >
+          <div className="slots" role="radiogroup" aria-label="Variants">
             <button
               type="button"
               role="radio"
@@ -594,20 +545,13 @@ function Session({
         )}
         {view?.stuck && <p className="notice">Stuck on {view.stuck.join(", ")}.</p>}
         {stage.notice && (
-          <p
-            className="notice"
-            role="alert"
-          >
+          <p className="notice" role="alert">
             {stage.notice}
           </p>
         )}
       </div>
       {refining === null ? (
-        <SessionFoot
-          stage={stage}
-          actions={actions}
-          ready={ready}
-        />
+        <SessionFoot stage={stage} actions={actions} ready={ready} />
       ) : (
         <div className="foot">
           <span className="hint">Keeps {refining.variant}, then makes 3 more from it</span>
@@ -658,12 +602,7 @@ function SessionFoot({
           </>
         )}
       </span>
-      <button
-        type="button"
-        className="button"
-        disabled={busy}
-        onClick={actions.discard}
-      >
+      <button type="button" className="button" disabled={busy} onClick={actions.discard}>
         {pending?.kind === "discard" ? "Stopping…" : ready ? "Discard" : "Cancel"}
       </button>
       {ready && (
@@ -719,11 +658,7 @@ export function Pill({
       >
         <Icon name="expand" />
       </button>
-      <span
-        className="pill-keys"
-        role="radiogroup"
-        aria-label="Variants"
-      >
+      <span className="pill-keys" role="radiogroup" aria-label="Variants">
         {choices.map((entry) => (
           <button
             key={entry.key}
@@ -741,12 +676,7 @@ export function Pill({
           </button>
         ))}
       </span>
-      <button
-        type="button"
-        className="button"
-        disabled={busy}
-        onClick={actions.discard}
-      >
+      <button type="button" className="button" disabled={busy} onClick={actions.discard}>
         {ready ? "Discard" : "Cancel"}
       </button>
       {ready && (
@@ -787,11 +717,7 @@ export function PageTheme({
   choose: (theme: ThemeName) => void
 }) {
   return (
-    <span
-      className="segments"
-      role="radiogroup"
-      aria-label="Page theme"
-    >
+    <span className="segments" role="radiogroup" aria-label="Page theme">
       {themes.list.map(({ name: option }) => (
         <button
           key={option}
@@ -812,7 +738,8 @@ export function PageTheme({
 
 /** The line the panel header shows for a stage. */
 export function statusOf(stage: Stage): string {
-  if (stage.kind === "composing") return stage.tool === "point" ? "Pointing" : stage.tool === "inspect" ? "Inspecting" : ""
+  if (stage.kind === "composing")
+    return stage.tool === "point" ? "Pointing" : stage.tool === "inspect" ? "Inspecting" : ""
   if (stage.kind === "asking") return "Planning"
   if (stage.kind === "failed") return "Something went wrong"
   if (stage.refining !== null) return `Refining ${stage.refining.variant}`
@@ -842,28 +769,17 @@ function Failed({
             <Request draft={draft} />
           </>
         )}
-        <p
-          className="notice"
-          role="alert"
-        >
+        <p className="notice" role="alert">
           {message}
         </p>
       </div>
       <div className="foot">
         <span className="hint" />
-        <button
-          type="button"
-          className="button"
-          onClick={actions.back}
-        >
+        <button type="button" className="button" onClick={actions.back}>
           Back
         </button>
         {retry !== null && (
-          <button
-            type="button"
-            className="button primary"
-            onClick={actions.retryRefine}
-          >
+          <button type="button" className="button primary" onClick={actions.retryRefine}>
             Retry
           </button>
         )}
@@ -884,29 +800,10 @@ export function PanelBody({
   theme: ShownTheme | null
 }) {
   if (stage.kind === "composing")
-    return (
-      <Composing
-        stage={stage}
-        dispatch={dispatch}
-        actions={actions}
-        theme={theme}
-      />
-    )
+    return <Composing stage={stage} dispatch={dispatch} actions={actions} theme={theme} />
   if (stage.kind === "session")
-    return (
-      <Session
-        stage={stage}
-        dispatch={dispatch}
-        actions={actions}
-      />
-    )
-  if (stage.kind === "failed")
-    return (
-      <Failed
-        stage={stage}
-        actions={actions}
-      />
-    )
+    return <Session stage={stage} dispatch={dispatch} actions={actions} />
+  if (stage.kind === "failed") return <Failed stage={stage} actions={actions} />
   return (
     <>
       <div className="body">
@@ -916,22 +813,13 @@ export function PanelBody({
           </p>
         )}
         <Request draft={stage.draft} />
-        <div
-          className="slots"
-          aria-busy="true"
-        >
+        <div className="slots" aria-busy="true">
           {["1", "2", "3"].map((key) => (
-            <div
-              key={key}
-              className="slot planning"
-            >
+            <div key={key} className="slot planning">
               <span className="key">{key}</span>
               <span className="slot-main">
                 <span className="slot-title">Finding a direction</span>
-                <Progress
-                  phase="Planning"
-                  since={stage.since}
-                />
+                <Progress phase="Planning" since={stage.since} />
               </span>
             </div>
           ))}
@@ -939,11 +827,7 @@ export function PanelBody({
       </div>
       <div className="foot">
         <span className="hint">Your words and marks come back if you cancel.</span>
-        <button
-          type="button"
-          className="button"
-          onClick={actions.cancel}
-        >
+        <button type="button" className="button" onClick={actions.cancel}>
           Cancel
         </button>
       </div>

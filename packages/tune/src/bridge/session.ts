@@ -14,12 +14,11 @@ import {
   type Choice,
   type Direction,
   JobResult,
-  type AppliedJournal,
   Parent,
   Phase,
   type Refine,
   type Refusal,
-  type RepoPath,
+  RepoPath,
   Session,
   SessionId,
   type SessionView,
@@ -30,18 +29,9 @@ import {
 } from "../variant/model"
 import { plannerModel, runClaude } from "./agent"
 import { readJson, writeJson } from "./disk"
-import {
-  absent,
-  git,
-  homeOf,
-  type Host,
-  liveContent,
-  REFS,
-  type Repo,
-  snapshot,
-  updateRef,
-} from "./git"
-import { keep as keepLive, readJournal, setLive } from "./live"
+import { absent, git, homeOf, type Host, liveContent, REFS, type Repo, updateRef } from "./git"
+import { baseOf, converge, readJournal } from "./live"
+import { type Offer, type Request } from "../variant/swap"
 import { alive, withLock } from "./lock"
 import { Directions, plannerPrompt } from "./prompt"
 
@@ -144,30 +134,61 @@ function viewOf(direction: Direction, id: VariantId, job: JobState): VariantView
   return { id, direction, state: "ready", title, summary, files, stat }
 }
 
-const appliedOf = (journal: AppliedJournal) =>
-  journal.kind === "moving" ? journal.to : journal.applied
+async function targetOf(repo: Repo, session: Session, variant: VariantId): Promise<Target | null> {
+  const job = await readJob(repo, session.id, variant)
+  if (job.kind !== "ready") return null
+  return { session: session.id, variant, base: session.base, commit: job.commit, files: job.files }
+}
+
+/** Every open session with its ready variants, as the planner reads them under the live lock. */
+async function offers(repo: Repo): Promise<Offer[]> {
+  const sessions = await Promise.all(
+    (await openSessions(repo)).map((id) => readSessionFile(repo, id)),
+  )
+  return Promise.all(
+    sessions.flatMap((session) =>
+      session === null
+        ? []
+        : [
+            (async () => {
+              const ready = await Promise.all(
+                variantsOf(session).map(({ id }) => targetOf(repo, session, id)),
+              )
+              return {
+                session: session.id,
+                opened: session.opened,
+                ready: ready.filter((target) => target !== null),
+              }
+            })(),
+          ],
+    ),
+  )
+}
+
+const settleAll = (repo: Repo, request: Request) => converge(repo, () => offers(repo), request)
 
 export async function readSession(repo: Repo, id: SessionId): Promise<SessionView | null> {
   const session = await readSessionFile(repo, id)
   if (session === null) return null
   const journal = await readJournal(repo)
-  const applied = appliedOf(journal)
-  const shown = applied?.session === id ? applied : null
+  const leased = Object.entries(journal.leases).filter(([, lease]) => lease.session === id)
   const edits = await Promise.all(
-    (shown?.files ?? []).map(async (file) => (await liveContent(repo, file.path)) !== file.after),
+    leased.map(
+      async ([path, lease]) => (await liveContent(repo, RepoPath.parse(path))) !== lease.after,
+    ),
   )
   const variants = await Promise.all(
     variantsOf(session).map(async ({ id: variant, direction }) =>
       viewOf(direction, variant, await readJob(repo, id, variant)),
     ),
   )
+  const variant = leased[0]?.[1].variant
   return {
     id,
-    live: shown && { variant: shown.variant, edited: edits.includes(true) },
+    live: variant === undefined ? null : { variant, edited: edits.includes(true) },
     variants,
     trail: trailOf(session.ask.words, session.parent),
-    stuck:
-      journal.kind === "stuck" && (shown !== null || applied === null) ? journal.conflicts : null,
+    stuck: journal.stuck.length > 0 ? journal.stuck : null,
   }
 }
 
@@ -218,7 +239,7 @@ async function start(
   if (session === null) {
     const other = (await openSessions(repo)).find((id) => id !== request.id)
     if (other !== undefined) return refuse({ kind: "busy", session: other })
-    const base = await snapshot(repo)
+    const { base, opened } = await baseOf(repo)
     const planned = await runClaude(
       plannerPrompt(request, parent),
       Directions(request.count),
@@ -227,7 +248,8 @@ async function start(
     )
     if (!planned.ok) return refuse({ kind: "planner-failed", detail: planned.detail })
     await updateRef(repo, variantRef(request.id, "base"), base)
-    session = { id: request.id, base, ask: request, directions: planned.value.directions, parent }
+    const { directions } = planned.value
+    session = { id: request.id, base, opened, ask: request, directions, parent }
     await writeJson(sessionFile(repo, request.id), session)
   }
   await startJobs(repo, session)
@@ -258,19 +280,6 @@ export function refine(
     if (kept !== null) {
       const job = await readJob(repo, from, variant)
       if (job.kind !== "ready") return refuse({ kind: "not-ready", variant })
-      const target = {
-        session: from,
-        variant,
-        base: kept.base,
-        commit: job.commit,
-        files: job.files,
-      }
-      const shown = await setLive(
-        repo,
-        target,
-        (applied) => applied === null || applied.session === from,
-      )
-      if (!shown.ok) return refuse({ kind: "conflict", files: shown.conflicts })
       if (parent === null) {
         parent = {
           session: from,
@@ -282,39 +291,18 @@ export function refine(
         }
         await writeJson(parentFile(repo, request.id), parent)
       }
-      await keep(repo, from)
+      const closed = await keep(repo, from, variant)
+      if (!closed.ok) return closed
     }
     if (parent === null) return refuse({ kind: "not-found" })
     return start(repo, request, parent, stop)
   })
 }
 
-async function targetOf(repo: Repo, session: Session, variant: VariantId): Promise<Target | null> {
-  const job = await readJob(repo, session.id, variant)
-  if (job.kind !== "ready") return null
-  return { session: session.id, variant, base: session.base, commit: job.commit, files: job.files }
-}
-
-/** Present once anything was shown in the session, by the designer or by `look`. */
-const chosenFile = (repo: Repo, id: SessionId) => join(sessionDir(repo, id), "chosen")
-
-/**
- * The session, after showing its first ready variant when the session never showed anything, so
- * a designer who flipped back to the original stays on it.
- */
+/** The session, after the page settles: a session that never chose shows its first ready variant. */
 export async function look(repo: Repo, id: SessionId): Promise<Done<SessionView>> {
-  const session = await readSessionFile(repo, id)
-  if (session === null) return refuse({ kind: "not-found" })
-  const chosen = (await readFile(chosenFile(repo, id), "utf8").catch(absent)) !== null
-  if (!chosen && appliedOf(await readJournal(repo)) === null) {
-    for (const { id: variant } of variantsOf(session)) {
-      const target = await targetOf(repo, session, variant)
-      if (target === null) continue
-      const moved = await setLive(repo, target, (applied) => applied === null)
-      if (moved.ok && moved.applied?.session === id) await writeFile(chosenFile(repo, id), variant)
-      break
-    }
-  }
+  const settled = await settleAll(repo, { kind: "settle" })
+  if (!settled.ok) return refuse(settled.refusal)
   return viewed(repo, id)
 }
 
@@ -322,16 +310,16 @@ export async function look(repo: Repo, id: SessionId): Promise<Done<SessionView>
 export async function show(repo: Repo, id: SessionId, choice: Choice): Promise<Done<SessionView>> {
   const session = await readSessionFile(repo, id)
   if (session === null) return refuse({ kind: "not-found" })
-  let target: Target | null = null
   if (choice !== "original") {
     if (!variantsOf(session).some((entry) => entry.id === choice))
       return refuse({ kind: "not-found" })
-    target = await targetOf(repo, session, choice)
-    if (target === null) return refuse({ kind: "not-ready", variant: choice })
+    if ((await targetOf(repo, session, choice)) === null)
+      return refuse({ kind: "not-ready", variant: choice })
   }
-  await writeFile(chosenFile(repo, id), choice)
-  const moved = await setLive(repo, target, (applied) => applied === null || applied.session === id)
-  if (!moved.ok) return refuse({ kind: "conflict", files: moved.conflicts })
+  const moved = await settleAll(repo, { kind: "show", session: id, choice })
+  if (!moved.ok) return refuse(moved.refusal)
+  const place = moved.places.get(id)
+  if (place?.kind === "conflict") return refuse({ kind: "conflict", files: place.files })
   return viewed(repo, id)
 }
 
@@ -373,10 +361,17 @@ async function drop(repo: Repo, id: SessionId): Promise<void> {
   await rm(sessionDir(repo, id), { recursive: true, force: true })
 }
 
-/** Leaves the shown files as they are and ends the session. */
-export async function keep(repo: Repo, id: SessionId): Promise<Done<null>> {
+/** Leaves `variant` on the page as code and ends the session. */
+export async function keep(repo: Repo, id: SessionId, variant?: VariantId): Promise<Done<null>> {
   await stopJobs(repo, id)
-  await keepLive(repo, id)
+  const shown = Object.values((await readJournal(repo)).leases).find(
+    (lease) => lease.session === id,
+  )
+  const kept = variant ?? shown?.variant
+  if (kept !== undefined) {
+    const moved = await settleAll(repo, { kind: "keep", session: id, variant: kept })
+    if (!moved.ok) return refuse(moved.refusal)
+  }
   await drop(repo, id)
   return { ok: true, value: null }
 }
@@ -387,8 +382,8 @@ export function discard(repo: Repo, id: SessionId): Promise<Done<null>> {
   planning.get(id)?.abort("discarded")
   return withLock(sessionsLock(repo), async () => {
     await stopJobs(repo, id)
-    const moved = await setLive(repo, null, (applied) => applied?.session === id)
-    if (!moved.ok) return refuse({ kind: "conflict", files: moved.conflicts })
+    const moved = await settleAll(repo, { kind: "discard", session: id })
+    if (!moved.ok) return refuse(moved.refusal)
     await drop(repo, id)
     return { ok: true, value: null }
   })

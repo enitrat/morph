@@ -1,6 +1,6 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
-@import 'tw-animate-css';
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -9,7 +9,7 @@
 @custom-variant data-horizontal (&[data-orientation='horizontal']);
 @custom-variant data-vertical (&[data-orientation='vertical']);
 
-@import './theme.css';
+@import "./theme.css";
 
 @layer base {
   * {
@@ -22,16 +22,16 @@
 
 /* shimmer */
 @property --shimmer-angle {
-  syntax: '<angle>';
+  syntax: "<angle>";
   inherits: true;
   initial-value: 20deg;
 }
 @property --shimmer-image {
-  syntax: '*';
+  syntax: "*";
   inherits: false;
 }
 @property --shimmer-text-fill {
-  syntax: '*';
+  syntax: "*";
   inherits: false;
 }
 

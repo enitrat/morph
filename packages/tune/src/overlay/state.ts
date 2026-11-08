@@ -228,9 +228,10 @@ const sent = (draft: Draft, event: Extract<Event, { kind: "sent" }>): Stage => (
 
 function compose(stage: Extract<Stage, { kind: "composing" }>, event: Event): Stage {
   if (event.kind === "tool") return { ...stage, tool: event.tool }
-  if (event.kind === "inspected") return stage.tool === "inspect"
-    ? { ...stage, draft: { ...stage.draft, targets: [event.element] } }
-    : stage
+  if (event.kind === "inspected")
+    return stage.tool === "inspect"
+      ? { ...stage, draft: { ...stage.draft, targets: [event.element] } }
+      : stage
   if (event.kind === "sent") return sent(stage.draft, event)
   if (event.kind === "joined") return joined(stage.draft, event)
   const draft = edited(stage.draft, event)
@@ -336,7 +337,10 @@ export const canRefine = (stage: Stage) =>
 
 /** Enter makes variants whenever Make variants is enabled, except while pointing, where it picks. */
 export const sendsOnEnter = (stage: Stage) =>
-  (stage.kind === "composing" && stage.tool !== "point" && stage.tool !== "inspect" && canSend(stage.draft)) ||
+  (stage.kind === "composing" &&
+    stage.tool !== "point" &&
+    stage.tool !== "inspect" &&
+    canSend(stage.draft)) ||
   (stage.kind === "session" && stage.refining?.tool === null && canRefine(stage))
 
 /** ↑ and ↓ climb and descend the one pick while nothing is typed yet. */

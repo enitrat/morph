@@ -1,1 +1,8 @@
-{ "name": "acme", "private": true, "devDependencies": { "oxfmt": "0.0.0", "typescript": "0.0.0" } }
+{
+  "name": "acme",
+  "private": true,
+  "devDependencies": {
+    "oxfmt": "0.0.0",
+    "typescript": "0.0.0"
+  }
+}

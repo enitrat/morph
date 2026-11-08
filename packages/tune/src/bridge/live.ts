@@ -6,20 +6,25 @@ import { chmod, mkdir, readFile, rename, rm, rmdir, stat, writeFile } from "node
 import { dirname, join } from "node:path"
 
 import {
-  type Applied,
+  type CommitId,
+  EMPTY_JOURNAL,
   type FileWrite,
-  AppliedJournal,
+  Journal,
+  type Refusal,
   type RepoPath,
+  Seq,
   type SessionId,
-  type Target,
 } from "../variant/model"
-import { planSwap, type Store } from "../variant/swap"
-import { absent, gitStore, homeOf as home, readBlob, type Repo } from "./git"
+import {
+  designerTree,
+  type Offer,
+  plan,
+  type Placed,
+  type Request,
+  type Store,
+} from "../variant/swap"
+import { absent, gitStore, homeOf as home, readBlob, type Repo, snapshot } from "./git"
 import { withLock } from "./lock"
-
-type LiveResult =
-  | { ok: true; applied: Applied | null }
-  | { ok: false; conflicts: readonly RepoPath[] }
 
 const journalPath = (repo: Repo) => join(home(repo), "live.json")
 
@@ -33,13 +38,13 @@ async function replace(file: string, bytes: Buffer | string, scratch: string): P
   await rename(tmp, file)
 }
 
-/** The journal as it is on disk, read without the lock: a swap may be under way. */
-export async function readJournal(repo: Repo): Promise<AppliedJournal> {
+/** The journal as it is on disk, read without the lock: a move may be under way. */
+export async function readJournal(repo: Repo): Promise<Journal> {
   const text = await readFile(journalPath(repo), "utf8").catch(absent)
-  return text === null ? { kind: "steady", applied: null } : AppliedJournal.parse(JSON.parse(text))
+  return text === null ? EMPTY_JOURNAL : Journal.parse(JSON.parse(text))
 }
 
-async function writeJournal(repo: Repo, journal: AppliedJournal): Promise<void> {
+async function writeJournal(repo: Repo, journal: Journal): Promise<void> {
   await replace(journalPath(repo), JSON.stringify(journal), home(repo))
 }
 
@@ -64,77 +69,73 @@ async function put(repo: Repo, { path, write }: FileWrite): Promise<void> {
   } else await replace(file, await readBlob(repo, write), home(repo))
 }
 
-type Settled = Exclude<AppliedJournal, { kind: "moving" }>
-
-/** Finishes a swap a crash interrupted: a file already holding `write` is done, one holding `expect` is written. */
-async function recover(repo: Repo, store: Store, journal: AppliedJournal): Promise<Settled> {
-  if (journal.kind !== "moving") return journal
-  const conflicts: RepoPath[] = []
-  for (const write of journal.writes) {
+/**
+ * Finishes a move a crash interrupted: a file already holding `write` is done, one holding
+ * `expect` is written, anything else is stuck. The wants and leases already name where the move
+ * ends, so recovery only clears `moving`.
+ */
+async function recover(repo: Repo, store: Store, now: Journal): Promise<Journal> {
+  if (now.moving === null) return now
+  const stuck: RepoPath[] = []
+  for (const write of now.moving) {
     const live = await store.live(write.path)
     if (live === write.write) continue
     if (live === write.expect) await put(repo, write)
-    else conflicts.push(write.path)
+    else stuck.push(write.path)
   }
-  const settled: Settled =
-    conflicts.length === 0
-      ? { kind: "steady", applied: journal.to }
-      : { kind: "stuck", applied: journal.to, conflicts }
+  const settled = { ...now, stuck: [...new Set([...now.stuck, ...stuck])], moving: null }
   await writeJournal(repo, settled)
   return settled
 }
 
-function locked<T>(repo: Repo, body: (store: Store, now: Settled) => Promise<T>): Promise<T> {
+function locked<T>(repo: Repo, body: (store: Store, now: Journal) => Promise<T>): Promise<T> {
   return withLock(join(home(repo), "lock"), async () => {
     const store = gitStore(repo)
     return body(store, await recover(repo, store, await readJournal(repo)))
   })
 }
 
+export type Converged =
+  | { ok: true; journal: Journal; places: ReadonlyMap<SessionId, Placed> }
+  | { ok: false; refusal: Refusal }
+
 /**
- * The only writer of the working tree: moves it to `target`, or to no variant. The journal is
- * written before any file, so the next call finishes a swap a crash interrupted.
+ * The only writer of the working tree. Under the live lock it finishes a crashed move, reads the
+ * open sessions, plans `request`, writes the journal, then the files, then the journal again
+ * without `moving`. A plan that changes nothing writes nothing, so a poll leaves the disk alone.
  */
-export function setLive(
+export function converge(
   repo: Repo,
-  target: Target | null,
-  /** Decided under the lock: when false, nothing moves. */
-  when: (applied: Applied | null) => boolean = () => true,
-): Promise<LiveResult> {
-  return locked(repo, async (store, now) =>
-    when(now.applied) ? move(repo, store, now, target) : { ok: true, applied: now.applied },
-  )
-}
-
-/** Runs `body` under the live-tree lock, after finishing an interrupted swap. */
-export function withLive<T>(repo: Repo, body: (now: Settled) => Promise<T>): Promise<T> {
-  return locked(repo, async (_, now) => body(now))
-}
-
-export function recoverLive(repo: Repo): Promise<AppliedJournal> {
-  return locked(repo, async (_, now) => now)
-}
-
-async function move(
-  repo: Repo,
-  store: Store,
-  now: Settled,
-  target: Target | null,
-): Promise<LiveResult> {
-  const plan = await planSwap(store, now.applied, target)
-  if (!plan.ok) return plan
-  if (plan.writes.length > 0) {
-    await writeJournal(repo, { kind: "moving", to: plan.to, writes: plan.writes })
-    for (const write of plan.writes) await put(repo, write)
-  }
-  await writeJournal(repo, { kind: "steady", applied: plan.to })
-  return { ok: true, applied: plan.to }
-}
-
-/** Leaves the shown variant's files in place and forgets it; a session no longer shown is a no-op. */
-export function keep(repo: Repo, session: SessionId): Promise<void> {
-  return locked(repo, async (_, now) => {
-    if (now.applied?.session === session)
-      await writeJournal(repo, { kind: "steady", applied: null })
+  offers: () => Promise<readonly Offer[]>,
+  request: Request,
+): Promise<Converged> {
+  return locked(repo, async (store, now) => {
+    const planned = await plan(store, now, await offers(), request)
+    if (!planned.ok) return planned
+    if (planned.writes.length > 0) {
+      await writeJournal(repo, planned.journal)
+      for (const write of planned.writes) await put(repo, write)
+    }
+    const journal = { ...planned.journal, moving: null }
+    if (planned.writes.length > 0 || JSON.stringify(journal) !== JSON.stringify(now))
+      await writeJournal(repo, journal)
+    return { ok: true, journal, places: planned.places }
   })
+}
+
+/**
+ * The commit a new session stands on, and its place in the open order: the working tree with
+ * every shown variant taken out, so no session's base holds another's undecided change.
+ */
+export function baseOf(repo: Repo): Promise<{ base: CommitId; opened: Seq }> {
+  return locked(repo, async (store, now) => {
+    const opened = Seq.parse(now.seq + 1)
+    await writeJournal(repo, { ...now, seq: opened })
+    return { base: await snapshot(repo, await designerTree(store, now.leases)), opened }
+  })
+}
+
+/** Runs `body` under the live-tree lock, after finishing an interrupted move. */
+export function withLive<T>(repo: Repo, body: (now: Journal) => Promise<T>): Promise<T> {
+  return locked(repo, async (_, now) => body(now))
 }

@@ -132,25 +132,49 @@ describe("dial", () => {
     expect(split).toMatchObject({ ok: false, kind: "invalid" })
   })
 
-  it("refuses to write while a session is open", async () => {
+  it("refuses a write to a file a shown variant holds, naming the session", async () => {
     const { root, repo } = await fixture()
     const id = SessionId.parse(randomUUID())
-    await writeJson(join(homeOf(repo), "sessions", id, "session.json"), {
-      id,
-      base: "0".repeat(40),
-      ask: {
-        id,
-        words: "x",
-        targets: [{ source: site, owner: [], text: "" }],
-        marks: [],
-        count: 1,
-      },
-      directions: [{ title: "X", description: "X." }],
+    const blob = "0".repeat(40)
+    await writeJson(join(homeOf(repo), "live.json"), {
+      seq: 1,
+      want: {},
+      leases: { [TILE]: { session: id, variant: "v1", before: blob, after: blob } },
+      stuck: [],
+      moving: null,
     })
 
     const refused = await writeReleased(repo, { kind: "utility", site, from: "p-4", to: "p-5" })
 
-    expect(refused).toEqual({ ok: false, kind: "busy", session: id })
+    expect(refused).toEqual({
+      ok: false,
+      kind: "held",
+      on: [{ session: id, variant: "v1", files: [TILE] }],
+    })
     expect(readFileSync(join(root, TILE), "utf8")).toBe(TILE_SOURCE)
+  })
+
+  it("writes a file no shown variant holds while another file is held", async () => {
+    const { root, repo } = await fixture()
+    const blob = "0".repeat(40)
+    await writeJson(join(homeOf(repo), "live.json"), {
+      seq: 1,
+      want: {},
+      leases: {
+        "apps/site/app/page.tsx": {
+          session: randomUUID(),
+          variant: "v1",
+          before: blob,
+          after: blob,
+        },
+      },
+      stuck: [],
+      moving: null,
+    })
+
+    const written = await writeReleased(repo, { kind: "utility", site, from: "p-4", to: "p-5" })
+
+    expect(written).toMatchObject({ ok: true, value: { changed: true } })
+    expect(readFileSync(join(root, TILE), "utf8")).toContain("p-5")
   })
 })

@@ -46,37 +46,8 @@ export interface Target {
   readonly files: readonly RepoPath[]
 }
 
-const AppliedFile = z.object({ path: RepoPath, before: Content, after: Content })
-export type AppliedFile = z.infer<typeof AppliedFile>
-
-/** The single record of what the live tree holds on top of no variant. */
-export const Applied = z.object({
-  session: SessionId,
-  variant: VariantId,
-  /** `before` is the content without any variant, `after` what the tool last wrote. */
-  files: z.array(AppliedFile).readonly(),
-})
-export type Applied = z.infer<typeof Applied>
-
 export const FileWrite = z.object({ path: RepoPath, expect: Content, write: Content })
 export type FileWrite = z.infer<typeof FileWrite>
-
-/** The write-ahead journal: written before any working-tree file, by one writer under a lock. */
-export const AppliedJournal = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("steady"), applied: Applied.nullable() }),
-  z.object({
-    kind: z.literal("moving"),
-    to: Applied.nullable(),
-    writes: z.array(FileWrite).readonly(),
-  }),
-  /** Recovery met files that are neither the expected nor the written content. */
-  z.object({
-    kind: z.literal("stuck"),
-    applied: Applied.nullable(),
-    conflicts: z.array(RepoPath).readonly(),
-  }),
-])
-export type AppliedJournal = z.infer<typeof AppliedJournal>
 
 /** The journal's clock: orders wants and sessions, so no two processes compare wall clocks. */
 export const Seq = z.int().nonnegative().brand<"Seq">()
@@ -209,6 +180,8 @@ export type Refine = z.infer<typeof Refine>
 export const Session = z.object({
   id: SessionId,
   base: CommitId,
+  /** Its place in the open order, from the journal's clock when its base was taken. */
+  opened: Seq,
   ask: Ask,
   directions: z.array(Direction).min(1).max(3).readonly(),
   /** The kept variant this round refines; sessions written before refining existed have none. */

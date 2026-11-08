@@ -337,10 +337,18 @@ describe("refining a variant", () => {
       from: { variant: "v1", title: "Rows" },
     } as const
     const failed = run([{ kind: "refused", message: "Kept v1. Could not plan", retry }], asking)
-    expect(failed.stage).toMatchObject({ kind: "failed", retry, draft: { words: "bigger revenue" } })
+    expect(failed.stage).toMatchObject({
+      kind: "failed",
+      retry,
+      draft: { words: "bigger revenue" },
+    })
 
     const again = run([{ kind: "sent", id: NEXT, at: 9, picked: [], from: retry.from }], failed)
-    expect(again.stage).toMatchObject({ kind: "asking", id: NEXT, draft: { words: "bigger revenue" } })
+    expect(again.stage).toMatchObject({
+      kind: "asking",
+      id: NEXT,
+      draft: { words: "bigger revenue" },
+    })
     expect(run([{ kind: "back" }], failed).stage).toMatchObject({
       kind: "composing",
       draft: { words: "bigger revenue" },
@@ -350,10 +358,21 @@ describe("refining a variant", () => {
 
 it("inspection pins one target without adding marks or leaving the tool", () => {
   const element = document.createElement("button")
-  const inspecting = run([{ kind: "toggled" }, { kind: "tool", tool: "inspect" }, { kind: "inspected", element }])
-  expect(inspecting.stage).toMatchObject({ kind: "composing", tool: "inspect", draft: { targets: [element], marks: [] } })
+  const inspecting = run([
+    { kind: "toggled" },
+    { kind: "tool", tool: "inspect" },
+    { kind: "inspected", element },
+  ])
+  expect(inspecting.stage).toMatchObject({
+    kind: "composing",
+    tool: "inspect",
+    draft: { targets: [element], marks: [] },
+  })
   const withWords = reduce(inspecting, { kind: "typed", words: "Change this" })
   expect(sendsOnEnter(withWords.stage)).toBe(false)
-  expect(reduce(inspecting, { kind: "tool", tool: null }).stage).toMatchObject({ tool: null, draft: { targets: [element] } })
+  expect(reduce(inspecting, { kind: "tool", tool: null }).stage).toMatchObject({
+    tool: null,
+    draft: { targets: [element] },
+  })
   expect(reduce(initial, { kind: "inspected", element })).toBe(initial)
 })

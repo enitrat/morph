@@ -7,7 +7,7 @@ import { existsSync } from "node:fs"
 import { join } from "node:path"
 
 import { git, openRepo, REFS } from "../bridge/git"
-import { recoverLive, setLive } from "../bridge/live"
+import { withLive } from "../bridge/live"
 import { tryLock, unlock } from "../bridge/lock"
 import { discard, openSessions, readSession } from "../bridge/session"
 import { SLOT_IDS, slotsRoot } from "../bridge/slots"
@@ -30,14 +30,12 @@ async function main() {
   const repo = await openRepo(process.cwd())
 
   async function status() {
-    const journal = await recoverLive(repo)
-    const applied = journal.kind === "moving" ? journal.to : journal.applied
-    console.log(
-      applied === null
-        ? "live: no variant shown"
-        : `live: ${applied.session} ${applied.variant} (${applied.files.map((file) => file.path).join(", ")})`,
-    )
-    if (journal.kind === "stuck") console.log(`stuck on: ${journal.conflicts.join(", ")}`)
+    const journal = await withLive(repo, async (now) => now)
+    const leases = Object.entries(journal.leases)
+    if (leases.length === 0) console.log("live: no variant shown")
+    for (const [path, lease] of leases)
+      console.log(`live: ${path} held by ${lease.session} ${lease.variant}`)
+    if (journal.stuck.length > 0) console.log(`stuck on: ${journal.stuck.join(", ")}`)
     for (const id of await openSessions(repo)) {
       const view = await readSession(repo, id)
       console.log(`session ${id}`)
@@ -59,9 +57,9 @@ async function main() {
       console.log(done.ok ? `discarded ${id}` : `could not discard ${id}: ${JSON.stringify(done)}`)
       if (!done.ok) process.exitCode = 1
     }
-    const left = await setLive(repo, null)
-    if (!left.ok) {
-      console.log(`the live tree is stuck on: ${left.conflicts.join(", ")}`)
+    const { stuck } = await withLive(repo, async (now) => now)
+    if (stuck.length > 0) {
+      console.log(`the live tree is stuck on: ${stuck.join(", ")}`)
       process.exitCode = 1
     }
   }

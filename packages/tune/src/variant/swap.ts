@@ -1,6 +1,4 @@
 import {
-  type Applied,
-  type AppliedFile,
   type BlobId,
   type By,
   type Choice,
@@ -27,10 +25,6 @@ export interface Store {
   merge3(ours: BlobId, base: BlobId, theirs: BlobId): Promise<BlobId | null>
 }
 
-type SwapPlan =
-  | { ok: true; to: Applied | null; writes: readonly FileWrite[] }
-  | { ok: false; conflicts: readonly RepoPath[] }
-
 const CONFLICT = Symbol("conflict")
 
 async function merge3(
@@ -46,55 +40,37 @@ async function merge3(
 }
 
 /**
- * Moves the live tree from `now` to `target` (`null` is no variant), per path that either touches:
- * 1. origin: the live content with the applied variant taken out. A designer edit to an applied
- *    file survives, because origin is then merge3(live, after, before).
- * 2. next: origin with the target put in, merge3(origin, base, variant), which keeps what the
- *    designer changed after the base was taken.
- * 3. a write wherever next differs from live.
- * Any conflicting merge fails the whole plan, so nothing is written.
+ * Each leased path with its shown variant taken out, for a new session's base. A path whose
+ * designer edits overlap the variant's lines falls back to the lease's `before`.
  */
-export async function planSwap(
+export async function designerTree(
   store: Store,
-  now: Applied | null,
-  target: Target | null,
-): Promise<SwapPlan> {
-  const applied = new Map((now?.files ?? []).map((file) => [file.path, file]))
-  const paths = [...new Set([...applied.keys(), ...(target?.files ?? [])])].toSorted()
-  const wanted = new Set(target?.files)
-  const writes: FileWrite[] = []
-  const files: AppliedFile[] = []
-  const conflicts: RepoPath[] = []
-
-  for (const path of paths) {
-    const live = await store.live(path)
-    const was = applied.get(path)
-    const origin = was === undefined ? live : await merge3(store, live, was.after, was.before)
-    if (origin === CONFLICT) {
-      conflicts.push(path)
-      continue
-    }
-    let next = origin
-    if (target !== null && wanted.has(path)) {
-      const merged = await merge3(
-        store,
-        origin,
-        await store.at(target.base, path),
-        await store.at(target.commit, path),
-      )
-      if (merged === CONFLICT) {
-        conflicts.push(path)
-        continue
-      }
-      next = merged
-      files.push({ path, before: origin, after: next })
-    }
-    if (next !== live) writes.push({ path, expect: live, write: next })
+  leases: Journal["leases"],
+): Promise<Map<RepoPath, Content>> {
+  const tree = new Map<RepoPath, Content>()
+  for (const [key, lease] of Object.entries(leases)) {
+    const path = RepoPath.parse(key)
+    const origin = await merge3(store, await store.live(path), lease.after, lease.before)
+    tree.set(path, origin === CONFLICT ? lease.before : origin)
   }
+  return tree
+}
 
-  if (conflicts.length > 0) return { ok: false, conflicts }
-  const to = target === null ? null : { session: target.session, variant: target.variant, files }
-  return { ok: true, to, writes }
+/** The sessions showing any of `paths`, grouped by session. */
+export function holdersOf(leases: Journal["leases"], paths: readonly RepoPath[]): Hold[] {
+  const on = new Map<SessionId, Hold & { files: RepoPath[] }>()
+  for (const path of paths) {
+    const lease = leases[path]
+    if (lease === undefined) continue
+    const hold = on.get(lease.session) ?? {
+      session: lease.session,
+      variant: lease.variant,
+      files: [],
+    }
+    hold.files.push(path)
+    on.set(lease.session, hold)
+  }
+  return [...on.values()]
 }
 
 /** An open session as the planner sees it: its ready variants, in v1..v3 order. */

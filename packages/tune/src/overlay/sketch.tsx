@@ -135,15 +135,8 @@ function AimBoxes({
 }) {
   return (
     <>
-      <div
-        className="aim aim-source"
-        style={boxOf(source)}
-      />
-      <div
-        className="aim aim-target"
-        data-place={place}
-        style={boxOf(target)}
-      >
+      <div className="aim aim-source" style={boxOf(source)} />
+      <div className="aim aim-target" data-place={place} style={boxOf(target)}>
         <span className="aim-place">{SPATIAL[place]}</span>
       </div>
     </>
@@ -216,11 +209,7 @@ export function SketchLayer({
     >
       {aim && drag && !("why" in aim) && (
         <>
-          <AimBoxes
-            source={aim.source}
-            target={aim.to.element}
-            place={aim.to.place}
-          />
+          <AimBoxes source={aim.source} target={aim.to.element} place={aim.to.place} />
           <span
             className="snap-tag"
             style={{ left: drag.to.x - window.scrollX + 12, top: drag.to.y - window.scrollY + 12 }}
@@ -238,11 +227,7 @@ export function SketchLayer({
         </span>
       )}
       {line && tool !== "note" && (
-        <svg
-          width="100%"
-          height="100%"
-          style={{ position: "absolute", inset: 0 }}
-        >
+        <svg width="100%" height="100%" style={{ position: "absolute", inset: 0 }}>
           <Defs />
           {tool === "box" ? (
             <rect
@@ -285,10 +270,7 @@ function Defs() {
         markerHeight="7"
         orient="auto-start-reverse"
       >
-        <path
-          d="M0 0 L10 5 L0 10 z"
-          fill="var(--accent)"
-        />
+        <path d="M0 0 L10 5 L0 10 z" fill="var(--accent)" />
       </marker>
     </defs>
   )
@@ -351,10 +333,7 @@ function Label({
     />
   ) : (
     text !== "" && (
-      <span
-        className="snap-tag"
-        style={{ left: x, top: y }}
-      >
+      <span className="snap-tag" style={{ left: x, top: y }}>
         {text}
       </span>
     )
@@ -379,20 +358,10 @@ export function Marks({
   return (
     <div className="drawn">
       {aim?.kind === "arrow" && (
-        <AimBoxes
-          source={aim.source}
-          target={aim.target}
-          place={aim.place}
-        />
+        <AimBoxes source={aim.source} target={aim.target} place={aim.place} />
       )}
-      <div
-        ref={page}
-        className="drawn-page"
-      >
-        <svg
-          width="1"
-          height="1"
-        >
+      <div ref={page} className="drawn-page">
+        <svg width="1" height="1">
           <Defs />
           {marks.flatMap((mark) =>
             mark.kind === "arrow"
