@@ -192,19 +192,58 @@ export const JobResult = z.discriminatedUnion("kind", [
 ])
 export type JobResult = z.infer<typeof JobResult>
 
-export type VariantView = { id: VariantId; direction: Direction } & (
-  | { state: "pending"; phase: Phase | "queued" }
-  | { state: "ready"; title: string; summary: string; files: readonly RepoPath[]; stat: Stat }
-  | { state: "failed"; reason: string; retryable: boolean }
-)
+/** The current state of one variant in the overlay. */
+export const VariantView = z.discriminatedUnion("state", [
+  z.object({
+    id: VariantId,
+    direction: Direction,
+    state: z.literal("pending"),
+    phase: z.union([Phase, z.literal("queued")]),
+  }),
+  z.object({
+    id: VariantId,
+    direction: Direction,
+    state: z.literal("ready"),
+    title: z.string(),
+    summary: z.string(),
+    files: z.array(RepoPath).transform((files): readonly RepoPath[] => files),
+    stat: Stat,
+  }),
+  z.object({
+    id: VariantId,
+    direction: Direction,
+    state: z.literal("failed"),
+    reason: z.string(),
+    retryable: z.boolean(),
+  }),
+])
+export type VariantView = z.infer<typeof VariantView>
 
 /** Everything the overlay renders, derived once on the bridge. */
-export interface SessionView {
-  id: SessionId
-  /** `edited`: the designer changed a shown file after the tool wrote it. */
-  live: { variant: VariantId; edited: boolean } | null
-  variants: readonly VariantView[]
-  stuck: readonly RepoPath[] | null
-  /** Empty in a first round. */
-  trail: readonly Step[]
-}
+export const SessionView = z.object({
+  id: SessionId,
+  live: z.object({ variant: VariantId, edited: z.boolean() }).nullable(),
+  variants: z.array(VariantView).transform((variants): readonly VariantView[] => variants),
+  stuck: z
+    .array(RepoPath)
+    .transform((files): readonly RepoPath[] => files)
+    .nullable(),
+  trail: z
+    .array(z.object({ variant: VariantId, title: z.string(), feedback: z.string() }))
+    .transform((steps): readonly Step[] => steps),
+})
+export type SessionView = z.infer<typeof SessionView>
+
+/** Application failures the bridge can return to the overlay. */
+export const Refusal = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("busy"), session: SessionId }),
+  z.object({ kind: z.literal("not-found") }),
+  z.object({ kind: z.literal("not-ready"), variant: VariantId }),
+  z.object({
+    kind: z.literal("conflict"),
+    files: z.array(RepoPath).transform((files): readonly RepoPath[] => files),
+  }),
+  z.object({ kind: z.literal("planner-failed"), detail: z.string() }),
+  z.object({ kind: z.literal("invalid"), detail: z.string() }),
+])
+export type Refusal = z.infer<typeof Refusal>

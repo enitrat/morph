@@ -122,7 +122,8 @@ const Themes = z
   })
 export type ThemesConfig = z.infer<typeof Themes>
 
-const CssTokens = z.object({
+/** The supported CSS token source and its theme configuration. */
+export const CssTokens = z.object({
   kind: z.literal("css"),
   /** Ordered: an earlier file wins a block both declare. Each glob's matches are sorted. */
   files: z.array(Glob).min(1),
@@ -130,7 +131,6 @@ const CssTokens = z.object({
   tiers: z.array(z.object({ files: Glob, tier: Tier.exclude(["semantic"]) })).default([]),
   themes: Themes,
 })
-const TokenSource = z.discriminatedUnion("kind", [CssTokens])
 
 export const Naming = z.enum(["own", "container", "nearest"])
 export type Naming = z.infer<typeof Naming>
@@ -190,7 +190,7 @@ export const TuneConfig = z.object({
       "appRoot must be Git-relative",
     )
     .default(""),
-  tokens: TokenSource,
+  tokens: CssTokens,
   components: z.array(ComponentSource),
   /** Project-specific styling instructions supplied to the variant agent. */
   styleRules: z

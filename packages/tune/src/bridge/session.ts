@@ -18,6 +18,7 @@ import {
   Parent,
   Phase,
   type Refine,
+  type Refusal,
   type RepoPath,
   Session,
   SessionId,
@@ -169,13 +170,7 @@ export async function readSession(repo: Repo, id: SessionId): Promise<SessionVie
   }
 }
 
-export type Refusal =
-  | { kind: "not-found" }
-  | { kind: "busy"; session: SessionId }
-  | { kind: "not-ready"; variant: VariantId }
-  | { kind: "conflict"; files: readonly RepoPath[] }
-  | { kind: "planner-failed"; detail: string }
-  | { kind: "invalid"; detail: string }
+export type { Refusal } from "../variant/model"
 
 export type Done<T> = { ok: true; value: T } | ({ ok: false } & Refusal)
 

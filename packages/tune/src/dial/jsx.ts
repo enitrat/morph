@@ -1,3 +1,5 @@
+import { z } from "zod"
+
 import { jsxTags } from "../syntax/source"
 
 /** Where a JSX opening tag sits in a file: `<div …>` from its `<` through its `>`. */
@@ -63,16 +65,19 @@ export function swapClass(text: string, line: number, col: number, from: string,
 }
 
 /** How an attribute's value is written. */
-export type AttributeValue =
-  | { kind: "literal"; value: string | boolean }
-  /** `name={name}`: the enclosing component passes its own prop of the same name on. */
-  | { kind: "forward" }
-  | { kind: "code" }
+export const AttributeValue = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("literal"), value: z.union([z.string(), z.boolean()]) }),
+  z.object({ kind: z.literal("forward") }),
+  z.object({ kind: z.literal("code") }),
+])
+export type AttributeValue = z.infer<typeof AttributeValue>
 
 /** One attribute of an opening tag, or a `{...spread}`, in source order. */
-export type Attribute =
-  | { kind: "attribute"; name: string; value: AttributeValue }
-  | { kind: "spread" }
+export const Attribute = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("attribute"), name: z.string(), value: AttributeValue }),
+  z.object({ kind: z.literal("spread") }),
+])
+export type Attribute = z.infer<typeof Attribute>
 
 interface AttributeAt {
   attribute: Attribute
