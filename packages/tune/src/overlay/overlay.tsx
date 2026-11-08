@@ -338,8 +338,9 @@ export function Overlay() {
 
   return (
     <div className="ui">
-      <style>{`@layer legacy {${OVERLAY_CSS}}`}</style>
+      {/* First, so its `@layer` statement orders the legacy layer after the base reset. */}
       <style>{UI_CSS}</style>
+      <style>{`@layer legacy {${OVERLAY_CSS}}`}</style>
       <MotionConfig reducedMotion="user">
         {state.open && (
           <>
