@@ -1,4 +1,5 @@
 import { type BoxPlace, type Place } from "../inspector/label"
+import { NO_SESSIONS, type SessionEvent, type Sessions, stepSessions } from "./sessions"
 
 /** A point in document coordinates, so a mark stays on its spot while the page scrolls. */
 export interface Spot {
@@ -87,6 +88,8 @@ export interface State {
   lens: Lens
   sidebar: Sidebar
   composer: Composer
+  /** Variant sessions: the latest page view and each pin. They outlive closing the overlay. */
+  sessions: Sessions
 }
 
 export const PANEL_WIDTH = 340
@@ -99,6 +102,7 @@ export const initial: State = {
   lens: "off",
   sidebar: { kind: "closed" },
   composer: null,
+  sessions: NO_SESSIONS,
 }
 
 export type Event =
@@ -123,6 +127,7 @@ export type Event =
   | { kind: "relabeled"; key: number; text: string }
   | { kind: "unmarked"; key: number }
   | { kind: "escape" }
+  | SessionEvent
 
 const opened = (state: State, tab: Tab, auto = false): Sidebar =>
   state.sidebar.kind === "open"
@@ -152,11 +157,17 @@ const sameHover = (a: Hover, b: Hover) =>
       ? "element" in b && a.element === b.element
       : "elements" in b && a.elements === b.elements))
 
-/** Esc backs out one layer: tool, composer, selection, narrowing, frame, then the inspector. */
+const withSessions = (state: State, event: SessionEvent): State => ({
+  ...state,
+  sessions: stepSessions(state.sessions, event),
+})
+
+/** Esc backs out one layer: tool, composer, card, selection, narrowing, frame, then the inspector. */
 function escape(state: State): State {
   const { composer, selection, sidebar } = state
   if (composer?.tool) return { ...state, composer: { ...composer, tool: null } }
   if (composer !== null) return { ...state, composer: null }
+  if (state.sessions.card !== null) return withSessions(state, { kind: "card", id: null })
   if (state.lens === "latched") return { ...state, lens: "off" }
   if (selection.kind === "element") return { ...state, selection: { kind: "none" } }
   if (selection.kind === "frame" && selection.frame.narrow !== null)
@@ -169,7 +180,7 @@ function escape(state: State): State {
 function step(state: State, event: Event): State {
   switch (event.kind) {
     case "toggled":
-      return state.open ? initial : { ...initial, open: true }
+      return { ...initial, open: !state.open, sessions: { ...state.sessions, card: null } }
     case "hovered":
       return sameHover(state.hover, event.hover) ? state : { ...state, hover: event.hover }
     case "pageLeft":
@@ -177,7 +188,7 @@ function step(state: State, event: Event): State {
     case "selected":
       // Picking from a frame keeps the inspector it opened: the designer is reading there.
       return {
-        ...state,
+        ...withSessions(state, { kind: "card", id: null }),
         selection: { kind: "element", element: event.element },
         sidebar: state.sidebar.kind === "open" ? { ...state.sidebar, auto: false } : state.sidebar,
         composer: null,
@@ -260,10 +271,39 @@ function step(state: State, event: Event): State {
       }))
     case "escape":
       return escape(state)
+    case "asked":
+      // The designer goes on to the next component while this one generates.
+      return {
+        ...withSessions(state, event),
+        composer: null,
+        selection: { kind: "none" },
+      }
+    case "card":
+    case "cycled": {
+      const next = withSessions(state, event)
+      return next.sessions.card === null
+        ? next
+        : { ...next, composer: null, selection: { kind: "none" } }
+    }
+    default:
+      return withSessions(state, event)
   }
 }
 
+/** Session events from polls and answers land while the overlay is closed too. */
+const ANY_TIME = new Set<Event["kind"]>([
+  "toggled",
+  "page",
+  "rejoined",
+  "refined",
+  "dropped",
+  "measured",
+  "retargeted",
+  "notice",
+  "unnoticed",
+])
+
 export function reduce(state: State, event: Event): State {
-  if (!state.open && event.kind !== "toggled") return state
+  if (!state.open && !ANY_TIME.has(event.kind)) return state
   return step(state, event)
 }
