@@ -1,4 +1,4 @@
-import { type DesignSystemWire, isPlumbing } from "../core"
+import { type DesignSystemWire, isPlumbing } from "../core/design-system"
 import { type Catalog, catalogOf, labelOf, shortOf } from "../inspector/label"
 import { rowOf, seenOf } from "../inspector/target"
 import { type Answer, bridge } from "./bridge"

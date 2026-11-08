@@ -1,19 +1,13 @@
 import { describe, expect, it } from "vitest"
 
-import {
-  applyEdits,
-  buildTokens,
-  chainOf,
-  editError,
-  impactOf,
-  displayOf,
-  previewCss,
-  resolveToken,
-  stepsFor,
-  tokensReadIn,
-  type TokenEdit,
-  type TokenName,
-} from "."
+import { applyEdits } from "./write"
+import { buildTokens, chainOf, resolveToken } from "./graph"
+import { editError, stepsFor, type TokenEdit } from "./edit"
+import { impactOf } from "./impact"
+import { displayOf } from "./display"
+import { previewCss } from "./preview"
+import { tokensReadIn } from "./usage"
+import { type TokenName } from "./design-system"
 import { readDesignSystem } from "../bridge/design-system"
 import { CONFIG, DARK, LIGHT, REPO } from "../bridge/test-fixtures"
 

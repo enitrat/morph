@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 
-import { type ThemeModel, themeModelOf, type ThemeName } from "../core"
+import { type ThemeModel, themeModelOf } from "../core/design-system"
+import { type ThemeName } from "../core/config"
 import { loadTokens } from "./catalog"
 import { EDGE, PANEL_WIDTH, TAB } from "./geometry"
 import { endThemePreview, previewTheme } from "./preview"

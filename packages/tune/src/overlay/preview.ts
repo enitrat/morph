@@ -1,4 +1,5 @@
-import { activationOf, type ThemeModel, themeNamed, type ThemeName } from "../core"
+import { activationOf, type ThemeModel, themeNamed } from "../core/design-system"
+import { type ThemeName } from "../core/config"
 import { PREVIEW_STYLE_ID } from "../inspector/probe"
 import { SENTINEL } from "../widget/sentinel"
 

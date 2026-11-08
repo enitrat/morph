@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest"
 
 import { CONFIG, LIGHT, repoCatalog } from "../bridge/test-fixtures"
-import { buildTokens, themeModelOf } from "../core"
+import { buildTokens } from "../core/graph"
+import { themeModelOf } from "../core/design-system"
 import { declarationsOf, scalesOf, stepsOf, swapError, utilityOf } from "./utilities"
 
 const scales = scalesOf(repoCatalog().tokens)

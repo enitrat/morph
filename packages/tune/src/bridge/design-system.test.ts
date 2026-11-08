@@ -3,7 +3,9 @@ import { join } from "node:path"
 
 import { describe, expect, it } from "vitest"
 
-import { dependentsOf, impactOf, type TokenName } from "../core"
+import { dependentsOf } from "../core/graph"
+import { impactOf } from "../core/impact"
+import { type TokenName } from "../core/design-system"
 import { buildDesignSystem, importableOf, readImportable } from "./design-system"
 import { CONFIG, REPO, repoCatalog } from "./test-fixtures"
 

@@ -1,4 +1,4 @@
-import { type TokenName } from "../core"
+import { type TokenName } from "../core/design-system"
 
 export type ReadState =
   | "rest"

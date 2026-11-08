@@ -3,15 +3,10 @@ import { readFile, writeFile } from "node:fs/promises"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
 import { join } from "node:path"
 
-import {
-  applyEdits,
-  declarationFor,
-  type DesignSystemWire,
-  editError,
-  normalizeValue,
-  type TokenEdit,
-  toWire,
-} from "../core"
+import { applyEdits } from "../core/write"
+import { declarationFor, type DesignSystemWire, toWire } from "../core/design-system"
+import { editError, type TokenEdit } from "../core/edit"
+import { normalizeValue } from "../core/graph"
 import { classesIn, swapClass } from "../dial/jsx"
 import { type Dialed, type DialWrite } from "../dial/model"
 import { scalesOf, swapError } from "../dial/utilities"

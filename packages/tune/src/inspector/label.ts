@@ -1,4 +1,4 @@
-import { type Naming } from "../core"
+import { type Naming } from "../core/config"
 
 /** A catalog entry as the overlay reads it: its title, how it names, and its React names. */
 interface CatalogEntry {

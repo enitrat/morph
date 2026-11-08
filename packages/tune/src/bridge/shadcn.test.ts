@@ -3,7 +3,8 @@ import { join } from "node:path"
 
 import { describe, expect, it } from "vitest"
 
-import { declarationFor, editError, stepsFor, themeNamed, type TokenName } from "../core"
+import { declarationFor, themeNamed, type TokenName } from "../core/design-system"
+import { editError, stepsFor } from "../core/edit"
 import { ThemeName, TuneConfig, type TuneConfigInput } from "../core/config"
 import { scalesOf } from "../dial/utilities"
 import { buildDesignSystem, componentFor, importableOf, snapshotOf } from "./design-system"

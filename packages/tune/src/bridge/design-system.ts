@@ -3,16 +3,16 @@ import { globSync, readdirSync, readFileSync } from "node:fs"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
 import { join, matchesGlob, posix } from "node:path"
 
+import { buildTokens } from "../core/graph"
 import {
-  buildTokens,
   type Component,
   type DesignSystem,
   type PropSource,
   themeModelOf,
   type TokenFile,
   type TokenName,
-  tokensReadIn,
-} from "../core"
+} from "../core/design-system"
+import { tokensReadIn } from "../core/usage"
 import { type ComponentSource, type TuneConfig } from "../core/config"
 import { moduleNames } from "../syntax/source"
 

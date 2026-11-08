@@ -1,19 +1,15 @@
+import { chainOf, normalizeValue } from "../core/graph"
 import {
-  chainOf,
   type Component,
-  currentValue,
-  type Display,
-  displayOf,
-  editError,
-  impactOf,
   isUtilityAlias,
   type Scope,
-  normalizeValue,
-  stepsFor,
-  type ThemeName,
   type TokenName,
   type Tokens,
-} from "../core"
+} from "../core/design-system"
+import { currentValue, editError, stepsFor } from "../core/edit"
+import { type Display, displayOf } from "../core/display"
+import { impactOf } from "../core/impact"
+import { type ThemeName } from "../core/config"
 import { type Read } from "../inspector/types"
 import { type SourceLoc } from "../variant/model"
 import {

@@ -1,14 +1,8 @@
-import {
-  isThemeToken,
-  lengthOf,
-  MULTIPLES,
-  normalizeValue,
-  resolveToken,
-  stepsFor,
-  type ThemeName,
-  type TokenName,
-  type Tokens,
-} from "../core"
+import { isThemeToken, type TokenName, type Tokens } from "../core/design-system"
+import { lengthOf } from "../core/display"
+import { MULTIPLES, stepsFor } from "../core/edit"
+import { normalizeValue, resolveToken } from "../core/graph"
+import { type ThemeName } from "../core/config"
 
 /** The rows of the Fine-tune panel, in the order a designer reads an element. */
 export const GROUPS = ["Size", "Padding", "Gap", "Radius", "Fill", "Text", "Border"] as const

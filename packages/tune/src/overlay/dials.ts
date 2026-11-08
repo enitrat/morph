@@ -1,16 +1,15 @@
 import {
   activationOf,
-  dependentsOf,
   fromWire,
-  previewCss,
-  referencesOf,
   type Scope,
   type ThemeModel,
   themeNamed,
-  type ThemeName,
   type TokenGraph,
   type TokenName,
-} from "../core"
+} from "../core/design-system"
+import { dependentsOf, referencesOf } from "../core/graph"
+import { previewCss } from "../core/preview"
+import { type ThemeName } from "../core/config"
 import {
   type Context,
   questionOf,

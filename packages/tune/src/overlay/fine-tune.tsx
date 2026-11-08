@@ -9,7 +9,8 @@ import {
   useState,
 } from "react"
 
-import { type Display, type Scope } from "../core"
+import { type Display } from "../core/display"
+import { type Scope } from "../core/design-system"
 import { type Row, type Step } from "../dial/rows"
 import { type Dial, type Dialed, deriveRows } from "./dials"
 import { Icon } from "./icons"

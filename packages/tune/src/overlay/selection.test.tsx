@@ -4,7 +4,7 @@ import { createElement } from "react"
 import { createRoot } from "react-dom/client"
 import { afterEach, expect, it, vi } from "vitest"
 
-import { themeModelOf } from "../core"
+import { themeModelOf } from "../core/design-system"
 import { ThemeName } from "../core/config"
 import { connect } from "./bridge"
 import { catalogNow, invalidateCatalog } from "./catalog"

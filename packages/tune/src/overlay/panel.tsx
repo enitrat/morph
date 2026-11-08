@@ -1,6 +1,7 @@
 import { type Dispatch, useEffect, useRef, useState } from "react"
 
-import { type ThemeModel, type ThemeName } from "../core"
+import { type ThemeModel } from "../core/design-system"
+import { type ThemeName } from "../core/config"
 import { boxCaption } from "../inspector/label"
 import {
   type Choice,

@@ -12,7 +12,7 @@ import {
 } from "react"
 import { z } from "zod"
 
-import { type ThemeModel, themeOfRoot } from "../core"
+import { type ThemeModel, themeOfRoot } from "../core/design-system"
 import { followBoxes } from "../inspector/boxes"
 import { isPointShortcut, isTyping, startPointing } from "../inspector/pointer"
 import { above, below } from "../inspector/target"

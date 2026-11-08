@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { DARK, CONFIG } from "../bridge/test-fixtures"
-import { themeModelOf, type TokenName } from "../core"
+import { themeModelOf, type TokenName } from "../core/design-system"
 import { questionOf, type Track } from "../dial/rows"
 import { connect } from "./bridge"
 import { Dial } from "./dials"

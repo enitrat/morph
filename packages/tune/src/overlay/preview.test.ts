@@ -2,7 +2,7 @@
 import { expect, it } from "vitest"
 
 import { CONFIG, DARK } from "../bridge/test-fixtures"
-import { themeModelOf } from "../core"
+import { themeModelOf } from "../core/design-system"
 import { endThemePreview, previewTheme } from "./preview"
 
 it("shows a light page in dark while a Dark track is in use, then gives the page back", () => {

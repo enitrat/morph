@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest"
 
 import { DARK, LIGHT, repoCatalog } from "../bridge/test-fixtures"
-import { parseHex, type TokenName } from "../core"
+import { parseHex } from "../core/color"
+import { type TokenName } from "../core/design-system"
 import { lightness } from "../core/color"
 import { resolve } from "../core/graph"
 import { type Read } from "../inspector/types"

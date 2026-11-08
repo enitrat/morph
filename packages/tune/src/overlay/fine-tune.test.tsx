@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client"
 import { afterEach, expect, it, vi } from "vitest"
 
 import { CONFIG, LIGHT, repoCatalog } from "../bridge/test-fixtures"
-import { themeModelOf, toWire } from "../core"
+import { themeModelOf, toWire } from "../core/design-system"
 import { connect } from "./bridge"
 import { invalidateCatalog } from "./catalog"
 import { FineTune } from "./fine-tune"
