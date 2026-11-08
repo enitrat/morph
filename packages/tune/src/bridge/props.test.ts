@@ -15,10 +15,14 @@ import { dirname, join } from "node:path"
 
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { operations } from "../protocol"
 import { RepoPath, SessionId } from "../variant/model"
+import { propControls } from "./controls"
 import { writeJson } from "./disk"
+import config from "./fixtures/acme/tune.config"
 import { homeOf } from "./git"
-import { componentUses, propControls, writeProp } from "./props"
+import { tuneHandler } from "./handler"
+import { componentUses, writeProp } from "./props"
 import { MODULES, openHost, REPO, SPAWNING_TEST_MS } from "./test-fixtures"
 
 vi.setConfig({ testTimeout: SPAWNING_TEST_MS })
@@ -100,6 +104,90 @@ describe("writing a prop", () => {
       '-      <Button size="sm">Save</Button>',
       '+      <Button size="lg">Save</Button>',
     ])
+  })
+
+  it("keeps an applied edit and reports a formatter failure through the handler", async () => {
+    const { root } = await fixture()
+    const handle = tuneHandler(
+      { ...config, checks: { ...config.checks, format: { bin: "missing-formatter", args: [] } } },
+      { dir: root, bundler: { symbolicate: async () => [] } },
+    )
+    vi.stubEnv("NODE_ENV", "development")
+    try {
+      const response = await handle(
+        new Request("http://localhost:3000/api/tune/prop", {
+          method: "POST",
+          headers: { host: "localhost:3000", "x-tune": "1" },
+          body: JSON.stringify({ ...write, name: "size", to: "lg" }),
+        }),
+        "prop",
+      )
+      expect(response.status).toBe(200)
+      expect(operations.prop.response.parse(await response.json())).toEqual({
+        changed: true,
+        site,
+        warning: expect.stringContaining("formatting failed"),
+      })
+      expect(readFileSync(join(root, PAGE), "utf8")).toBe(
+        PAGE_SOURCE.replace('size="sm"', 'size="lg"'),
+      )
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
+  it("does not format an unchanged prop through the handler", async () => {
+    const { root } = await fixture()
+    const handle = tuneHandler(
+      { ...config, checks: { ...config.checks, format: { bin: "missing-formatter", args: [] } } },
+      { dir: root, bundler: { symbolicate: async () => [] } },
+    )
+    vi.stubEnv("NODE_ENV", "development")
+    try {
+      const response = await handle(
+        new Request("http://localhost:3000/api/tune/prop", {
+          method: "POST",
+          headers: { host: "localhost:3000", "x-tune": "1" },
+          body: JSON.stringify({ ...write, name: "size", to: "sm" }),
+        }),
+        "prop",
+      )
+      expect(response.status).toBe(200)
+      expect(operations.prop.response.parse(await response.json())).toEqual({
+        changed: false,
+        site,
+      })
+      expect(readFileSync(join(root, PAGE), "utf8")).toBe(PAGE_SOURCE)
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
+  it("keeps source read failures as HTTP crashes with their original detail", async () => {
+    const { root } = await fixture()
+    rmSync(join(root, PAGE))
+    mkdirSync(join(root, PAGE))
+    const handle = tuneHandler(config, {
+      dir: root,
+      bundler: { symbolicate: async () => [] },
+    })
+    vi.stubEnv("NODE_ENV", "development")
+    try {
+      const response = await handle(
+        new Request("http://localhost:3000/api/tune/prop", {
+          method: "POST",
+          headers: { host: "localhost:3000", "x-tune": "1" },
+          body: JSON.stringify({ ...write, name: "size", to: "lg" }),
+        }),
+        "prop",
+      )
+      expect(response.status).toBe(500)
+      expect(await response.json()).toEqual({
+        error: { kind: "crashed", detail: expect.stringContaining("EISDIR") },
+      })
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 
   it("refuses a value the controls do not offer, and a prop the code computes", async () => {

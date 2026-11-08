@@ -72,16 +72,34 @@ export function commandAt(root: string, workspace: string, app: string, bin: str
   return candidates.find(existsSync) ?? candidates[0] ?? bin
 }
 
-export async function formatFile(repo: Host, path: string): Promise<void> {
+class FormatFailed extends Error {
+  readonly tag = "FormatFailed" as const
+
+  constructor(
+    readonly path: string,
+    override readonly cause: unknown,
+  ) {
+    super(`Could not format ${path}`, { cause })
+  }
+}
+
+/** Formats a file with the host's configured command and retains the original failure. */
+export async function formatFile(
+  repo: Host,
+  path: string,
+): Promise<{ ok: true } | { ok: false; error: FormatFailed }> {
   const { bin, args } = repo.config.checks.format
   const cwd = join(repo.root, repo.config.appRoot)
-  await promisify(execFile)(
-    commandAt(repo.root, repo.config.appRoot, repo.config.appRoot, bin),
-    [...args, relative(cwd, join(repo.root, path))],
-    {
-      cwd,
-    },
-  )
+  try {
+    await promisify(execFile)(
+      commandAt(repo.root, repo.config.appRoot, repo.config.appRoot, bin),
+      [...args, relative(cwd, join(repo.root, path))],
+      { cwd },
+    )
+    return { ok: true }
+  } catch (cause) {
+    return { ok: false, error: new FormatFailed(path, cause) }
+  }
 }
 
 /** `href="#"`, `href=""`, `href={"#"}`: a link that goes nowhere. */
