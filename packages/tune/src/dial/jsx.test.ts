@@ -59,3 +59,15 @@ it("ignores tag-shaped comments and handles nested braces in attributes", () => 
   const changed = swapClass(text, 2, 3, "active", "selected")
   expect(changed).toEqual({ ok: true, changed: true, text: text.replace("active", "selected") })
 })
+
+it("only edits template classes separated from interpolations", () => {
+  const text = "const Demo = () => <div className={`p-4${suffix} ${prefix}p-6 p-7 ${value} p-8`} />"
+  expect(classesIn(text, 1, 20)).toEqual(["p-7", "p-8"])
+  expect(swapClass(text, 1, 20, "p-4", "p-5")).toMatchObject({ ok: false })
+  expect(swapClass(text, 1, 20, "p-6", "p-5")).toMatchObject({ ok: false })
+  expect(swapClass(text, 1, 20, "p-7", "p-9")).toEqual({
+    ok: true,
+    changed: true,
+    text: text.replace("p-7", "p-9"),
+  })
+})

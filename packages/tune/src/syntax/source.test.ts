@@ -35,3 +35,24 @@ const Demo = () => <><Action /><Action /></>`,
     ),
   ).toBe(0)
 })
+
+it("deduplicates mixed default and named exports without offering a default-only named import", () => {
+  expect(
+    moduleNames(`export function Button(){return <button/>}; export default Button`, new Set()),
+  ).toMatchObject({ exports: ["Button"], namedExports: ["Button"] })
+  expect(moduleNames(`function Button(){}; export default Button`, new Set())).toMatchObject({
+    exports: ["Button"],
+    namedExports: [],
+  })
+})
+
+it("reads numeric and statically computed CVA keys", async () => {
+  const { cvaVariants } = await import("./source")
+  const text = `
+    const styles = cva('', { variants: { columns: { 1: 'grid-cols-1', 2: 'grid-cols-2', ['3']: 'grid-cols-3', [dynamic]: 'unknown' } }, defaultVariants: { columns: 1 } })
+    export function Grid(props: VariantProps<typeof styles>) { return <div /> }
+  `
+  expect(cvaVariants(text, "Grid")).toEqual([
+    { name: "columns", options: ["1", "2", "3"], fallback: "1" },
+  ])
+})

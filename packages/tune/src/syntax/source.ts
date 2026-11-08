@@ -29,6 +29,7 @@ function walk(root: t.Node): t.Node[] {
 function nameOf(value: t.Node | null | undefined): string | undefined {
   if (value?.type === "Identifier" || value?.type === "JSXIdentifier") return value.name
   if (value?.type === "StringLiteral") return value.value
+  if (value?.type === "NumericLiteral") return String(value.value)
   return undefined
 }
 const upper = (name: string | undefined): name is string =>
@@ -92,13 +93,23 @@ export function moduleNames(
       if (upper(name)) exports.push(name)
     }
   }
-  return { exports, namedExports, imports }
+  return {
+    exports: [...new Set(exports)],
+    namedExports: [...new Set(namedExports)],
+    imports,
+  }
 }
 
 function properties(object: t.Node | undefined): [string, t.Expression | t.PatternLike][] {
   if (object?.type !== "ObjectExpression") return []
   return object.properties.flatMap((property): [string, t.Expression | t.PatternLike][] => {
-    if (property.type !== "ObjectProperty" || property.computed) return []
+    if (property.type !== "ObjectProperty") return []
+    if (
+      property.computed &&
+      property.key.type !== "StringLiteral" &&
+      property.key.type !== "NumericLiteral"
+    )
+      return []
     const key = nameOf(property.key)
     return key ? [[key, property.value]] : []
   })
@@ -206,9 +217,18 @@ export function jsxTags(text: string): Tag[] {
         !attribute.value
       )
         return []
-      return walk(attribute.value).flatMap((item) =>
-        item.type === "StringLiteral" || item.type === "TemplateElement" ? (span(item) ?? []) : [],
-      )
+      return walk(attribute.value).flatMap((item) => {
+        if (item.type === "StringLiteral") return span(item) ?? []
+        if (item.type !== "TemplateLiteral") return []
+        return item.quasis.flatMap((quasi, index) => {
+          const at = span(quasi)
+          if (!at) return []
+          const raw = text.slice(at.start, at.end)
+          const start = index > 0 ? (raw.search(/\s/) < 0 ? raw.length : raw.search(/\s/)) : 0
+          const end = index < item.expressions.length ? raw.search(/\S*$/) : raw.length
+          return start < end ? [{ start: at.start + start, end: at.start + end }] : []
+        })
+      })
     })
     return [
       {

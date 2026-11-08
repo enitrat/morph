@@ -96,3 +96,28 @@ it("identifies a default component without offering a named import", () => {
   expect(design.components[0]?.exports).toEqual(["Button"])
   expect(importableOf(design).flatMap(({ names }) => names)).not.toContain("Button")
 })
+
+it("discovers a component exported both by name and as default once", () => {
+  const config = {
+    ...CONFIG,
+    components: [
+      {
+        kind: "files" as const,
+        files: "src/*.tsx",
+        group: "ui",
+        naming: "own" as const,
+        href: null,
+        importFrom: "@ui/button",
+        props: "none" as const,
+      },
+    ],
+  }
+  const design = buildDesignSystem(
+    config,
+    new Map([
+      ["src/button.tsx", "export function Button(){return <button/>}; export default Button"],
+    ]),
+  )
+  expect(design.components[0]?.exports).toEqual(["Button"])
+  expect(importableOf(design).flatMap(({ names }) => names)).toEqual(["Button"])
+})
