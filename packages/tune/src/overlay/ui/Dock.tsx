@@ -69,7 +69,7 @@ export function Notice({ state, center }: { state: State; center: number }) {
             initial={{ opacity: 0, y: reduce ? 0 : 6 }}
             animate={{ opacity: 1, y: 0, transition: { duration: dur.enter, ease: ease.out } }}
             exit={{ opacity: 0, transition: { duration: dur.exit } }}
-            className={`glass flex w-max max-w-[520px] items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] ${
+            className={`glass flex w-max max-w-[520px] flex-none items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] ${
               notice.tone === "warn" ? "text-warn" : "text-ink"
             }`}
           >

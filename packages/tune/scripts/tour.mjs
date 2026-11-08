@@ -156,7 +156,7 @@ try {
   await page.mouse.up()
   await page.keyboard.type("tighter")
   await page.keyboard.press("Enter")
-  await inTune("button", { hasText: "Generate" }).click()
+  // Generate would start real agent runs; scripts/session-tour.mjs covers sessions.
   await shot("composer")
 } finally {
   await browser.close()

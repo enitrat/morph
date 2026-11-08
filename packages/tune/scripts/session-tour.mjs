@@ -40,7 +40,10 @@ async function until(what, test, timeout = GENERATE_MS) {
   for (;;) {
     const view = await bridge("page")
     const now = view.sessions
-      .map((s) => `${s.id.slice(0, 4)}:${s.place.kind}[${s.variants.map((v) => (v.state === "pending" ? v.phase : v.state)).join(",")}]`)
+      .map(
+        (s) =>
+          `${s.id.slice(0, 4)}:${s.place.kind}[${s.variants.map((v) => (v.state === "pending" ? v.phase : v.state)).join(",")}]`,
+      )
       .join(" ")
     if (now !== last) log(what, "·", now || "no sessions")
     last = now
@@ -78,7 +81,10 @@ async function clickAt(locator, dy = 0) {
 const pin = (number) => inTune(`button[aria-label^="Pin ${number},"]`)
 const chip = (name) => inTune("[role=toolbar] button[aria-pressed]", { hasText: name })
 const card = () => inTune("[role=dialog][aria-label^=Pin]")
-const row = (letter) => card().locator("button[aria-pressed]").filter({ hasText: new RegExp(`^${letter}`) })
+const row = (letter) =>
+  card()
+    .locator("button[aria-pressed]")
+    .filter({ hasText: new RegExp(`^${letter}`) })
 
 async function askAbout(locator, words, dy = 0) {
   await scrollTo(locator)
@@ -140,14 +146,20 @@ try {
 
   await pin(1).click()
   await row("B").click()
-  await until("feature on B", (v) => v.sessions[0]?.place.kind === "shown" && v.sessions[0].place.variant === "v2")
+  await until(
+    "feature on B",
+    (v) => v.sessions[0]?.place.kind === "shown" && v.sessions[0].place.variant === "v2",
+  )
   await page.waitForTimeout(2500)
   await shot("feature-flipped-B")
 
   await page.keyboard.press("]")
   await page.waitForTimeout(800)
   await page.keyboard.press("2")
-  await until("button on B", (v) => v.sessions[1]?.place.kind === "shown" && v.sessions[1].place.variant === "v2")
+  await until(
+    "button on B",
+    (v) => v.sessions[1]?.place.kind === "shown" && v.sessions[1].place.variant === "v2",
+  )
   await page.waitForTimeout(2500)
   await shot("button-flipped-B")
 
@@ -202,7 +214,7 @@ try {
   await until("feature discarded", (v) => v.sessions.length === 1)
   await page.waitForTimeout(2500)
   await shot("hero-returns-after-discard")
-  await pin(3).click()
+  await chip("Headline").click()
   await card().getByRole("button", { name: "Discard" }).click()
   await until("all discarded", (v) => v.sessions.length === 0)
   await page.waitForTimeout(1500)
