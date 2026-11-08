@@ -62,7 +62,7 @@ export const FileWrite = z.object({ path: RepoPath, expect: Content, write: Cont
 export type FileWrite = z.infer<typeof FileWrite>
 
 /** The write-ahead journal: written before any working-tree file, by one writer under a lock. */
-export const Journal = z.discriminatedUnion("kind", [
+export const AppliedJournal = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("steady"), applied: Applied.nullable() }),
   z.object({
     kind: z.literal("moving"),
@@ -76,7 +76,68 @@ export const Journal = z.discriminatedUnion("kind", [
     conflicts: z.array(RepoPath).readonly(),
   }),
 ])
+export type AppliedJournal = z.infer<typeof AppliedJournal>
+
+/** The journal's clock: orders wants and sessions, so no two processes compare wall clocks. */
+export const Seq = z.int().nonnegative().brand<"Seq">()
+export type Seq = z.infer<typeof Seq>
+
+/** One file a shown variant holds: `before` is the file without it, `after` what the tool last wrote. */
+export const Lease = z.object({
+  session: SessionId,
+  variant: VariantId,
+  before: Content,
+  after: Content,
+})
+export type Lease = z.infer<typeof Lease>
+
+/** Who asked for a want. `auto` shows a session's first ready variant and never displaces a designer. */
+export const By = z.enum(["auto", "designer"])
+export type By = z.infer<typeof By>
+
+/** What a session should show. A session with no want shows its first ready variant once one is. */
+export const Want = z.object({ choice: Choice, by: By, at: Seq })
+export type Want = z.infer<typeof Want>
+
+/**
+ * The write-ahead journal, written only under the live lock and before any working-tree file.
+ * `leases` is keyed by path, so a file has one holder at most. `moving` lists the writes of a move
+ * that may not all be on disk yet; `want` and `leases` already describe where that move ends.
+ */
+export const Journal = z
+  .object({
+    seq: Seq,
+    want: z.record(SessionId, Want),
+    leases: z.record(RepoPath, Lease),
+    /** Paths a recovery found holding neither the expected nor the written content. */
+    stuck: z.array(RepoPath).readonly(),
+    moving: z.array(FileWrite).readonly().nullable(),
+  })
+  .refine((journal) => {
+    const variants = new Map<SessionId, VariantId>()
+    for (const { session, variant } of Object.values(journal.leases)) {
+      if ((variants.get(session) ?? variant) !== variant) return false
+      variants.set(session, variant)
+    }
+    return true
+  }, "a session's leases name two variants")
 export type Journal = z.infer<typeof Journal>
+
+export const EMPTY_JOURNAL: Journal = {
+  seq: Seq.parse(0),
+  want: {},
+  leases: {},
+  stuck: [],
+  moving: null,
+}
+
+/** A session showing a variant over files another session wants. */
+export const Hold = z.object({
+  session: SessionId,
+  variant: VariantId,
+  files: z.array(RepoPath).min(1).readonly(),
+})
+export type Hold = z.infer<typeof Hold>
 
 /** A JSX call site in the repo, 1-based. */
 export const SourceLoc = z.object({
@@ -94,14 +155,14 @@ export const Anchor = z.object({
 })
 export type Anchor = z.infer<typeof Anchor>
 
-const Place = z.enum(["before", "after", "inside"])
+const MarkPlace = z.enum(["before", "after", "inside"])
 const BoxPlace = z.enum(["before", "after", "inside", "around"])
 
 export const Mark = z.discriminatedUnion("kind", [
   /** "a Notice goes here" */
   z.object({ kind: z.literal("box"), at: Anchor, place: BoxPlace, label: z.string() }),
   /** this element moves there */
-  z.object({ kind: z.literal("arrow"), from: Anchor, to: Anchor, place: Place }),
+  z.object({ kind: z.literal("arrow"), from: Anchor, to: Anchor, place: MarkPlace }),
   z.object({ kind: z.literal("note"), at: Anchor, text: z.string() }),
 ])
 export type Mark = z.infer<typeof Mark>
@@ -239,6 +300,10 @@ export type SessionView = z.infer<typeof SessionView>
 /** Application failures the bridge can return to the overlay. */
 export const Refusal = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("busy"), session: SessionId }),
+  /** Other sessions show the files this needs. */
+  z.object({ kind: z.literal("held"), on: z.array(Hold).min(1).readonly() }),
+  /** A keep named a variant the session neither shows nor waits to show. */
+  z.object({ kind: z.literal("not-shown"), variant: VariantId }),
   z.object({ kind: z.literal("not-found") }),
   z.object({ kind: z.literal("not-ready"), variant: VariantId }),
   z.object({

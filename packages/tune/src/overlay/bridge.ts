@@ -94,6 +94,9 @@ export const bridge = {
 
 export function explain(error: BridgeError): string {
   if (error.kind === "busy") return "A Tune session is open. Keep or discard it first."
+  if (error.kind === "held")
+    return `Another Ask shows ${[...new Set(error.on.flatMap((hold) => hold.files))].join(", ")}. Discard or keep it first.`
+  if (error.kind === "not-shown") return `${error.variant} is not on the page.`
   if (error.kind === "invalid") return error.detail
   if (error.kind === "not-found") return "That session is gone. Start again."
   if (error.kind === "not-ready") return `${error.variant} is not ready yet.`

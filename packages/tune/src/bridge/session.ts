@@ -14,7 +14,7 @@ import {
   type Choice,
   type Direction,
   JobResult,
-  type Journal,
+  type AppliedJournal,
   Parent,
   Phase,
   type Refine,
@@ -144,7 +144,8 @@ function viewOf(direction: Direction, id: VariantId, job: JobState): VariantView
   return { id, direction, state: "ready", title, summary, files, stat }
 }
 
-const appliedOf = (journal: Journal) => (journal.kind === "moving" ? journal.to : journal.applied)
+const appliedOf = (journal: AppliedJournal) =>
+  journal.kind === "moving" ? journal.to : journal.applied
 
 export async function readSession(repo: Repo, id: SessionId): Promise<SessionView | null> {
   const session = await readSessionFile(repo, id)

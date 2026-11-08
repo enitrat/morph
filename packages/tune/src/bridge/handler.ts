@@ -38,6 +38,8 @@ const frameIn = (origin: string) =>
 const STATUS: Record<Refusal["kind"], number> = {
   "not-found": 404,
   busy: 409,
+  held: 409,
+  "not-shown": 409,
   "not-ready": 409,
   conflict: 409,
   "planner-failed": 502,

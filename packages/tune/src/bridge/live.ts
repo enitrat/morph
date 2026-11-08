@@ -8,7 +8,7 @@ import { dirname, join } from "node:path"
 import {
   type Applied,
   type FileWrite,
-  Journal,
+  AppliedJournal,
   type RepoPath,
   type SessionId,
   type Target,
@@ -34,12 +34,12 @@ async function replace(file: string, bytes: Buffer | string, scratch: string): P
 }
 
 /** The journal as it is on disk, read without the lock: a swap may be under way. */
-export async function readJournal(repo: Repo): Promise<Journal> {
+export async function readJournal(repo: Repo): Promise<AppliedJournal> {
   const text = await readFile(journalPath(repo), "utf8").catch(absent)
-  return text === null ? { kind: "steady", applied: null } : Journal.parse(JSON.parse(text))
+  return text === null ? { kind: "steady", applied: null } : AppliedJournal.parse(JSON.parse(text))
 }
 
-async function writeJournal(repo: Repo, journal: Journal): Promise<void> {
+async function writeJournal(repo: Repo, journal: AppliedJournal): Promise<void> {
   await replace(journalPath(repo), JSON.stringify(journal), home(repo))
 }
 
@@ -64,10 +64,10 @@ async function put(repo: Repo, { path, write }: FileWrite): Promise<void> {
   } else await replace(file, await readBlob(repo, write), home(repo))
 }
 
-type Settled = Exclude<Journal, { kind: "moving" }>
+type Settled = Exclude<AppliedJournal, { kind: "moving" }>
 
 /** Finishes a swap a crash interrupted: a file already holding `write` is done, one holding `expect` is written. */
-async function recover(repo: Repo, store: Store, journal: Journal): Promise<Settled> {
+async function recover(repo: Repo, store: Store, journal: AppliedJournal): Promise<Settled> {
   if (journal.kind !== "moving") return journal
   const conflicts: RepoPath[] = []
   for (const write of journal.writes) {
@@ -111,7 +111,7 @@ export function withLive<T>(repo: Repo, body: (now: Settled) => Promise<T>): Pro
   return locked(repo, async (_, now) => body(now))
 }
 
-export function recoverLive(repo: Repo): Promise<Journal> {
+export function recoverLive(repo: Repo): Promise<AppliedJournal> {
   return locked(repo, async (_, now) => now)
 }
 
