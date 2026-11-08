@@ -3,19 +3,32 @@
   "version": "0.0.0",
   "private": true,
   "license": "UNLICENSED",
+  "bin": {
+    "tune": "./dist/tune.js"
+  },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "sideEffects": false,
-  "files": ["dist"],
-  "bin": { "tune": "./dist/tune.js" },
   "exports": {
-    "./config": { "types": "./dist/types/core/config.d.ts", "default": "./dist/config.js" },
-    "./next": { "types": "./dist/types/next/index.d.ts", "default": "./dist/next.js" },
+    "./config": {
+      "types": "./dist/types/core/config.d.ts",
+      "default": "./dist/config.js"
+    },
+    "./next": {
+      "types": "./dist/types/next/index.d.ts",
+      "default": "./dist/next.js"
+    },
     "./package.json": "./package.json",
     "./vite": {
       "types": "./dist/types/vite/index.d.ts",
       "default": "./dist/vite.js"
     },
-    "./widget": { "types": "./dist/types/widget/index.d.ts", "default": "./dist/widget.js" }
+    "./widget": {
+      "types": "./dist/types/widget/index.d.ts",
+      "default": "./dist/widget.js"
+    }
   },
   "scripts": {
     "build": "node scripts/build.mjs && tsc -p tsconfig.build.json",
@@ -26,6 +39,8 @@
     "tune": "tsx src/bin/tune.ts"
   },
   "dependencies": {
+    "@babel/parser": "^8.1.0",
+    "get-tsconfig": "^4.14.3",
     "source-map-js": "^1.2.2",
     "tsx": "^4.23.15",
     "zod": "4.6.7"
