@@ -14,9 +14,9 @@ import {
   ask,
   discard,
   jobDir,
-  readSession,
   readSessionFile,
   variantRef,
+  variantsOf,
 } from "../src/bridge/session"
 import { acquire, release } from "../src/bridge/slots"
 import { TuneConfig } from "../src/core/config"
@@ -44,7 +44,9 @@ const asked = await ask(
   {
     id,
     words,
-    targets: [{ source: { path: FILE, line: Number(line), col: Number(col) }, owner: [], text: "" }],
+    targets: [
+      { source: { path: FILE, line: Number(line), col: Number(col) }, owner: [], text: "" },
+    ],
     marks: [],
     count: 3,
   },
@@ -52,30 +54,39 @@ const asked = await ask(
 )
 if (!asked.ok) throw new Error(`ask refused: ${JSON.stringify(asked)}`)
 console.log(`ask answered in ${seconds(performance.now() - t0)} (snapshot + planner)`)
-for (const variant of asked.value.variants)
-  console.log(`  ${variant.id}: ${variant.direction.title}: ${variant.direction.description}`)
+const session = await readSessionFile(repo, id)
+if (session === null) throw new Error("the session vanished")
+for (const { id: variant, direction } of variantsOf(session))
+  console.log(`  ${variant}: ${direction.title}: ${direction.description}`)
+
+/** Each variant's result, read without settling the page, so nothing is shown on the live tree. */
+const results = () =>
+  Promise.all(
+    variantsOf(session).map(async ({ id: variant }) => ({
+      id: variant,
+      job: await readJson(join(jobDir(repo, id, variant), "result.json"), JobResult),
+    })),
+  )
 
 let firstReady: number | undefined
+let jobs = await results()
 for (;;) {
-  const view = await readSession(repo, id)
-  if (view === null) throw new Error("the session vanished")
-  if (firstReady === undefined && view.variants.some((variant) => variant.state === "ready"))
+  if (firstReady === undefined && jobs.some(({ job }) => job?.kind === "ready"))
     firstReady = performance.now() - t0
-  if (view.variants.every((variant) => variant.state !== "pending")) break
+  if (jobs.every(({ job }) => job !== null)) break
   await sleep(1000)
+  jobs = await results()
 }
 console.log(`first ready ${firstReady === undefined ? "never" : seconds(firstReady)} after ask`)
 
-const view = await readSession(repo, id)
-const session = await readSessionFile(repo, id)
-if (view === null || session === null) throw new Error("the session vanished")
 let failures = 0
-for (const variant of view.variants) {
-  if (variant.state !== "ready") {
+for (const { id: variantId, job } of jobs) {
+  if (job?.kind !== "ready") {
     failures++
-    console.log(`${variant.id} ${variant.state}: ${"reason" in variant ? variant.reason : ""}`)
+    console.log(`${variantId} failed: ${job?.kind === "failed" ? job.reason : ""}`)
     continue
   }
+  const variant = { id: variantId, ...job }
   const commit = (await git(repo.root, ["rev-parse", variantRef(id, variant.id)])).toString().trim()
   const result = (await git(repo.root, ["cat-file", "-t", commit])).toString().trim()
   const slot = await acquire(repo, session.base)
@@ -91,8 +102,6 @@ for (const variant of view.variants) {
   } finally {
     await release(slot)
   }
-  const job = await readJson(join(jobDir(repo, id, variant.id), "result.json"), JobResult)
-  if (job?.kind !== "ready") throw new Error(`${variant.id} has no ready result`)
   const { ms } = job
   console.log(
     `${variant.id} ready "${variant.title}": ref ${variantRef(id, variant.id)} = ${result} ${commit.slice(0, 9)}`,

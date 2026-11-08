@@ -8,6 +8,7 @@ import {
   type Hold,
   type Journal,
   type Lease,
+  type Place,
   type Refusal,
   RepoPath,
   Seq,
@@ -91,15 +92,8 @@ export type Request =
 
 /** Where a session stands after a plan. The view adds `edited`, which it reads from disk. */
 export type Placed =
+  | Exclude<Place, { kind: "shown" }>
   | { readonly kind: "shown"; readonly variant: VariantId }
-  | { readonly kind: "original" }
-  | { readonly kind: "waiting"; readonly on: readonly Hold[] }
-  /** Its files could not be moved: the code there changed over the same lines. */
-  | {
-      readonly kind: "conflict"
-      readonly files: readonly RepoPath[]
-      readonly showing: VariantId | null
-    }
 
 export type Plan =
   | {
@@ -134,7 +128,7 @@ interface Layer {
 type Slot =
   | { readonly kind: "show"; readonly target: Target }
   | { readonly kind: "original" }
-  | { readonly kind: "wait"; readonly on: readonly Hold[] }
+  | { readonly kind: "wait"; readonly variant: VariantId; readonly on: readonly Hold[] }
 
 /**
  * Who shows what, from the wishes alone. `held` layers claim their files first; then each wish, in
@@ -169,7 +163,7 @@ function assign(
         variant,
         files,
       }))
-      slots.set(session, { kind: "wait", on: holds })
+      slots.set(session, { kind: "wait", variant: target.variant, on: holds })
       continue
     }
     for (const path of target.files) claims.set(path, { session, variant: target.variant })
@@ -261,11 +255,12 @@ async function settle(
   const contents = new Map(origins)
   const places = new Map<SessionId, Placed>()
 
-  for (const { session } of wishes) {
+  for (const { session, target: wanted } of wishes) {
+    const choice = wanted?.variant ?? "original"
     const stuck = pinned.get(session)
     if (stuck !== undefined) {
       const { conflicts: files, layer } = stuck
-      places.set(session, { kind: "conflict", files, showing: layer.variant })
+      places.set(session, { kind: "conflict", want: choice, files, showing: layer.variant })
       continue
     }
     const layer = kept.get(session)
@@ -279,7 +274,7 @@ async function settle(
       continue
     }
     if (slot.kind === "wait") {
-      places.set(session, { kind: "waiting", on: slot.on })
+      places.set(session, { kind: "waiting", variant: slot.variant, on: slot.on })
       continue
     }
     const { target } = slot
@@ -297,7 +292,7 @@ async function settle(
       else put.push([path, { session, variant: target.variant, before: origin, after: next }])
     }
     if (conflicts.length > 0) {
-      places.set(session, { kind: "conflict", files: conflicts, showing: null })
+      places.set(session, { kind: "conflict", want: choice, files: conflicts, showing: null })
       continue
     }
     for (const [path, lease] of put) {
@@ -324,9 +319,8 @@ const record = <K extends string, V>(entries: Iterable<[K, V]>): Record<K, V> =>
   // SAFETY: every key comes from `entries`, whose keys are K.
   Object.fromEntries([...entries].toSorted(([a], [b]) => compare(a, b))) as Record<K, V>
 
-const journalOf = (now: Journal, seq: Seq, settled: Settled): Journal => ({
+const journalOf = (now: Journal, settled: Settled): Journal => ({
   ...now,
-  seq,
   want: record(settled.want),
   leases: record(settled.leases),
 })
@@ -381,7 +375,7 @@ export async function plan(
       by: "designer",
       at: edited.seq,
     })
-    const released = journalOf(edited, edited.seq, { ...first, want, leases })
+    const released = journalOf(edited, { ...first, want, leases })
     const again = await settle(overlay(store, first.contents), released, offers, null)
     settled = { ...again, contents: new Map([...first.contents, ...again.contents]) }
   }
@@ -393,7 +387,7 @@ export async function plan(
   }
   const written = new Set(writes.map((write) => write.path))
   const journal: Journal = {
-    ...journalOf(edited, edited.seq, settled),
+    ...journalOf(edited, settled),
     stuck: now.stuck.filter((path) => !written.has(path)),
     moving: writes.length > 0 ? writes : null,
   }

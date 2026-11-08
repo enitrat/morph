@@ -54,6 +54,14 @@ it("refuses unknown ops, wrong methods and bodies that are not the domain shape"
   expect(await bad.json()).toMatchObject({ error: { kind: "bad-request" } })
 })
 
+it("answers the page, and no longer answers a single session", async () => {
+  vi.stubEnv("NODE_ENV", "development")
+  const answer = await call("page")
+  expect(answer.status).toBe(200)
+  expect(await answer.json()).toEqual({ sessions: [], stuck: [] })
+  expect((await call("session")).status).toBe(404)
+})
+
 it("symbolicates frames of this dev server and Server Component frames, and no others", async () => {
   vi.stubEnv("NODE_ENV", "development")
   const frame = (text: string) =>

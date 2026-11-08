@@ -257,22 +257,49 @@ export type VariantView = z.infer<typeof VariantView>
 const variantViews: z.ZodType<readonly VariantView[]> = z.array(VariantView)
 const steps: z.ZodType<readonly Step[]> = z.array(Step)
 
-/** Everything the overlay renders, derived once on the bridge. */
+/** Where a session stands on the page, derived on every poll and never stored. */
+export const Place = z.discriminatedUnion("kind", [
+  /** It shows `variant`. `edited`: the designer changed a shown file after the tool wrote it. */
+  z.object({ kind: z.literal("shown"), variant: VariantId, edited: z.boolean() }),
+  /** It wants the code as it was and shows nothing. */
+  z.object({ kind: z.literal("original") }),
+  /** It wants `variant`, whose files other sessions show; it shows once they let go. */
+  z.object({ kind: z.literal("waiting"), variant: VariantId, on: z.array(Hold).min(1).readonly() }),
+  /**
+   * The tool cannot move its `files` toward `want`: the code there changed over the same lines,
+   * by hand or by a kept session. `showing` stays on the page meanwhile.
+   */
+  z.object({
+    kind: z.literal("conflict"),
+    want: Choice,
+    files: repoPaths,
+    showing: VariantId.nullable(),
+  }),
+])
+export type Place = z.infer<typeof Place>
+
+/** One open session as the overlay renders it. */
 export const SessionView = z.object({
   id: SessionId,
-  /** `edited`: the designer changed a shown file after the tool wrote it. */
-  live: z.object({ variant: VariantId, edited: z.boolean() }).nullable(),
+  place: Place,
   variants: variantViews,
-  stuck: repoPaths.nullable(),
   /** Empty in a first round. */
   trail: steps,
+  /** Files its variants touch that changed since it was asked; showing merges onto them. */
+  drift: repoPaths,
 })
-/** Everything the overlay renders, derived once on the bridge. */
 export type SessionView = z.infer<typeof SessionView>
+
+/** Every open session, oldest ask first, from one settled state: what every operation answers. */
+export const PageView = z.object({
+  sessions: z.array(SessionView).readonly(),
+  /** Files a crashed write left neither as expected nor as written. */
+  stuck: repoPaths,
+})
+export type PageView = z.infer<typeof PageView>
 
 /** Application failures the bridge can return to the overlay. */
 export const Refusal = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("busy"), session: SessionId }),
   /** Other sessions show the files this needs. */
   z.object({ kind: z.literal("held"), on: z.array(Hold).min(1).readonly() }),
   /** A keep named a variant the session neither shows nor waits to show. */

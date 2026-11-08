@@ -14,8 +14,11 @@ import {
   type Choice,
   type Direction,
   JobResult,
+  type Journal,
+  type PageView,
   Parent,
   Phase,
+  type Place,
   type Refine,
   type Refusal,
   RepoPath,
@@ -27,11 +30,11 @@ import {
   VariantId,
   type VariantView,
 } from "../variant/model"
+import { type Offer, type Placed, type Request } from "../variant/swap"
 import { plannerModel, runClaude } from "./agent"
 import { readJson, writeJson } from "./disk"
-import { absent, git, homeOf, type Host, liveContent, REFS, type Repo, updateRef } from "./git"
-import { baseOf, converge, readJournal } from "./live"
-import { type Offer, type Request } from "../variant/swap"
+import { absent, git, gitStore, homeOf, type Host, REFS, type Repo, updateRef } from "./git"
+import { baseOf, type Converged, converge } from "./live"
 import { alive, withLock } from "./lock"
 import { Directions, plannerPrompt } from "./prompt"
 
@@ -140,55 +143,70 @@ async function targetOf(repo: Repo, session: Session, variant: VariantId): Promi
   return { session: session.id, variant, base: session.base, commit: job.commit, files: job.files }
 }
 
-/** Every open session with its ready variants, as the planner reads them under the live lock. */
-async function offers(repo: Repo): Promise<Offer[]> {
+/** The open sessions, oldest ask first. */
+async function openSessionFiles(repo: Repo): Promise<Session[]> {
   const sessions = await Promise.all(
     (await openSessions(repo)).map((id) => readSessionFile(repo, id)),
   )
+  return sessions.filter((session) => session !== null).toSorted((a, b) => a.opened - b.opened)
+}
+
+/** Every open session with its ready variants, as the planner reads them under the live lock. */
+async function offers(repo: Repo): Promise<Offer[]> {
   return Promise.all(
-    sessions.flatMap((session) =>
-      session === null
-        ? []
-        : [
-            (async () => {
-              const ready = await Promise.all(
-                variantsOf(session).map(({ id }) => targetOf(repo, session, id)),
-              )
-              return {
-                session: session.id,
-                opened: session.opened,
-                ready: ready.filter((target) => target !== null),
-              }
-            })(),
-          ],
-    ),
+    (await openSessionFiles(repo)).map(async (session) => {
+      const ready = await Promise.all(
+        variantsOf(session).map(({ id }) => targetOf(repo, session, id)),
+      )
+      return {
+        session: session.id,
+        opened: session.opened,
+        ready: ready.filter((target) => target !== null),
+      }
+    }),
   )
 }
 
-const settleAll = (repo: Repo, request: Request) => converge(repo, () => offers(repo), request)
+const settle = (repo: Repo, request: Request) => converge(repo, () => offers(repo), request)
 
-export async function readSession(repo: Repo, id: SessionId): Promise<SessionView | null> {
-  const session = await readSessionFile(repo, id)
-  if (session === null) return null
-  const journal = await readJournal(repo)
-  const leased = Object.entries(journal.leases).filter(([, lease]) => lease.session === id)
+/**
+ * One session as the overlay renders it. `edited` and `drift` come from the disk: `drift` lists
+ * the files its variants touch whose code, with every shown variant taken out, is no longer what
+ * the session was asked on.
+ */
+async function sessionView(
+  repo: Repo,
+  journal: Journal,
+  session: Session,
+  placed: Placed,
+): Promise<SessionView> {
+  const store = gitStore(repo)
+  const jobs = await Promise.all(
+    variantsOf(session).map(async ({ id, direction }) => ({
+      id,
+      direction,
+      job: await readJob(repo, session.id, id),
+    })),
+  )
+  const leased = Object.entries(journal.leases).filter(([, lease]) => lease.session === session.id)
   const edits = await Promise.all(
-    leased.map(
-      async ([path, lease]) => (await liveContent(repo, RepoPath.parse(path))) !== lease.after,
-    ),
+    leased.map(async ([path, lease]) => (await store.live(RepoPath.parse(path))) !== lease.after),
   )
-  const variants = await Promise.all(
-    variantsOf(session).map(async ({ id: variant, direction }) =>
-      viewOf(direction, variant, await readJob(repo, id, variant)),
-    ),
-  )
-  const variant = leased[0]?.[1].variant
+  const touched = new Set(jobs.flatMap(({ job }) => (job.kind === "ready" ? job.files : [])))
+  const drift: RepoPath[] = []
+  for (const path of [...touched].toSorted()) {
+    const lease = journal.leases[path]
+    const origin = lease === undefined ? await store.live(path) : lease.before
+    if (origin !== (await store.at(session.base, path))) drift.push(path)
+  }
+  const place: Place =
+    placed.kind === "shown" ? { ...placed, edited: edits.includes(true) } : placed
   return {
-    id,
-    live: variant === undefined ? null : { variant, edited: edits.includes(true) },
-    variants,
+    id: session.id,
+    place,
+    variants: jobs.map(({ id, direction, job }) => viewOf(direction, id, job)),
     trail: trailOf(session.ask.words, session.parent),
-    stuck: journal.stuck.length > 0 ? journal.stuck : null,
+    drift,
   }
 }
 
@@ -196,17 +214,34 @@ export type Done<T> = { ok: true; value: T } | ({ ok: false } & Refusal)
 
 const refuse = (refusal: Refusal): Done<never> => ({ ok: false, ...refusal })
 
-async function viewed(repo: Repo, id: SessionId): Promise<Done<SessionView>> {
-  const view = await readSession(repo, id)
-  return view === null ? refuse({ kind: "not-found" }) : { ok: true, value: view }
+async function answer(repo: Repo, converged: Converged): Promise<Done<PageView>> {
+  if (!converged.ok) return refuse(converged.refusal)
+  const { journal, places } = converged
+  const sessions = await openSessionFiles(repo)
+  const views = await Promise.all(
+    sessions.flatMap((session) => {
+      const placed = places.get(session.id)
+      return placed === undefined ? [] : [sessionView(repo, journal, session, placed)]
+    }),
+  )
+  return { ok: true, value: { sessions: views, stuck: journal.stuck } }
+}
+
+/**
+ * Every open session and where it stands, after finishing a crashed move and letting waiting
+ * sessions take the files that came free. Every session operation answers the same view.
+ */
+export async function page(repo: Repo): Promise<Done<PageView>> {
+  return answer(repo, await settle(repo, { kind: "settle" }))
 }
 
 /** The planner run of each session being asked, which a discard stops. */
 const planning = new Map<SessionId, AbortController>()
 
-const sessionsLock = (repo: Repo) => join(homeOf(repo), "sessions.lock")
+/** Held while one session starts, reruns or ends; other sessions go on meanwhile. */
+const sessionLock = (repo: Repo, id: SessionId) => join(homeOf(repo), "locks", `session-${id}`)
 
-/** Runs `body` under the sessions lock, with a signal a discard of `id` aborts. */
+/** Runs `body` under the session's lock, with a signal a discard of `id` aborts. */
 async function asking<T>(
   repo: Repo,
   id: SessionId,
@@ -216,7 +251,7 @@ async function asking<T>(
   const discarded = new AbortController()
   planning.set(id, discarded)
   try {
-    return await withLock(sessionsLock(repo), () =>
+    return await withLock(sessionLock(repo, id), () =>
       body(AbortSignal.any([signal, discarded.signal])),
     )
   } finally {
@@ -225,20 +260,17 @@ async function asking<T>(
 }
 
 /**
- * Plans `request` on the tree as it is and starts its jobs, or answers the session it already
- * started. Another open session refuses it: the designer keeps or discards that one first, so
- * variants never stack. Called under the sessions lock.
+ * Plans `request` on the page without the variants other sessions show, and starts its jobs, or
+ * answers the session it already started. Called under the session's lock.
  */
 async function start(
   repo: Host,
   request: Ask,
   parent: Parent | null,
   stop: AbortSignal,
-): Promise<Done<SessionView>> {
+): Promise<Done<PageView>> {
   let session = await readSessionFile(repo, request.id)
   if (session === null) {
-    const other = (await openSessions(repo)).find((id) => id !== request.id)
-    if (other !== undefined) return refuse({ kind: "busy", session: other })
     const { base, opened } = await baseOf(repo)
     const planned = await runClaude(
       plannerPrompt(request, parent),
@@ -253,11 +285,11 @@ async function start(
     await writeJson(sessionFile(repo, request.id), session)
   }
   await startJobs(repo, session)
-  return viewed(repo, request.id)
+  return page(repo)
 }
 
 /** Starts the session `request.id`, or answers the one it already started. */
-export function ask(repo: Host, request: Ask, signal: AbortSignal): Promise<Done<SessionView>> {
+export function ask(repo: Host, request: Ask, signal: AbortSignal): Promise<Done<PageView>> {
   return asking(repo, request.id, signal, (stop) => start(repo, request, null, stop))
 }
 
@@ -272,7 +304,7 @@ export function refine(
   repo: Host,
   { from, variant, ask: request }: Refine,
   signal: AbortSignal,
-): Promise<Done<SessionView>> {
+): Promise<Done<PageView>> {
   return asking(repo, request.id, signal, async (stop) => {
     if ((await readSessionFile(repo, request.id)) !== null) return start(repo, request, null, stop)
     let parent = await readJson(parentFile(repo, request.id), Parent)
@@ -299,15 +331,11 @@ export function refine(
   })
 }
 
-/** The session, after the page settles: a session that never chose shows its first ready variant. */
-export async function look(repo: Repo, id: SessionId): Promise<Done<SessionView>> {
-  const settled = await settleAll(repo, { kind: "settle" })
-  if (!settled.ok) return refuse(settled.refusal)
-  return viewed(repo, id)
-}
-
-/** Shows `choice`: one of the session's ready variants, or the code as it was before it. */
-export async function show(repo: Repo, id: SessionId, choice: Choice): Promise<Done<SessionView>> {
+/**
+ * Shows `choice`: one of the session's ready variants, or the code as it was before it. It takes
+ * the files from any session showing them; that session waits and comes back when they free.
+ */
+export async function show(repo: Repo, id: SessionId, choice: Choice): Promise<Done<PageView>> {
   const session = await readSessionFile(repo, id)
   if (session === null) return refuse({ kind: "not-found" })
   if (choice !== "original") {
@@ -316,16 +344,12 @@ export async function show(repo: Repo, id: SessionId, choice: Choice): Promise<D
     if ((await targetOf(repo, session, choice)) === null)
       return refuse({ kind: "not-ready", variant: choice })
   }
-  const moved = await settleAll(repo, { kind: "show", session: id, choice })
-  if (!moved.ok) return refuse(moved.refusal)
-  const place = moved.places.get(id)
-  if (place?.kind === "conflict") return refuse({ kind: "conflict", files: place.files })
-  return viewed(repo, id)
+  return answer(repo, await settle(repo, { kind: "show", session: id, choice }))
 }
 
 /** Runs a failed variant again from its direction; any other variant is left as it is. */
-export function retry(repo: Host, id: SessionId, variant: VariantId): Promise<Done<SessionView>> {
-  return withLock(sessionsLock(repo), async () => {
+export function retry(repo: Host, id: SessionId, variant: VariantId): Promise<Done<PageView>> {
+  return withLock(sessionLock(repo, id), async () => {
     const session = await readSessionFile(repo, id)
     if (session === null || !variantsOf(session).some((entry) => entry.id === variant))
       return refuse({ kind: "not-found" })
@@ -333,7 +357,7 @@ export function retry(repo: Host, id: SessionId, variant: VariantId): Promise<Do
       await rm(jobDir(repo, id, variant), { recursive: true, force: true })
       await startJobs(repo, session)
     }
-    return viewed(repo, id)
+    return page(repo)
   })
 }
 
@@ -361,30 +385,34 @@ async function drop(repo: Repo, id: SessionId): Promise<void> {
   await rm(sessionDir(repo, id), { recursive: true, force: true })
 }
 
-/** Leaves `variant` on the page as code and ends the session. */
-export async function keep(repo: Repo, id: SessionId, variant?: VariantId): Promise<Done<null>> {
-  await stopJobs(repo, id)
-  const shown = Object.values((await readJournal(repo)).leases).find(
-    (lease) => lease.session === id,
-  )
-  const kept = variant ?? shown?.variant
-  if (kept !== undefined) {
-    const moved = await settleAll(repo, { kind: "keep", session: id, variant: kept })
-    if (!moved.ok) return refuse(moved.refusal)
-  }
-  await drop(repo, id)
-  return { ok: true, value: null }
+/**
+ * Leaves `variant` on the page as code and ends the session; a session waiting to show it takes
+ * its files first. Every session whose variants touch those files merges onto the kept code when
+ * it next shows, and lists them in its `drift`. A session already gone is a no-op.
+ */
+export function keep(repo: Repo, id: SessionId, variant: VariantId): Promise<Done<PageView>> {
+  return withLock(sessionLock(repo, id), async () => {
+    if ((await readSessionFile(repo, id)) === null) return page(repo)
+    const kept = await settle(repo, { kind: "keep", session: id, variant })
+    if (!kept.ok) return refuse(kept.refusal)
+    await stopJobs(repo, id)
+    await drop(repo, id)
+    return page(repo)
+  })
 }
 
-/** Restores every file the session showed, byte for byte, and ends it. */
-export function discard(repo: Repo, id: SessionId): Promise<Done<null>> {
+/**
+ * Restores every file the session shows, byte for byte, and ends it. A session waiting on those
+ * files shows in the same move.
+ */
+export function discard(repo: Repo, id: SessionId): Promise<Done<PageView>> {
   // A session still being planned ends there: its ask answers once the planner stops.
   planning.get(id)?.abort("discarded")
-  return withLock(sessionsLock(repo), async () => {
-    await stopJobs(repo, id)
-    const moved = await settleAll(repo, { kind: "discard", session: id })
+  return withLock(sessionLock(repo, id), async () => {
+    const moved = await settle(repo, { kind: "discard", session: id })
     if (!moved.ok) return refuse(moved.refusal)
+    await stopJobs(repo, id)
     await drop(repo, id)
-    return { ok: true, value: null }
+    return page(repo)
   })
 }

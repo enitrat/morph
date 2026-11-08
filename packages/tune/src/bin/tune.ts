@@ -7,9 +7,8 @@ import { existsSync } from "node:fs"
 import { join } from "node:path"
 
 import { git, openRepo, REFS } from "../bridge/git"
-import { withLive } from "../bridge/live"
 import { tryLock, unlock } from "../bridge/lock"
-import { discard, openSessions, readSession } from "../bridge/session"
+import { discard, openSessions, page } from "../bridge/session"
 import { SLOT_IDS, slotsRoot } from "../bridge/slots"
 import { setupNext } from "./setup-next"
 import { doctor } from "./doctor"
@@ -30,16 +29,21 @@ async function main() {
   const repo = await openRepo(process.cwd())
 
   async function status() {
-    const journal = await withLive(repo, async (now) => now)
-    const leases = Object.entries(journal.leases)
-    if (leases.length === 0) console.log("live: no variant shown")
-    for (const [path, lease] of leases)
-      console.log(`live: ${path} held by ${lease.session} ${lease.variant}`)
-    if (journal.stuck.length > 0) console.log(`stuck on: ${journal.stuck.join(", ")}`)
-    for (const id of await openSessions(repo)) {
-      const view = await readSession(repo, id)
-      console.log(`session ${id}`)
-      for (const variant of view?.variants ?? []) {
+    const answer = await page(repo)
+    if (!answer.ok) throw new Error(`tune: the page did not settle: ${JSON.stringify(answer)}`)
+    const { sessions, stuck } = answer.value
+    if (stuck.length > 0) console.log(`stuck on: ${stuck.join(", ")}`)
+    for (const { id, place, variants } of sessions) {
+      const where =
+        place.kind === "shown"
+          ? `shows ${place.variant}${place.edited ? " (edited)" : ""}`
+          : place.kind === "waiting"
+            ? `waits to show ${place.variant} on ${place.on.map((hold) => `${hold.session} (${hold.files.join(", ")})`).join("; ")}`
+            : place.kind === "conflict"
+              ? `wants ${place.want}, conflicts in ${place.files.join(", ")}`
+              : "shows the original"
+      console.log(`session ${id}: ${where}`)
+      for (const variant of variants) {
         const detail =
           variant.state === "ready"
             ? `${variant.title} (+${variant.stat.add} -${variant.stat.del})`
@@ -57,9 +61,9 @@ async function main() {
       console.log(done.ok ? `discarded ${id}` : `could not discard ${id}: ${JSON.stringify(done)}`)
       if (!done.ok) process.exitCode = 1
     }
-    const { stuck } = await withLive(repo, async (now) => now)
-    if (stuck.length > 0) {
-      console.log(`the live tree is stuck on: ${stuck.join(", ")}`)
+    const left = await page(repo)
+    if (left.ok && left.value.stuck.length > 0) {
+      console.log(`the live tree is stuck on: ${left.value.stuck.join(", ")}`)
       process.exitCode = 1
     }
   }

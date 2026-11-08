@@ -163,7 +163,11 @@ describe("converge", () => {
     })
 
     expect(await run(repo, offers, { kind: "settle" })).toEqual({
-      [s]: { kind: "waiting", on: [{ session: t, variant: "v1", files: ["src/b.tsx"] }] },
+      [s]: {
+        kind: "waiting",
+        variant: "v1",
+        on: [{ session: t, variant: "v1", files: ["src/b.tsx"] }],
+      },
       [t]: { kind: "shown", variant: "v1" },
     })
     expect(read(root, ALL)).toEqual({

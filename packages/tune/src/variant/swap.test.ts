@@ -303,7 +303,11 @@ describe("plan with several sessions", () => {
     const taken = await tab.run({ kind: "show", session: t, choice: "v2" })
 
     expect(taken.ok && Object.fromEntries(taken.places)).toEqual({
-      [s]: { kind: "waiting", on: [{ session: t, variant: "v2", files: ["page.tsx"] }] },
+      [s]: {
+        kind: "waiting",
+        variant: "v1",
+        on: [{ session: t, variant: "v2", files: ["page.tsx"] }],
+      },
       [t]: { kind: "shown", variant: "v2" },
     })
     expect(store.read()).toEqual({
@@ -336,7 +340,11 @@ describe("plan with several sessions", () => {
 
     expect(await tab.places()).toEqual({
       [s]: { kind: "shown", variant: "v1" },
-      [t]: { kind: "waiting", on: [{ session: s, variant: "v1", files: ["page.tsx"] }] },
+      [t]: {
+        kind: "waiting",
+        variant: "v1",
+        on: [{ session: s, variant: "v1", files: ["page.tsx"] }],
+      },
     })
     expect(store.read()["page.tsx"]).toBe(edit(BASE["page.tsx"]!, 2, "header"))
   })
@@ -352,7 +360,11 @@ describe("plan with several sessions", () => {
 
     expect(await tab.places()).toEqual({
       [s]: { kind: "shown", variant: "v1" },
-      [t]: { kind: "waiting", on: [{ session: s, variant: "v1", files: ["page.tsx"] }] },
+      [t]: {
+        kind: "waiting",
+        variant: "v1",
+        on: [{ session: s, variant: "v1", files: ["page.tsx"] }],
+      },
     })
   })
 
@@ -447,8 +459,12 @@ describe("plan with several sessions", () => {
 
     expect(taken).toMatchObject({ ok: true, writes: [] })
     expect(taken.ok && Object.fromEntries(taken.places)).toEqual({
-      [s]: { kind: "conflict", files: ["page.tsx"], showing: "v1" },
-      [t]: { kind: "waiting", on: [{ session: s, variant: "v1", files: ["page.tsx"] }] },
+      [s]: { kind: "conflict", want: "v1", files: ["page.tsx"], showing: "v1" },
+      [t]: {
+        kind: "waiting",
+        variant: "v1",
+        on: [{ session: s, variant: "v1", files: ["page.tsx"] }],
+      },
     })
     expect(store.read()).toEqual(before)
   })

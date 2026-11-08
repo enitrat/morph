@@ -228,9 +228,18 @@ describe("refine", () => {
     expect(planned).toMatchObject({
       ok: true,
       value: {
-        id: next,
-        trail: [
-          { variant: "v2", title: "Compact row, price as lead", feedback: "make the price bigger" },
+        sessions: [
+          {
+            id: next,
+            place: { kind: "original" },
+            trail: [
+              {
+                variant: "v2",
+                title: "Compact row, price as lead",
+                feedback: "make the price bigger",
+              },
+            ],
+          },
         ],
       },
     })
