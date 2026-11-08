@@ -151,3 +151,98 @@ export function labelSpots(
     return spot
   })
 }
+
+/** A pin's diameter. */
+export const PIN = 26
+const PIN_STEP = PIN + 6
+
+const meets = (a: Box, b: Box) =>
+  a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+
+/**
+ * Pins on the top-right corners of `targets`, in order: inside the uncovered area, above the
+ * session bar, and clear of the pins placed before them, stepping left then down. `null` for a
+ * target with no box or off screen.
+ */
+export function pinSpots(
+  targets: readonly (Box | null)[],
+  area: { left: number; right: number },
+  viewport: Viewport,
+): (Point | null)[] {
+  const placed: Box[] = []
+  const low = viewport.height - BAR_ROOM - PIN
+  return targets.map((box) => {
+    if (box === null || box.bottom < 0 || box.top > low) return null
+    const x0 = clamp(box.right - PIN / 2, area.left + 6, area.right - PIN - 6)
+    const y0 = clamp(box.top - PIN / 2, 6, low)
+    for (let row = 0; row < 4; row++)
+      for (let x = x0; x >= area.left + 6; x -= PIN_STEP) {
+        const y = Math.min(y0 + row * PIN_STEP, low)
+        const spot = { left: x - 2, top: y - 2, right: x + PIN + 2, bottom: y + PIN + 2 }
+        if (placed.some((other) => meets(spot, other))) continue
+        placed.push(spot)
+        return { x, y }
+      }
+    return null
+  })
+}
+
+/** Where a thread card goes; `docked` when it sits on an edge away from its target. */
+export interface CardSpot extends Point {
+  docked: boolean
+}
+
+/**
+ * A thread card of `size` for `target`: right of it, else left, below, or above; else docked in a
+ * corner of the uncovered area. It never covers the target while any spot clear of it fits, never
+ * runs under the inspector, and stays above the session bar.
+ */
+export function cardSpot(
+  target: Box | null,
+  size: Size,
+  area: { left: number; right: number },
+  viewport: Viewport,
+  gap = 12,
+): CardSpot {
+  const { width: w, height: h } = size
+  const limit = viewport.height - BAR_ROOM
+  const corners: Point[] = [
+    { x: area.right - MARGIN - w, y: limit - h },
+    { x: area.left + MARGIN, y: limit - h },
+    { x: area.right - MARGIN - w, y: MARGIN },
+    { x: area.left + MARGIN, y: MARGIN },
+  ]
+  const boxAt = ({ x, y }: Point): Box => ({ left: x, top: y, right: x + w, bottom: y + h })
+  if (target === null) return { ...(corners[0] as Point), docked: true }
+  const seen: Box = {
+    left: Math.max(target.left, 0),
+    top: Math.max(target.top, 0),
+    right: Math.min(target.right, viewport.width),
+    bottom: Math.min(target.bottom, viewport.height),
+  }
+  const fits = (box: Box) =>
+    box.left >= area.left + MARGIN - 0.5 &&
+    box.right <= area.right - MARGIN + 0.5 &&
+    box.top >= MARGIN - 0.5 &&
+    box.bottom <= limit + 0.5
+  const clear = (box: Box) => !meets(box, seen)
+  const beside = clamp(target.top, MARGIN, limit - h)
+  const across = clamp(target.right - w, area.left + MARGIN, area.right - MARGIN - w)
+  const near: Point[] = [
+    { x: target.right + gap, y: beside },
+    { x: target.left - gap - w, y: beside },
+    { x: across, y: target.bottom + gap },
+    { x: across, y: target.top - gap - h },
+  ]
+  const fit = near.find((spot) => fits(boxAt(spot)) && clear(boxAt(spot)))
+  if (fit !== undefined) return { ...fit, docked: false }
+  const covered = (spot: Point) => {
+    const box = boxAt(spot)
+    return (
+      Math.max(0, Math.min(box.right, seen.right) - Math.max(box.left, seen.left)) *
+      Math.max(0, Math.min(box.bottom, seen.bottom) - Math.max(box.top, seen.top))
+    )
+  }
+  const best = corners.toSorted((a, b) => covered(a) - covered(b))[0] as Point
+  return { ...best, docked: true }
+}

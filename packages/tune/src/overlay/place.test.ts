@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest"
 
 import { PANEL_NARROW, PANEL_WIDTH } from "./model"
-import { anchor, dockFor, labelSpots, overlap, tagSpot, uncovered } from "./place"
+import {
+  anchor,
+  cardSpot,
+  dockFor,
+  labelSpots,
+  overlap,
+  PIN,
+  pinSpots,
+  tagSpot,
+  uncovered,
+} from "./place"
 
 const viewport = { width: 1440, height: 900 }
 const box = (left: number, top: number, right: number, bottom: number) => ({
@@ -98,5 +108,96 @@ describe("page-anchored surfaces", () => {
     expect(
       labelSpots([box(10, 100, 200, 200), box(20, 102, 100, 150)], [80, 80], (i) => i === 1)[1],
     ).not.toBeNull()
+  })
+})
+
+const full = { left: 0, right: 1440 }
+const card = { width: 340, height: 300 }
+const meets = (a: ReturnType<typeof box>, b: ReturnType<typeof box>) =>
+  a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+const cardBox = (spot: { x: number; y: number }) =>
+  box(spot.x, spot.y, spot.x + card.width, spot.y + card.height)
+
+describe("pinSpots", () => {
+  it("sits on the target's top-right corner", () => {
+    expect(pinSpots([box(100, 200, 400, 300)], full, viewport)).toEqual([
+      { x: 400 - PIN / 2, y: 200 - PIN / 2 },
+    ])
+  })
+
+  it("steps a pin left when another already sits on the same corner", () => {
+    const [a, b] = pinSpots([box(100, 200, 400, 300), box(150, 200, 405, 280)], full, viewport)
+    expect(a).not.toBeNull()
+    expect(b?.y).toBe(a?.y)
+    expect(b?.x).toBeLessThanOrEqual((a?.x ?? 0) - PIN)
+  })
+
+  it("keeps out from under the inspector and hides targets off screen", () => {
+    const area = uncovered({ side: "right", width: PANEL_WIDTH }, viewport)
+    const [under, gone] = pinSpots(
+      [box(900, 200, 1300, 400), box(0, 1200, 10, 1300)],
+      area,
+      viewport,
+    )
+    expect((under?.x ?? Infinity) + PIN).toBeLessThanOrEqual(area.right)
+    expect(gone).toBeNull()
+  })
+})
+
+describe("cardSpot", () => {
+  it("opens beside the target when there is room on its right", () => {
+    expect(cardSpot(box(100, 200, 400, 300), card, full, viewport)).toEqual({
+      x: 412,
+      y: 200,
+      docked: false,
+    })
+  })
+
+  it("goes left of a target whose right side the inspector covers", () => {
+    const area = uncovered({ side: "right", width: PANEL_WIDTH }, viewport)
+    const spot = cardSpot(box(700, 200, 1000, 300), card, area, viewport)
+    expect(spot).toMatchObject({ docked: false, x: 700 - 12 - card.width })
+  })
+
+  it("goes below a full-width target", () => {
+    const spot = cardSpot(box(0, 80, 1440, 300), card, full, viewport)
+    expect(spot).toMatchObject({ docked: false, y: 312 })
+  })
+
+  it("docks to a corner when no side has room, still clear of the target", () => {
+    const target = box(279, 120, 1240, 700)
+    const spot = cardSpot(target, { width: 260, height: 300 }, full, viewport)
+    expect(spot.docked).toBe(true)
+    expect(meets(box(spot.x, spot.y, spot.x + 260, spot.y + 300), target)).toBe(false)
+  })
+
+  it("never covers its target or runs under the inspector while any clear spot fits", () => {
+    let seed = 7
+    const random = () => {
+      seed = (seed * 16807) % 2147483647
+      return seed / 2147483647
+    }
+    for (let run = 0; run < 2000; run++) {
+      const left = random() * 1300
+      const top = random() * 900 - 100
+      const target = box(left, top, left + 20 + random() * 900, top + 20 + random() * 700)
+      const dock = random() < 0.5 ? null : { side: "right" as const, width: PANEL_WIDTH }
+      const area = uncovered(dock, viewport)
+      const spot = cardSpot(target, card, area, viewport)
+      const placed = cardBox(spot)
+      expect(placed.left).toBeGreaterThanOrEqual(area.left)
+      expect(placed.right).toBeLessThanOrEqual(area.right)
+      const seen = box(
+        Math.max(target.left, 0),
+        Math.max(target.top, 0),
+        Math.min(target.right, viewport.width),
+        Math.min(target.bottom, viewport.height),
+      )
+      let room = false
+      for (let x = area.left + 10; x + card.width <= area.right - 10 && !room; x += 10)
+        for (let y = 10; y + card.height <= viewport.height - 72 && !room; y += 10)
+          room = !meets(cardBox({ x, y }), seen)
+      if (room) expect(meets(placed, seen), JSON.stringify({ target, dock, spot })).toBe(false)
+    }
   })
 })
