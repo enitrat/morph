@@ -296,4 +296,19 @@ kbd {
   .panel, .tab, .button, .slot, .tool, .icon, .segment, .switch, .switch::after { transition: none; }
   .spinner { animation: none; }
 }
+
+.tools .tool { min-width: 0; gap: 4px; padding-inline: 4px; font-size: 12px; }
+.inspection-summary { display: block; padding: 8px 0; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.inspection-surface { position: fixed; inset: 0; z-index: 2147483644; cursor: crosshair; touch-action: none; user-select: none; }
+.inspection-blueprint { position: absolute; inset: 0; overflow: hidden; pointer-events: none; color: var(--accent); }
+.inspection-blueprint[data-phase="fading"] { opacity: 0; transition: opacity 300ms ease-out; }
+.inspection-veil { fill: var(--bg); fill-opacity: .62; }
+.inspection-frame { fill: none; stroke: currentColor; stroke-width: 1; }
+.inspection-box { fill: var(--accent-soft); stroke: currentColor; stroke-opacity: .65; stroke-width: 1; }
+.inspection-padding { fill: currentColor; fill-opacity: .12; }
+.inspection-space { fill: currentColor; fill-opacity: .09; stroke: currentColor; stroke-opacity: .4; stroke-dasharray: 2 2; }
+.inspection-label rect, .inspection-size rect { fill: var(--accent); }
+.inspection-label text, .inspection-size text { fill: var(--on-accent); font: 500 10px ui-monospace, "SF Mono", Menlo, Consolas, monospace; text-anchor: middle; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .inspection-blueprint[data-phase="fading"] { transition: none; } }
+@media (max-width: 400px) { .tool { gap: 3px; padding-left: 4px; padding-right: 4px; font-size: 11px; } }
 `

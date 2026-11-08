@@ -347,3 +347,13 @@ describe("refining a variant", () => {
     })
   })
 })
+
+it("inspection pins one target without adding marks or leaving the tool", () => {
+  const element = document.createElement("button")
+  const inspecting = run([{ kind: "toggled" }, { kind: "tool", tool: "inspect" }, { kind: "inspected", element }])
+  expect(inspecting.stage).toMatchObject({ kind: "composing", tool: "inspect", draft: { targets: [element], marks: [] } })
+  const withWords = reduce(inspecting, { kind: "typed", words: "Change this" })
+  expect(sendsOnEnter(withWords.stage)).toBe(false)
+  expect(reduce(inspecting, { kind: "tool", tool: null }).stage).toMatchObject({ tool: null, draft: { targets: [element] } })
+  expect(reduce(initial, { kind: "inspected", element })).toBe(initial)
+})

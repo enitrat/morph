@@ -12,6 +12,7 @@ import {
 } from "../variant/model"
 import { labelNow } from "./catalog"
 import { FineTune } from "./fine-tune"
+import { InspectionSummary } from "./inspection"
 import { Icon, type IconName } from "./icons"
 import { keyOf, locate, type Located } from "./source"
 import {
@@ -126,6 +127,7 @@ function Chip({ element, onRemove }: { element: Element; onRemove?: () => void }
 
 const TOOLS: readonly { tool: Tool; label: string; icon: IconName; hint: string }[] = [
   { tool: "point", label: "Point", icon: "point", hint: "Pick what to change" },
+  { tool: "inspect", label: "Inspect", icon: "inspect", hint: "Drag to reveal measurements · Click to pin · Esc exits" },
   { tool: "box", label: "Box", icon: "box", hint: "Drag where something goes" },
   {
     tool: "arrow",
@@ -203,7 +205,7 @@ function MarkList({ marks, dispatch }: { marks: readonly Sketch[]; dispatch: Dis
   )
 }
 
-const ALL_TOOLS: readonly Tool[] = ["point", "box", "arrow", "note"]
+const ALL_TOOLS: readonly Tool[] = ["point", "inspect", "box", "arrow", "note"]
 const SKETCH_TOOLS: readonly Tool[] = ["box", "arrow", "note"]
 
 function Composing({
@@ -279,6 +281,9 @@ function Composing({
             if (canSend(draft)) actions.send()
           }}
         />
+        {tool === "inspect" && draft.targets.length === 1 && draft.targets[0] && (
+          <InspectionSummary target={draft.targets[0]} />
+        )}
         {draft.targets.length === 1 && draft.targets[0] && theme !== null && (
           <FineTune
             key={`${keyOf(draft.targets)} ${theme.name}`}
@@ -807,7 +812,7 @@ export function PageTheme({
 
 /** The line the panel header shows for a stage. */
 export function statusOf(stage: Stage): string {
-  if (stage.kind === "composing") return stage.tool === "point" ? "Pointing" : ""
+  if (stage.kind === "composing") return stage.tool === "point" ? "Pointing" : stage.tool === "inspect" ? "Inspecting" : ""
   if (stage.kind === "asking") return "Planning"
   if (stage.kind === "failed") return "Something went wrong"
   if (stage.refining !== null) return `Refining ${stage.refining.variant}`

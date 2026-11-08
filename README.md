@@ -33,7 +33,13 @@ pnpm dev:vite   # Vite, http://localhost:5173
 
 The shared button, badge and card are copied from the [shadcn/ui registry](https://ui.shadcn.com/docs/components); their source is in `examples/shared/ui`. Both apps configure Tune to discover these components and the shared Tailwind tokens.
 
-Open the page and press Alt+Shift+R. `pnpm check:prod` builds both examples for production and
+Open the page and press Alt+Shift+R. Choose **Inspect** to measure the running page. Drag a
+frame to reveal element dimensions, padding, spacing and corner radii inside it; release to
+fade the temporary blueprint. Click an element to pin its measurements and use the existing
+fine-tune controls in the panel. Inspection reads the rendered page without changing source.
+Press Escape or choose another tool to leave inspection mode.
+
+`pnpm check:prod` builds both examples for production and
 fails if any output file names Tune.
 
 ## Install

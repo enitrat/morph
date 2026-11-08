@@ -156,7 +156,7 @@ export function SketchLayer({
   dispatch,
   onArrow,
 }: {
-  tool: Exclude<Tool, "point">
+  tool: Exclude<Tool, "point" | "inspect">
   dispatch: Dispatch<Event>
   /** An arrow was drawn: Tab may still aim it higher. */
   onArrow: (key: number) => void

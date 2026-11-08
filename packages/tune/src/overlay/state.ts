@@ -8,7 +8,7 @@ import {
   type VariantId,
 } from "../variant/model"
 
-export type Tool = "point" | "box" | "arrow" | "note"
+export type Tool = "point" | "inspect" | "box" | "arrow" | "note"
 
 /** A point in document coordinates, so a mark stays on its spot while the page scrolls. */
 export interface Spot {
@@ -117,6 +117,7 @@ export type Event =
   | { kind: "closed" }
   | { kind: "tool"; tool: Tool | null }
   | { kind: "picked"; element: Element; add: boolean }
+  | { kind: "inspected"; element: Element }
   | { kind: "unpicked"; element: Element }
   | { kind: "typed"; words: string }
   | { kind: "marked"; mark: Sketch }
@@ -227,6 +228,9 @@ const sent = (draft: Draft, event: Extract<Event, { kind: "sent" }>): Stage => (
 
 function compose(stage: Extract<Stage, { kind: "composing" }>, event: Event): Stage {
   if (event.kind === "tool") return { ...stage, tool: event.tool }
+  if (event.kind === "inspected") return stage.tool === "inspect"
+    ? { ...stage, draft: { ...stage.draft, targets: [event.element] } }
+    : stage
   if (event.kind === "sent") return sent(stage.draft, event)
   if (event.kind === "joined") return joined(stage.draft, event)
   const draft = edited(stage.draft, event)
@@ -332,7 +336,7 @@ export const canRefine = (stage: Stage) =>
 
 /** Enter makes variants whenever Make variants is enabled, except while pointing, where it picks. */
 export const sendsOnEnter = (stage: Stage) =>
-  (stage.kind === "composing" && stage.tool !== "point" && canSend(stage.draft)) ||
+  (stage.kind === "composing" && stage.tool !== "point" && stage.tool !== "inspect" && canSend(stage.draft)) ||
   (stage.kind === "session" && stage.refining?.tool === null && canRefine(stage))
 
 /** ↑ and ↓ climb and descend the one pick while nothing is typed yet. */

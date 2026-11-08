@@ -21,6 +21,7 @@ import { bridge, explain } from "./bridge"
 import { catalogNow, invalidateCatalog, labelNow } from "./catalog"
 import { EDGE, PANEL_MAX_HEIGHT, PANEL_WIDTH } from "./geometry"
 import { Icon } from "./icons"
+import { InspectionLayer } from "./inspection"
 import { type Actions, PageTheme, PanelBody, Pill, statusOf, Trail } from "./panel"
 import { THEME_PREVIEW } from "./preview"
 import { pickedOf, repicked } from "./repick"
@@ -736,7 +737,15 @@ export function Overlay() {
         <Icon name="pencil" />
       </button>
       {open && !variantShown && <Targets targets={draft.targets} />}
-      {tool !== null && tool !== "point" && (
+      {tool === "inspect" && stage.kind === "composing" && (
+        <InspectionLayer
+          selected={draft.targets.length === 1 ? (draft.targets[0] ?? null) : null}
+          onPick={(element) => {
+            dispatch({ kind: "inspected", element })
+          }}
+        />
+      )}
+      {tool !== null && tool !== "point" && tool !== "inspect" && (
         <SketchLayer key={tool} tool={tool} dispatch={dispatch} onArrow={setAimed} />
       )}
       {open && !variantShown && (
