@@ -34,7 +34,8 @@ interface Parsed {
 function parse(file: TokenFile, themes: ThemeModel): Parsed {
   const parsed: Parsed = { declarations: [], resets: [] }
   for (const match of clean(file.css).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const selector = (match[1] ?? "").trim()
+    // Statements such as `@import "tailwindcss";` run into the next block's prelude.
+    const selector = (match[1] ?? "").split(";").at(-1)?.trim() ?? ""
     const body = match[2] ?? ""
     const words = selector.split(/\s+/)
     if (words[0] === "@theme" && words.includes("reference")) continue

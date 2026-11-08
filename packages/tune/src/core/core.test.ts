@@ -34,6 +34,11 @@ describe("token graph", () => {
     expect(resolveToken(tokens, "--button-secondary-bg", LIGHT)).toBe("#f5f5f5")
   })
 
+  it("reads a @theme block that follows an @import statement", () => {
+    const file = { path: "app.css", css: '@import "tailwindcss";\n@theme inline {\n  --color-card: #fff;\n}', tier: "semantic" as const, owned: true }
+    expect(resolveToken(buildTokens([file], tokens.themes), "--color-card", LIGHT)).toBe("#fff")
+  })
+
   it("lets dark read the base declaration a .dark block leaves out", () => {
     expect(resolveToken(tokens, "--primary", DARK)).toBe("#8b5cf6")
   })
