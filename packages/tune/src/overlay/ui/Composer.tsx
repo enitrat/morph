@@ -1,5 +1,5 @@
 import { motion } from "motion/react"
-import { type Dispatch, useEffect, useRef, useState } from "react"
+import { type Dispatch, useEffect, useRef } from "react"
 
 import { ask } from "../ask"
 import { type Composer as Open, type Event, type SketchTool } from "../model"
@@ -53,7 +53,6 @@ export function Composer({
   const size = useSize(card)
   const { name, box, element } = about(composer)
   const source = useSource(element)
-  const [sent, setSent] = useState(false)
   const { draft, tool } = composer
   const spot = size
     ? anchor(box, size, area, { width: innerWidth, height: innerHeight })
@@ -68,8 +67,7 @@ export function Composer({
     input.setSelectionRange(input.value.length, input.value.length)
   }, [composer.target, shown])
   const send = () => {
-    ask({ target: composer.target, words: draft.words, marks: draft.marks })
-    setSent(true)
+    void ask({ target: composer.target, words: draft.words, marks: draft.marks }, dispatch)
   }
   const marks = draft.marks.length
   return (
@@ -121,7 +119,6 @@ export function Composer({
         aria-label="What should change"
         className="ring-focus min-h-[58px] w-full resize-none rounded-lg bg-[rgb(0_0_0/0.25)] px-2.5 py-2 text-[13px] leading-[19px] text-ink shadow-[inset_0_0_0_1px_var(--line)] placeholder:text-ink-3"
         onChange={(event) => {
-          setSent(false)
           dispatch({ kind: "typed", words: event.target.value })
         }}
         onKeyDown={(event) => {
@@ -166,11 +163,7 @@ export function Composer({
           })}
         </span>
         <span className="min-w-0 flex-1 truncate px-1.5 text-[11px] text-ink-3">
-          {sent
-            ? "Logged. Sessions are not connected yet."
-            : tool
-              ? "Drag on the page · esc done"
-              : "3 variants"}
+          {tool ? "Drag on the page · esc done" : "3 variants"}
         </span>
         <button
           type="button"

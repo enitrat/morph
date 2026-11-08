@@ -126,3 +126,22 @@
   background: repeating-linear-gradient(135deg, var(--measure-soft) 0 3px, transparent 3px 6px);
   box-shadow: inset 0 0 0 0.5px rgb(255 61 139 / 0.45);
 }
+
+/* The sweep over a target while its variants generate. */
+@keyframes tune-scan {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(200%);
+  }
+}
+.ui .tune-scan {
+  animation: tune-scan 2.2s cubic-bezier(0.6, 0, 0.3, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui .tune-scan {
+    animation: none;
+    top: 50%;
+  }
+}

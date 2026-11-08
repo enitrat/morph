@@ -4,9 +4,83 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { type Dispatch, type ReactNode } from "react"
 
 import { type Event, type State } from "../model"
+import { isGenerating, pinned, statusOf } from "../sessions"
 import { Glyph, type GlyphName } from "./Glyph"
 import { Kbd } from "./Kbd"
 import { dur, ease, spring } from "./lib/motion"
+import { Disc } from "./Pins"
+
+/** One chip per session: its number, name, and where it stands. A click opens its card. */
+function Chips({ state, dispatch }: { state: State; dispatch: Dispatch<Event> }) {
+  const list = pinned(state.sessions)
+  if (list.length === 0) return null
+  return (
+    <span className="flex items-center gap-0.5">
+      {list.map(({ pin, view }) => {
+        const status = statusOf(view)
+        const on = state.sessions.card === pin.id
+        return (
+          <button
+            key={pin.n}
+            type="button"
+            aria-pressed={on}
+            title={`${pin.name} · ${status.label}  [ ]`}
+            onClick={() => {
+              dispatch({ kind: "card", id: on ? null : pin.id })
+            }}
+            className={`ring-focus flex h-8 items-center gap-1.5 rounded-full pr-2.5 pl-1 text-[12px] transition-colors duration-150 ${
+              on ? "bg-surface-2 shadow-[inset_0_0_0_1px_var(--ring)]" : "hover:bg-surface-2"
+            }`}
+          >
+            <Disc pin={pin} view={view} size={22} />
+            <span className="max-w-24 truncate font-medium text-ink">{pin.name}</span>
+            <span
+              className={`font-mono text-[11px] ${
+                status.tone === "on"
+                  ? "text-accent"
+                  : status.tone === "warn"
+                    ? "text-warn"
+                    : "text-ink-3"
+              }`}
+            >
+              {status.label}
+            </span>
+          </button>
+        )
+      })}
+    </span>
+  )
+}
+
+/** A short line above the bar: what an operation did, or why the bridge refused it. */
+export function Notice({ state, center }: { state: State; center: number }) {
+  const { notice } = state.sessions
+  const reduce = useReducedMotion()
+  return (
+    <div
+      className="pointer-events-none fixed bottom-[68px] z-[2147483645] flex w-0 justify-center"
+      style={{ left: state.open ? center : innerWidth - 80 }}
+    >
+      <AnimatePresence>
+        {notice && (
+          <motion.div
+            key={notice.key}
+            role="status"
+            initial={{ opacity: 0, y: reduce ? 0 : 6 }}
+            animate={{ opacity: 1, y: 0, transition: { duration: dur.enter, ease: ease.out } }}
+            exit={{ opacity: 0, transition: { duration: dur.exit } }}
+            className={`glass flex w-max max-w-[520px] items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] ${
+              notice.tone === "warn" ? "text-warn" : "text-ink"
+            }`}
+          >
+            <Glyph name={notice.tone === "warn" ? "warn" : "check"} size={13} />
+            {notice.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 function Hint({ state }: { state: State }) {
   const k = (key: string) => <Kbd>{key}</Kbd>
@@ -25,24 +99,34 @@ function Hint({ state }: { state: State }) {
         ]
       : state.composer?.tool
         ? [<span key="d">Drag on the page to draw</span>, <span key="e">{k("esc")} done</span>]
-        : state.selection.kind === "element"
+        : state.sessions.card !== null
           ? [
-              <span key="p">{k("⇧↵")} parent</span>,
-              <span key="c">{k("↵")} child</span>,
-              <span key="s">{k("⇥")} sibling</span>,
-              <span key="m">hold {k("⌥")} measure</span>,
+              <span key="f">
+                {k("0")}–{k("3")} flip
+              </span>,
+              <span key="p">
+                {k("[")}
+                {k("]")} pins
+              </span>,
             ]
-          : state.selection.kind === "frame"
+          : state.selection.kind === "element"
             ? [
-                <span key="l">Click a label to select</span>,
-                <span key="a">{k("A")} ask about frame</span>,
-                <span key="e">{k("esc")} clear</span>,
+                <span key="p">{k("⇧↵")} parent</span>,
+                <span key="c">{k("↵")} child</span>,
+                <span key="s">{k("⇥")} sibling</span>,
+                <span key="m">hold {k("⌥")} measure</span>,
               ]
-            : [
-                <span key="c">Click to select</span>,
-                <span key="d">Drag to frame</span>,
-                <span key="m">Hold {k("⌥")} to measure</span>,
-              ]
+            : state.selection.kind === "frame"
+              ? [
+                  <span key="l">Click a label to select</span>,
+                  <span key="a">{k("A")} ask about frame</span>,
+                  <span key="e">{k("esc")} clear</span>,
+                ]
+              : [
+                  <span key="c">Click to select</span>,
+                  <span key="d">Drag to frame</span>,
+                  <span key="m">Hold {k("⌥")} to measure</span>,
+                ]
   return (
     <span className="flex items-center gap-3 px-2 text-[12px] whitespace-nowrap text-ink-2">
       {parts}
@@ -88,6 +172,17 @@ function Tool({
   )
 }
 
+function Running({ state }: { state: State }) {
+  const views = state.sessions.page.sessions
+  const running = views.filter(isGenerating).length
+  if (views.length === 0) return null
+  return (
+    <span className="font-mono text-[11px] text-accent">
+      {running > 0 ? `${running} running` : `${views.length} open`}
+    </span>
+  )
+}
+
 /** The launcher while Tune is closed; the session bar, centred on the uncovered page, while open. */
 export function Dock({
   state,
@@ -126,7 +221,11 @@ export function Dock({
               <span className="grid size-8 place-items-center rounded-full bg-accent text-on-accent">
                 <Glyph name="logo" />
               </span>
-              <Hint state={state} />
+              <Chips state={state} dispatch={dispatch} />
+              {/* The hint gives way to the chips when the inspector leaves the bar little room. */}
+              {(pinned(state.sessions).length === 0 || state.sidebar.kind === "closed") && (
+                <Hint state={state} />
+              )}
               <span className="h-4 w-px bg-line" />
               <Tool
                 glyph="measure"
@@ -175,6 +274,7 @@ export function Dock({
                 <Glyph name="logo" />
               </span>
               Tune
+              <Running state={state} />
               <Kbd>⌥⇧R</Kbd>
             </motion.button>
           )}

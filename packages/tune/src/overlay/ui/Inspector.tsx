@@ -2,6 +2,8 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { type Dispatch, type ReactNode } from "react"
 
 import { FineTune } from "../fine-tune"
+import { targetsOf } from "../live"
+import { pinned, type Sessions } from "../sessions"
 import { type Event, type State, type Tab } from "../model"
 import { MARGIN } from "../place"
 import { type Scales } from "../scale"
@@ -14,7 +16,7 @@ import { fileOf, useSource } from "./hooks"
 import { Kbd } from "./Kbd"
 import { Layers } from "./Layers"
 import { FrameSheet } from "./FrameSheet"
-import { ElementSpecs } from "./Specs"
+import { ElementSpecs, type Shown } from "./Specs"
 import { ease, spring } from "./lib/motion"
 import { Empty, Identity } from "./parts"
 
@@ -43,6 +45,14 @@ function Note({ children }: { children: ReactNode }) {
   )
 }
 
+/** The session whose shown variant is about `element`, with the original's measurement. */
+function shownOver(element: Element, sessions: Sessions): Shown | null {
+  for (const { pin, view } of pinned(sessions))
+    if (view?.place.kind === "shown" && targetsOf(pin).includes(element))
+      return { n: pin.n, variant: view.place.variant, baseline: pin.baseline }
+  return null
+}
+
 function SpecsTab({
   state,
   preview,
@@ -54,15 +64,19 @@ function SpecsTab({
   scales: Scales
   dispatch: Dispatch<Event>
 }) {
-  const { selection } = state
+  const { selection, sessions } = state
   const committed = selection.kind === "element" ? selection.element : null
-  const element = preview !== null && preview !== committed ? preview : committed
+  const card = sessions.card === null ? undefined : sessions.pins[sessions.card]
+  // With nothing selected, Specs reads the open card's target.
+  const settled = committed ?? (card && targetsOf(card)[0]) ?? null
+  const element = preview !== null && preview !== settled ? preview : settled
   if (element !== null && element.isConnected)
     return (
       <ElementSpecs
-        key={element === committed ? "committed" : "preview"}
+        key={element === settled ? "committed" : "preview"}
         element={element}
-        preview={element !== committed}
+        preview={element !== settled}
+        shown={shownOver(element, sessions)}
         scales={scales}
         dispatch={dispatch}
       />

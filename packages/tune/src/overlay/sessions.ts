@@ -18,6 +18,8 @@ export interface Pin {
   /** Its number on the page, kept by every refine round. */
   n: number
   name: string
+  /** The words of the ask this round answers. */
+  words: string
   /** The file the target is written in, as `card.tsx`. */
   file: string | null
   /** What the ask is about, to find again after a reload or once a variant redraws it. */
@@ -62,7 +64,7 @@ export type SessionEvent =
   /** Sessions a reload found open, with what the last tab stored about them. */
   | { kind: "rejoined"; pins: readonly NewPin[] }
   /** A refine round replaced `from` with `id` on the same pin. */
-  | { kind: "refined"; from: SessionId; id: SessionId }
+  | { kind: "refined"; from: SessionId; id: SessionId; words: string }
   /** An ask the bridge refused: its pin goes. */
   | { kind: "dropped"; id: SessionId; text: string }
   | { kind: "card"; id: SessionId | null }
@@ -77,7 +79,7 @@ const nextN = (pins: Sessions["pins"]) =>
   Math.max(0, ...Object.values(pins).map((pin) => pin?.n ?? 0)) + 1
 
 function add(state: Sessions, pin: NewPin, joined: boolean): Sessions {
-  const n = pin.n ?? nextN(state.pins)
+  const n = pin.n ?? state.pins[pin.id]?.n ?? nextN(state.pins)
   return {
     ...state,
     pins: { ...state.pins, [pin.id]: { ...pin, n, joined, refine: "" } },
@@ -136,7 +138,7 @@ export function stepSessions(state: Sessions, event: SessionEvent): Sessions {
       const { [event.from]: _, ...rest } = state.pins
       return {
         ...state,
-        pins: { ...rest, [event.id]: { ...from, id: event.id, joined: false, refine: "" } },
+        pins: { ...rest, [event.id]: { ...from, id: event.id, words: event.words, joined: false, refine: "" } },
         card: state.card === event.from ? event.id : state.card,
       }
     }

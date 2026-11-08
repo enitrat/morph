@@ -4,7 +4,9 @@ import { type Dispatch, useEffect, useEffectEvent, useReducer, useRef, useState 
 import { type ThemeName } from "../core/config"
 import { isPointShortcut, isTyping } from "../inspector/pointer"
 import { isTune, leafAt } from "../inspector/target"
+import { type SessionActions } from "./ask"
 import { itemsIn } from "./frame"
+import { useSessions } from "./live"
 import { type Event, initial, reduce, type State, type Tab } from "./model"
 import { type Box, boxOf, dockFor, uncovered } from "./place"
 import { loadScales, NO_SCALES, type Scales } from "./scale"
@@ -14,11 +16,12 @@ import { useHostTheme } from "./theme"
 import { firstChildOf, parentOf, pickAt, siblingOf } from "./tree"
 import { Composer } from "./ui/Composer"
 import { UI_CSS } from "./ui/css"
-import { Dock } from "./ui/Dock"
+import { Dock, Notice } from "./ui/Dock"
 import { fileOf, useSettled, useSource, useTick } from "./ui/hooks"
 import { Inspector } from "./ui/Inspector"
 import { Lens } from "./ui/Lens"
 import { frameBox, PageLayer } from "./ui/PageLayer"
+import { boxOfPin, choicesOf, currentOf, Pins } from "./ui/Pins"
 
 /** Pointer travel before a press on the page becomes a frame drag. */
 const DRAG_PX = 5
@@ -35,15 +38,19 @@ const boxBetween = (a: { x: number; y: number }, b: { x: number; y: number }): B
   bottom: Math.max(a.y, b.y),
 })
 
-/** What the inspector keeps clear: the selection, else the frame, else what the composer is about. */
+/**
+ * What the inspector keeps clear: the selection, else the frame, else what the composer or the
+ * open thread card is about.
+ */
 function focusBox(state: State): Box | null {
-  const { selection, composer } = state
+  const { selection, composer, sessions } = state
   if (selection.kind === "element")
     return selection.element.isConnected ? boxOf(selection.element.getBoundingClientRect()) : null
   if (selection.kind === "frame") return frameBox(selection.frame)
   if (composer?.target.kind === "element")
     return boxOf(composer.target.element.getBoundingClientRect())
-  return null
+  const pin = sessions.card === null ? undefined : sessions.pins[sessions.card]
+  return pin === undefined ? null : boxOfPin(pin)
 }
 
 /** Re-docks the open inspector as the selection or the viewport moves. */
@@ -192,9 +199,10 @@ function usePagePointer(state: State, dispatch: Dispatch<Event>) {
 
 /**
  * Alt+Shift+R opens and closes; ⌥ holds the lens and I latches it; S, T, L and \ drive the
- * inspector; A asks, K sketches; ⇧↵ and ↵ climb, ⇥ moves to the next sibling; Esc backs out.
+ * inspector; A asks, K sketches; ⇧↵ and ↵ climb, ⇥ moves to the next sibling; [ and ] step
+ * through pins, 0–3 and ←/→ flip the open card's variants; Esc backs out.
  */
-function useKeys(state: State, dispatch: Dispatch<Event>) {
+function useKeys(state: State, dispatch: Dispatch<Event>, actions: SessionActions) {
   const onKey = useEffectEvent((event: KeyboardEvent) => {
     if (isPointShortcut(event)) {
       event.preventDefault()
@@ -235,6 +243,30 @@ function useKeys(state: State, dispatch: Dispatch<Event>) {
       return
     }
     if (composer !== null) return
+    if ((key === "[" || key === "]") && Object.keys(state.sessions.pins).length > 0) {
+      handled()
+      dispatch({ kind: "cycled", by: key === "]" ? 1 : -1 })
+      return
+    }
+    const card = state.sessions.card
+    const view = state.sessions.page.sessions.find((session) => session.id === card)
+    if (view !== undefined) {
+      const choices = choicesOf(view)
+      let choice = /^[0-3]$/.test(key)
+        ? key === "0"
+          ? "original"
+          : choices.find((entry) => entry === `v${key}`)
+        : undefined
+      if (key === "arrowleft" || key === "arrowright") {
+        const at = Math.max(0, choices.indexOf(currentOf(view) ?? "original"))
+        choice = choices[(at + (key === "arrowright" ? 1 : -1) + choices.length) % choices.length]
+      }
+      if (choice !== undefined) {
+        handled()
+        actions.show(view.id, choice)
+        return
+      }
+    }
     if (selection.kind === "frame" && key === "a") {
       handled()
       dispatch({
@@ -314,7 +346,8 @@ export function Overlay() {
   const theme = useHostTheme(state.open)
   const scales = useScales(state.open, theme?.name ?? null)
   const { drag, pointer } = usePagePointer(state, dispatch)
-  useKeys(state, dispatch)
+  const actions = useSessions(state, dispatch)
+  useKeys(state, dispatch, actions)
   useDocking(state, dispatch)
 
   const { selection, composer, sidebar, hover } = state
@@ -351,6 +384,7 @@ export function Overlay() {
               source={source && fileOf(source)}
               dispatch={dispatch}
             />
+            <Pins state={state} area={area} actions={actions} dispatch={dispatch} />
             {subject && <Lens subject={subject} selected={selected} scales={scales} area={area} />}
             {composer && <Marks marks={composer.draft.marks} dispatch={dispatch} />}
             {composer?.tool && (
@@ -366,6 +400,7 @@ export function Overlay() {
           theme={theme}
           dispatch={dispatch}
         />
+        <Notice state={state} center={(area.left + area.right) / 2} />
         <Dock state={state} center={(area.left + area.right) / 2} dispatch={dispatch} />
       </MotionConfig>
     </div>

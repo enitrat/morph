@@ -3,9 +3,12 @@ import { type Dispatch, type ReactNode } from "react"
 import { instanceName, isComponentName, propsOf, rootedAt } from "../../inspector/fiber"
 import { type Event } from "../model"
 import { matchOf, type Scales } from "../scale"
-import { fmt, hexOf, quadText, specOf, type Spec, usesOf } from "../specs"
+import { type VariantId } from "../../variant/model"
+import { letterOf } from "../sessions"
+import { type Change, deltaOf, fmt, hexOf, quadText, specOf, type Spec, usesOf } from "../specs"
 import { childrenOf, nameOf, pathOf } from "../tree"
 import { useSource } from "./hooks"
+import { Kbd } from "./Kbd"
 import { IconButton, Identity, Section, Swatch, TokenHint } from "./parts"
 
 /** The primitive props the component instance at this element was rendered with. */
@@ -62,15 +65,105 @@ function BoxModel({ spec }: { spec: Spec }) {
   )
 }
 
+/** A variant on the page over this element, and the original as Tune last measured it. */
+export interface Shown {
+  n: number
+  variant: VariantId
+  baseline: Spec | null
+}
+
+function ChangeRow({ change }: { change: Change }) {
+  const was =
+    change.kind === "length"
+      ? fmt(change.was)
+      : change.kind === "color"
+        ? change.was === null
+          ? "none"
+          : hexOf(change.was)
+        : change.was
+  const now =
+    change.kind === "length"
+      ? fmt(change.now)
+      : change.kind === "color"
+        ? change.now === null
+          ? "none"
+          : hexOf(change.now)
+        : change.now
+  return (
+    <div className="grid grid-cols-[84px_minmax(0,1fr)_auto] items-center gap-2 py-[3px] text-[12px]">
+      <span className="truncate text-ink-2">{change.label}</span>
+      <span className="tnum flex min-w-0 items-center gap-1 truncate font-mono text-[11.5px]">
+        {change.kind === "color" && change.was && <Swatch css={change.was} />}
+        <s className="text-ink-3">{was}</s>
+        <span className="text-ink-3">→</span>
+        {change.kind === "color" && change.now && <Swatch css={change.now} />}
+        <span className="text-ink">{now}</span>
+      </span>
+      {change.kind === "length" ? (
+        change.match.kind === "off" ? (
+          <span
+            className="font-mono text-[10.5px] text-warn"
+            title={`Nearest token ${change.match.near}`}
+          >
+            off-scale
+          </span>
+        ) : (
+          <TokenHint match={change.match} />
+        )
+      ) : change.kind === "color" ? (
+        <span className={`font-mono text-[10.5px] ${change.role ? "text-accent" : "text-warn"}`}>
+          {change.role ?? "raw"}
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
+/** What the variant on the page changed here, against the original's measurement. */
+function Delta({ shown, spec, scales }: { shown: Shown; spec: Spec; scales: Scales }) {
+  const changes = shown.baseline === null ? null : deltaOf(shown.baseline, spec, scales)
+  const off = changes?.filter((change) => change.kind === "length" && change.match.kind === "off")
+  return (
+    <section className="m-2.5 mb-0 rounded-lg bg-accent-soft px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--ring)]">
+      <h3 className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-accent">
+        <span className="grid size-4 place-items-center rounded-full bg-accent text-[10px] text-on-accent">
+          {shown.n}
+        </span>
+        Variant {letterOf(shown.variant)}
+        <span className="font-normal text-ink-2">vs original</span>
+        <span className="flex-1" />
+        {changes && (
+          <span className="font-mono text-[10.5px] font-normal text-ink-2">
+            {changes.length} change{changes.length === 1 ? "" : "s"}
+            {off && off.length > 0 && <span className="text-warn"> · {off.length} off-scale</span>}
+          </span>
+        )}
+      </h3>
+      {changes === null ? (
+        <p className="text-[12px] leading-[17px] text-ink-2">
+          No baseline yet. Tune measures the original while it is on the page: flip to <Kbd>0</Kbd>{" "}
+          once to measure it.
+        </p>
+      ) : changes.length === 0 ? (
+        <p className="text-[12px] text-ink-2">Nothing measurable changed on this element.</p>
+      ) : (
+        changes.map((change) => <ChangeRow key={change.label} change={change} />)
+      )}
+    </section>
+  )
+}
+
 /** Specs for one element: identity, layout, box model, tokens, type and props. */
 export function ElementSpecs({
   element,
   preview,
+  shown = null,
   scales,
   dispatch,
 }: {
   element: Element
   preview: boolean
+  shown?: Shown | null
   scales: Scales
   dispatch: Dispatch<Event>
 }) {
@@ -135,6 +228,7 @@ export function ElementSpecs({
           )}
         </div>
       )}
+      {shown && <Delta shown={shown} spec={spec} scales={scales} />}
       <Section title="Layout">
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md bg-line shadow-[0_0_0_1px_var(--line)]">
           <Cell label="Width" value={fmt(spec.width)} />

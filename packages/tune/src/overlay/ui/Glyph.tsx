@@ -18,6 +18,7 @@ const PATHS = {
   measure: "M2 6h12v4H2zM5 6v2M8 6v2.5M11 6v2",
   logo: "M3 4.5h10M8 4.5v8M5.5 8h5",
   send: "M8 13V3M4 7l4-4 4 4",
+  check: "M3.5 8.5l3 3 6-7",
 } as const
 
 export type GlyphName = keyof typeof PATHS

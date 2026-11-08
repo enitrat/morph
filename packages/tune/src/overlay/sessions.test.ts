@@ -13,6 +13,7 @@ const pinOf = (
   id,
   n,
   name,
+  words: "Make it calmer",
   file: `${name.toLowerCase()}.tsx`,
   picked: [],
   baseline: null,
@@ -63,11 +64,11 @@ describe("pins", () => {
       { kind: "asked", pin: pinOf(ids.button, "Button") },
       { kind: "card", id: ids.hero },
       { kind: "refining", id: ids.hero, words: "warmer" },
-      { kind: "refined", from: ids.hero, id: ids.card },
+      { kind: "refined", from: ids.hero, id: ids.card, words: "warmer" },
     )
     expect(numbers(state)).toEqual(["1 Hero", "2 Button"])
     expect(state.sessions.card).toBe(ids.card)
-    expect(state.sessions.pins[ids.card]?.refine).toBe("")
+    expect(state.sessions.pins[ids.card]).toMatchObject({ refine: "", words: "warmer" })
   })
 
   it("rejoins sessions after a reload with their stored numbers, numbering the rest after them", () => {
