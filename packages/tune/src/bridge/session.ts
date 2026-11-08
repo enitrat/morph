@@ -35,7 +35,7 @@ import { plannerModel, runClaude } from "./agent"
 import { readJson, writeJson } from "./disk"
 import { absent, git, gitStore, homeOf, type Host, REFS, type Repo, updateRef } from "./git"
 import { baseOf, type Converged, converge } from "./live"
-import { alive, withLock } from "./lock"
+import { alive, dropLock, withLock } from "./lock"
 import { Directions, plannerPrompt } from "./prompt"
 
 const PLANNER_DEADLINE_MS = 60_000
@@ -390,8 +390,12 @@ async function drop(repo: Repo, id: SessionId): Promise<void> {
  * its files first. Every session whose variants touch those files merges onto the kept code when
  * it next shows, and lists them in its `drift`. A session already gone is a no-op.
  */
-export function keep(repo: Repo, id: SessionId, variant: VariantId): Promise<Done<PageView>> {
-  return withLock(sessionLock(repo, id), async () => {
+export async function keep(
+  repo: Repo,
+  id: SessionId,
+  variant: VariantId,
+): Promise<Done<PageView>> {
+  const done = await withLock(sessionLock(repo, id), async () => {
     if ((await readSessionFile(repo, id)) === null) return page(repo)
     const kept = await settle(repo, { kind: "keep", session: id, variant })
     if (!kept.ok) return refuse(kept.refusal)
@@ -399,20 +403,24 @@ export function keep(repo: Repo, id: SessionId, variant: VariantId): Promise<Don
     await drop(repo, id)
     return page(repo)
   })
+  if (done.ok) await dropLock(sessionLock(repo, id))
+  return done
 }
 
 /**
  * Restores every file the session shows, byte for byte, and ends it. A session waiting on those
  * files shows in the same move.
  */
-export function discard(repo: Repo, id: SessionId): Promise<Done<PageView>> {
+export async function discard(repo: Repo, id: SessionId): Promise<Done<PageView>> {
   // A session still being planned ends there: its ask answers once the planner stops.
   planning.get(id)?.abort("discarded")
-  return withLock(sessionLock(repo, id), async () => {
+  const done = await withLock(sessionLock(repo, id), async () => {
     const moved = await settle(repo, { kind: "discard", session: id })
     if (!moved.ok) return refuse(moved.refusal)
     await stopJobs(repo, id)
     await drop(repo, id)
     return page(repo)
   })
+  if (done.ok) await dropLock(sessionLock(repo, id))
+  return done
 }

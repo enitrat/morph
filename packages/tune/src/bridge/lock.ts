@@ -1,7 +1,7 @@
 // oxlint-disable-next-line import/no-nodejs-modules -- locks coordinate processes on disk.
 import { randomUUID } from "node:crypto"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
-import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises"
+import { mkdir, readFile, readdir, rename, rm, rmdir, writeFile } from "node:fs/promises"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
 import { dirname, join } from "node:path"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
@@ -80,6 +80,8 @@ export async function tryLock(dir: string): Promise<Lock | null> {
     return { path }
   } catch (error) {
     await rm(path, { force: true })
+    // `dropLock` removed the folder between our mkdir and rename: the next try makes it again.
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null
     throw error
   } finally {
     await rm(staged, { force: true })
@@ -88,6 +90,16 @@ export async function tryLock(dir: string): Promise<Lock | null> {
 
 export async function unlock(lock: Lock): Promise<void> {
   await rm(lock.path, { force: true })
+}
+
+/** Removes a lock's folder once nobody holds or wants it; a contender keeps it. */
+export async function dropLock(dir: string): Promise<void> {
+  try {
+    await rmdir(dir)
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code !== "ENOENT" && code !== "ENOTEMPTY" && code !== "EEXIST") throw error
+  }
 }
 
 export async function withLock<T>(dir: string, body: () => Promise<T>): Promise<T> {

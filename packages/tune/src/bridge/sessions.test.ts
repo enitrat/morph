@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -16,7 +17,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { Anchor, type Ask, SessionId, VariantId } from "../variant/model"
 import { writeJson } from "./disk"
-import { changedFiles, commitTree, type Host } from "./git"
+import { changedFiles, commitTree, homeOf, type Host } from "./git"
 import { ask, discard, jobDir, keep, page, readSessionFile, show } from "./session"
 import { openHost, SPAWNING_TEST_MS } from "./test-fixtures"
 
@@ -302,5 +303,20 @@ describe("several sessions", () => {
     const base = (await readSessionFile(repo, next))?.base
     expect(sh(root, "show", `${base}:src/header.tsx`)).toBe(BASE["src/header.tsx"])
     expect(sh(root, "show", `${base}:src/card.tsx`)).toBe(edit(BASE["src/card.tsx"], 5, "mine"))
+  })
+
+  it("leaves no lock folder behind for a session it keeps or discards", async () => {
+    const { repo, open, ready } = await fixture()
+    const header = await open()
+    const card = await open()
+    await ready(header, "v1", { "src/header.tsx": edit(BASE["src/header.tsx"], 2, "header") })
+    const lock = (id: SessionId) => join(homeOf(repo), "locks", `session-${id}`)
+    expect(existsSync(lock(header))).toBe(true)
+
+    expect((await keep(repo, header, "v1")).ok).toBe(true)
+    expect((await discard(repo, card)).ok).toBe(true)
+
+    expect(existsSync(lock(header))).toBe(false)
+    expect(existsSync(lock(card))).toBe(false)
   })
 })
