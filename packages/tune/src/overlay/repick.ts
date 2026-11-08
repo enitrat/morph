@@ -1,6 +1,15 @@
 import { leafAt, meaningfulFrom } from "../inspector/target"
 import { catalogNow } from "./catalog"
-import { type Picked } from "./state"
+import { type Spot } from "./model"
+
+/**
+ * An element an ask is about, and where its box's middle was when the ask was sent; `null` once a
+ * reload lost the element, which is then picked again at its spot.
+ */
+export interface Picked {
+  element: Element | null
+  at: Spot
+}
 
 /** An element the ask is about, with the middle of its box in document coordinates. */
 export function pickedOf(element: Element): Picked {

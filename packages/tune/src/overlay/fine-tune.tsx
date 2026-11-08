@@ -16,7 +16,8 @@ import { type Dial, type Dialed, deriveRows } from "./dials"
 import { Icon } from "./icons"
 import { clearPreview, endThemePreview, previewTheme } from "./preview"
 import { Props } from "./prop-rows"
-import { type ShownTheme } from "./view"
+import { pagePx } from "./scale"
+import { type ShownTheme } from "./theme"
 
 /** Pointer travel per step while dragging a value. */
 const DRAG_PX = 12
@@ -43,7 +44,7 @@ function textOf(display: Display, step: Step, from?: Step): string {
     const role = /var\(--(?:color-)?([\w-]+)\)/.exec(step.value)?.[1]
     return role ?? step.value.replace(/^(?:bg|text|border)-/, "")
   }
-  return display.text
+  return pagePx(display.text) ?? display.text
 }
 
 function Value({ step, from }: { step: Step; from: Step | undefined }) {

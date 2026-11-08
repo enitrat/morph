@@ -44,7 +44,7 @@ const humanize = (name: string) =>
   name.replaceAll(/(?<=[a-z\d])([A-Z])/g, (_, letter: string) => ` ${letter.toLowerCase()}`)
 
 /** Layout shells and framework plumbing, which wrap everything and so name nothing. */
-const SHELL =
+export const SHELL =
   /(?:Shell|Layout|Container|Frame|Wrapper|Provider|Boundary|Router|Template|Context|Handler|Node)$/
 
 /**

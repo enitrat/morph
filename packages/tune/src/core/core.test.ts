@@ -35,7 +35,12 @@ describe("token graph", () => {
   })
 
   it("reads a @theme block that follows an @import statement", () => {
-    const file = { path: "app.css", css: '@import "tailwindcss";\n@theme inline {\n  --color-card: #fff;\n}', tier: "semantic" as const, owned: true }
+    const file = {
+      path: "app.css",
+      css: '@import "tailwindcss";\n@theme inline {\n  --color-card: #fff;\n}',
+      tier: "semantic" as const,
+      owned: true,
+    }
     expect(resolveToken(buildTokens([file], tokens.themes), "--color-card", LIGHT)).toBe("#fff")
   })
 

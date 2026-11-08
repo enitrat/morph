@@ -131,7 +131,7 @@ function lookOf(element: Element): Look | null {
 }
 
 /** The root of a catalog component or block, a heading or paragraph, or a visible box. */
-function isMeaningful(element: Element, catalog: Catalog): boolean {
+export function isMeaningful(element: Element, catalog: Catalog): boolean {
   if (isTune(element) || isPage(element) || !hasBox(element)) return false
   return (
     ownNames(element).some((name) => catalog.has(name)) ||
@@ -201,9 +201,7 @@ function textIn(element: Element): string | null {
  * list. A wrapper with one child is looked through.
  */
 function rowIn(element: Element): { first: Element; count: number } | null {
-  const [first, ...rest] = [...element.children].filter(
-    (child) => !isTune(child) && hasBox(child),
-  )
+  const [first, ...rest] = [...element.children].filter((child) => !isTune(child) && hasBox(child))
   if (first === undefined) return null
   if (rest.length === 0) return rowIn(first)
   if (first.className === "") return null
@@ -224,8 +222,7 @@ export function seenOf(element: Element): Seen {
   const owners: string[] = []
   for (let fiber: Fiber | null = fiberOf(element) ?? null; fiber; fiber = fiber.return) {
     const names = [nameOf(fiber.type), ...serverComponentsOf(fiber).reverse().map(instanceName)]
-    for (const name of names)
-      if (isComponentName(name) && owners.at(-1) !== name) owners.push(name)
+    for (const name of names) if (isComponentName(name) && owners.at(-1) !== name) owners.push(name)
   }
   return {
     own: ownNames(element),

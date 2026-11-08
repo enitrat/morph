@@ -1,15 +1,6 @@
 const PATHS = {
-  pencil: "M11.5 2.5l2 2L6 12H4v-2l7.5-7.5zM10 4l2 2",
-  close: "M4 4l8 8M12 4l-8 8",
-  point: "M4 2.5l8 4.5-3.5 1L7 11.5 4 2.5z",
-  inspect: "M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10M6 6h4v4H6z",
-  box: "M3 3.5h10v9H3z",
-  arrow: "M3 13L12.5 3.5M7 3.5h5.5V9",
-  note: "M3 3h10v7H7l-3 3v-3H3z",
   minus: "M4 8h8",
   plus: "M4 8h8M8 4v8",
-  collapse: "M4 6l4 4 4-4",
-  expand: "M4 10l4-4 4 4",
 } as const
 
 export type IconName = keyof typeof PATHS
