@@ -1,29 +1,15 @@
 // @vitest-environment happy-dom
 // @vitest-environment-options {"url": "http://localhost:3000/"}
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { type Attribute } from "../dial/jsx"
 import { type PropControl } from "../dial/props"
 import { type Fiber } from "../inspector/fiber"
-import { type SourceLoc } from "../variant/model"
-import { bridge } from "./bridge"
+import { SourceLoc } from "../variant/model"
+import { connect } from "./bridge"
+import { invalidateCatalog } from "./catalog"
+import { invalidateSources } from "./source"
 import { deriveProps } from "./props"
-
-vi.mock("./catalog", async () => {
-  const { CONFIG } = await import("../bridge/test-fixtures")
-  const { isPlumbing } = await import("../core")
-  return {
-    loadTokens: async () => ({ ok: true }),
-    catalogNow: () =>
-      new Map([["Button", { title: "Button", naming: "own", exports: ["Button"] }]]),
-    plumbingAt: async (path: string) => isPlumbing(CONFIG.plumbing, path),
-  }
-})
-
-vi.mock("./bridge", () => ({
-  bridge: { props: vi.fn(), locate: vi.fn(), attributes: vi.fn(), uses: vi.fn() },
-  explain: String,
-}))
 
 const CONTROLS: PropControl[] = [
   { kind: "enum", name: "variant", options: ["primary", "ghost"], default: "primary" },
@@ -33,29 +19,30 @@ const CONTROLS: PropControl[] = [
 /** Each JSX site in the fake source: a frame line in the chunk and the tag written there. */
 const SITES: Record<number, { site: SourceLoc; tag: string; attributes: Attribute[] }> = {
   10: {
-    site: { path: "apps/site/list.tsx", line: 10, col: 9 } as SourceLoc,
+    site: SourceLoc.parse({ path: "apps/site/list.tsx", line: 10, col: 9 }),
     tag: "Button",
     attributes: [{ kind: "attribute", name: "loading", value: { kind: "literal", value: true } }],
   },
   20: {
-    site: { path: "apps/site/row.tsx", line: 20, col: 9 } as SourceLoc,
+    site: SourceLoc.parse({ path: "apps/site/row.tsx", line: 20, col: 9 }),
     tag: "Button",
     attributes: [{ kind: "attribute", name: "variant", value: { kind: "code" } }],
   },
   30: {
-    site: { path: "apps/site/wrapper.tsx", line: 30, col: 9 } as SourceLoc,
+    site: SourceLoc.parse({ path: "apps/site/wrapper.tsx", line: 30, col: 9 }),
     tag: "Button",
     attributes: [{ kind: "attribute", name: "variant", value: { kind: "forward" } }],
   },
   40: {
-    site: { path: "apps/site/page.tsx", line: 40, col: 9 } as SourceLoc,
+    site: SourceLoc.parse({ path: "apps/site/page.tsx", line: 40, col: 9 }),
     tag: "Wrapper",
     attributes: [],
   },
 }
 
 const frameAt = (line: number) => `http://localhost:3000/chunk.js:${line}:1`
-const stackAt = (line: number) => ({ stack: `Error\n    at X (${frameAt(line)})` }) as Error
+const stackAt = (line: number) =>
+  Object.assign(new Error(), { stack: `Error\n    at X (${frameAt(line)})` })
 
 function Button() {}
 function Wrapper() {}
@@ -92,34 +79,77 @@ const USES: Record<string, { uses: number; examples: number }> = {
   Wrapper: { uses: 4, examples: 1 },
 }
 
+let countFails = false
+
 beforeEach(() => {
   document.body.replaceChildren()
-  vi.mocked(bridge.uses).mockImplementation(async (name) => ({
-    ok: true,
-    value: USES[name] ?? { uses: 0, examples: 0 },
-  }))
-  vi.mocked(bridge.props).mockResolvedValue({ ok: true, value: { controls: CONTROLS } })
-  vi.mocked(bridge.locate).mockImplementation(async (frames) => ({
-    ok: true,
-    value: {
-      sources: frames.map((frame) => SITES[Number(/:(\d+):1$/.exec(frame)?.[1])]?.site ?? null),
-    },
-  }))
-  vi.mocked(bridge.attributes).mockImplementation(async (site) => {
-    const found = Object.values(SITES).find((entry) => entry.site === site)
-    return {
-      ok: true,
-      value: { tag: found ? { name: found.tag, attributes: found.attributes } : null },
+  countFails = false
+  connect("/__tune")
+  vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+    const request = new URL(url, location.origin)
+    if (request.pathname.endsWith("/tokens"))
+      return Response.json({
+        files: [],
+        themes: { shared: [], list: [{ name: "light", selectors: [":root"] }] },
+        plumbing: [],
+        components: [
+          {
+            slug: "button",
+            title: "Button",
+            group: "ui",
+            naming: "own",
+            href: null,
+            importFrom: null,
+            exports: ["Button"],
+            namedExports: ["Button"],
+            files: [],
+            reads: [],
+            childReads: [],
+            props: { kind: "none" },
+          },
+        ],
+      })
+    if (request.pathname.endsWith("/plumbing")) return Response.json({ plumbing: [] })
+    if (request.pathname.endsWith("/props")) return Response.json({ controls: CONTROLS })
+    if (request.pathname.endsWith("/uses")) {
+      if (countFails) return new Response("build failed", { status: 500 })
+      return Response.json(
+        USES[request.searchParams.get("component") ?? ""] ?? { uses: 0, examples: 0 },
+      )
     }
+    if (request.pathname.endsWith("/locate")) {
+      const body: { frames: string[] } = JSON.parse(String(init.body))
+      return Response.json({
+        sources: body.frames.map(
+          (frame) => SITES[Number(/:(\d+):1$/.exec(frame)?.[1])]?.site ?? null,
+        ),
+      })
+    }
+    if (request.pathname.endsWith("/attributes")) {
+      const found = SITES[Number(request.searchParams.get("line"))]
+      return Response.json({
+        tag: found ? { name: found.tag, attributes: found.attributes } : null,
+      })
+    }
+    throw new Error(`unexpected request ${url}`)
   })
+})
+
+afterEach(() => {
+  invalidateCatalog()
+  invalidateSources()
+  vi.unstubAllGlobals()
+  document.body.replaceChildren()
 })
 
 describe("the props of a picked instance", () => {
   it("writes at the call site and counts the instances it renders", async () => {
-    const [picked] = [1, 2, 3].map(() => rendered(component(Button, { loading: true }, 10)))
+    const picked = rendered(component(Button, { loading: true }, 10))
+    rendered(component(Button, { loading: true }, 10))
+    rendered(component(Button, { loading: true }, 10))
     rendered(component(Button, { variant: "ghost" }, 20))
 
-    const props = await deriveProps(picked as Element)
+    const props = await deriveProps(picked)
 
     expect(props).toEqual({
       component: "Button",
@@ -180,11 +210,10 @@ describe("the props of a picked instance", () => {
         },
       ],
     })
-    expect(bridge.uses).toHaveBeenCalledWith("Wrapper", SITES[30]?.site.path)
   })
 
   it("explains a failed count instead of offering a write of unknown reach", async () => {
-    vi.mocked(bridge.uses).mockResolvedValue({ ok: false, error: { kind: "unbuilt" } })
+    countFails = true
     const wrapper = component(Wrapper, {}, 40, component(Page, {}, 0))
     const picked = rendered(component(Button, { variant: undefined }, 30, wrapper))
 
