@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { SessionId } from "../variant/model"
+import { SessionId, SourceLoc } from "../variant/model"
 import { bridge, connect, explain } from "./bridge"
 
 const ID = SessionId.parse("6f1c1f6e-3f0e-4f4e-9d2a-2b1f6c3d4e5f")
@@ -53,4 +53,54 @@ it("rejects malformed success and error bodies", async () => {
   answering(Response.json({ error: { kind: "busy" } }, { status: 409 }))
   const failure = await bridge.discard(ID)
   expect(failure.ok ? null : failure.error.kind).toBe("offline")
+})
+
+it("rejects malformed variant and attribute responses", async () => {
+  const session = { id: ID, live: null, variants: [], stuck: null, trail: [] }
+  const direction = { title: "Option", description: "Change the layout" }
+  for (const variant of [
+    { id: "v1", direction, state: "pending", phase: "unknown" },
+    {
+      id: "v1",
+      direction,
+      state: "ready",
+      title: "Ready",
+      summary: "Done",
+      files: ["../escape"],
+      stat: { add: 1, del: 0 },
+    },
+    { id: "v1", direction, state: "failed", reason: "failed", retryable: "yes" },
+  ]) {
+    answering(Response.json({ ...session, variants: [variant] }))
+    const answer = await bridge.session(ID)
+    expect(answer.ok ? null : answer.error.kind).toBe("offline")
+  }
+  answering(Response.json({ ...session, trail: [{ variant: "v1", title: "kept" }] }))
+  const trail = await bridge.session(ID)
+  expect(trail.ok ? null : trail.error.kind).toBe("offline")
+
+  const site = SourceLoc.parse({ path: "src/app.tsx", line: 1, col: 1 })
+  for (const attribute of [
+    { kind: "attribute", name: "open", value: { kind: "literal", value: 1 } },
+    { kind: "attribute", name: "open", value: { kind: "unknown" } },
+    { kind: "unknown" },
+  ]) {
+    answering(Response.json({ tag: { name: "Button", attributes: [attribute] } }))
+    const answer = await bridge.attributes(site)
+    expect(answer.ok ? null : answer.error.kind).toBe("offline")
+  }
+})
+
+it("rejects malformed application refusals", async () => {
+  for (const error of [
+    { kind: "busy", session: "invalid" },
+    { kind: "not-ready", variant: "v4" },
+    { kind: "conflict", files: ["../escape"] },
+    { kind: "planner-failed", detail: 1 },
+    { kind: "invalid" },
+  ]) {
+    answering(Response.json({ error }, { status: 409 }))
+    const answer = await bridge.discard(ID)
+    expect(answer.ok ? null : answer.error.kind).toBe("offline")
+  }
 })
