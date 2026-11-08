@@ -5,9 +5,9 @@ import { randomUUID } from "node:crypto"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
 import { copyFile, lstat, mkdir, rm } from "node:fs/promises"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
-import { join } from "node:path"
+import { isAbsolute, join, relative, resolve, sep } from "node:path"
 
-import { type TuneConfig } from "../core/config"
+import { TuneConfig, TuneConfigInputSchema, type TuneConfigInput } from "../core/config"
 import { BlobId, CommitId, type Content, RepoPath } from "../variant/model"
 import { type Store } from "../variant/swap"
 
@@ -20,6 +20,38 @@ export interface Repo {
 /** A checkout Tune serves, with the design-system config its host passed in. */
 export interface Host extends Repo {
   readonly config: TuneConfig
+}
+
+/** Converts consumer paths to Git-relative identities and records the app location. */
+export function configAt(repo: Repo, dir: string, input: TuneConfigInput): TuneConfig {
+  const config = TuneConfig.parse(TuneConfigInputSchema.parse(input))
+  const appRoot = relative(repo.root, resolve(dir))
+  if (appRoot === ".." || appRoot.startsWith(`..${sep}`) || isAbsolute(appRoot))
+    throw new Error("tune: app directory must be inside the Git checkout")
+  const base = config.pathBase === "app" ? appRoot : ""
+  const path = (value: string): string => {
+    if (isAbsolute(value)) throw new Error(`tune: path must be inside the Git checkout: ${value}`)
+    const result = relative(repo.root, resolve(repo.root, base, value))
+    if (result === ".." || result.startsWith(`..${sep}`) || isAbsolute(result) || result === "")
+      throw new Error(`tune: path must be inside the Git checkout: ${value}`)
+    return result.split(sep).join("/") + (value.endsWith("/") ? "/" : "")
+  }
+  return {
+    ...config,
+    pathBase: "repo",
+    appRoot: appRoot.split(sep).join("/"),
+    tokens: {
+      ...config.tokens,
+      files: config.tokens.files.map(path),
+      tiers: config.tokens.tiers.map((rule) => ({ ...rule, files: path(rule.files) })),
+    },
+    components: config.components.map((source) =>
+      source.kind === "files"
+        ? { ...source, files: path(source.files) }
+        : { ...source, meta: path(source.meta) },
+    ),
+    plumbing: config.plumbing.map((rule) => ({ ...rule, prefix: path(rule.prefix) })),
+  }
 }
 
 /** This checkout's Tune state directory. */

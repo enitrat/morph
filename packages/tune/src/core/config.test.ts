@@ -15,6 +15,28 @@ const issuesOf = (input: TuneConfigInput) => {
 }
 
 describe("tune config", () => {
+  it("defaults common presentation fields and rejects invalid prop sources", () => {
+    const input = {
+      ...ours,
+      components: [{ kind: "files" as const, files: "ui/*.tsx", importFrom: "@/ui/{slug}" }],
+      plumbing: undefined,
+    }
+    const config = TuneConfig.parse(input)
+    expect(config.plumbing).toEqual([])
+    expect(config.components[0]).toMatchObject({
+      group: "ui",
+      naming: "own",
+      href: null,
+      props: "cva",
+    })
+    expect(
+      TuneConfig.safeParse({
+        ...input,
+        components: [{ ...input.components[0], props: "lab-meta" }],
+      }).success,
+    ).toBe(false)
+  })
+
   it("parses a config with its selectors normalized", () => {
     const config = TuneConfig.parse(ours)
     expect(config.tokens.themes.shared).toEqual([":root", ":where(:root,.light,.dark)"])

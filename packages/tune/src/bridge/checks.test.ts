@@ -1,5 +1,14 @@
 import { execFileSync } from "node:child_process"
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 
@@ -7,6 +16,8 @@ import { describe, expect, it } from "vitest"
 
 import { RepoPath } from "../variant/model"
 import { checks, deadLinksIn, reasonOf } from "./checks"
+import { farm } from "./slots"
+import { TuneConfig } from "../core/config"
 import { CONFIG, MODULES } from "./test-fixtures"
 
 describe("links a variant added that go nowhere", () => {
@@ -149,3 +160,56 @@ it("checks transitive dependents using dependency fields", async () => {
     rmSync(root, { recursive: true, force: true })
   }
 }, 30_000)
+
+it("uses app-local commands and paths in the checkout being checked", async () => {
+  const parent = realpathSync(mkdtempSync(join(tmpdir(), "tune-app-checks-")))
+  const live = join(parent, "live")
+  const root = join(parent, "slot")
+  mkdirSync(live)
+  try {
+    const app = "apps/site"
+    const files: Record<string, string> = {
+      "package.json": '{"name":"root"}',
+      [`${app}/src/page.tsx`]: "export const value = 1\n",
+      [`${app}/node_modules/.bin/format-local`]:
+        '#!/bin/sh\nprintf "%s\\n" "$PWD|$1" > format-result\n',
+      [`${app}/node_modules/.bin/check-local`]: '#!/bin/sh\nprintf "%s\\n" "$PWD" > check-result\n',
+    }
+    for (const [path, content] of Object.entries(files)) {
+      mkdirSync(dirname(join(live, path)), { recursive: true })
+      writeFileSync(join(live, path), content, { mode: 0o755 })
+    }
+    execFileSync("git", ["init", "-q"], { cwd: live })
+    execFileSync("git", ["add", "-f", "."], { cwd: live })
+    execFileSync(
+      "git",
+      ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "fixture"],
+      { cwd: live },
+    )
+    execFileSync("git", ["worktree", "add", "--detach", root, "HEAD"], { cwd: live })
+    rmSync(join(root, app, "node_modules"), { recursive: true, force: true })
+    await farm(live, root, app)
+    const config = TuneConfig.parse(
+      JSON.parse(
+        JSON.stringify({
+          ...CONFIG,
+          appRoot: app,
+          pathBase: "repo",
+          checks: {
+            lint: null,
+            format: { bin: "format-local", args: [] },
+            typecheck: { bin: "check-local", args: [], scope: "app" },
+          },
+        }),
+      ),
+    )
+    const result = await checks(root, [RepoPath.parse(`${app}/src/page.tsx`)], config)
+    expect(result).toEqual({ ok: true })
+    expect(readFileSync(join(root, app, "format-result"), "utf8").trim()).toBe(
+      `${join(root, app)}|src/page.tsx`,
+    )
+    expect(readFileSync(join(root, app, "check-result"), "utf8").trim()).toBe(join(root, app))
+  } finally {
+    rmSync(parent, { recursive: true, force: true })
+  }
+})

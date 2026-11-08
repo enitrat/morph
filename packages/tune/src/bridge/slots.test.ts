@@ -162,3 +162,12 @@ it("refreshes dependencies when a slot is reused", async () => {
     await release(second)
   }
 })
+
+it("copies app-local dependencies into a slot without a root installation", async () => {
+  const live = temp()
+  const slot = temp()
+  execFileSync("git", ["init", "-q", live])
+  file(live, "apps/site/node_modules/tool/index.js", "app tool")
+  await farm(live, slot, "apps/site")
+  expect(readFileSync(join(slot, "apps/site/node_modules/tool/index.js"), "utf8")).toBe("app tool")
+})

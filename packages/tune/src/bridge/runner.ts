@@ -138,7 +138,7 @@ async function generate(
 ): Promise<JobResult> {
   const started = performance.now()
   await phase("slot")
-  const slot = await acquire(repo, session.base)
+  const slot = await acquire(repo, session.base, repo.config.appRoot)
   const ms = { agent: 0, checks: 0 }
   try {
     const prompt = variantPrompt(session.ask, session.parent, direction, {

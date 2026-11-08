@@ -1,11 +1,14 @@
+// oxlint-disable-next-line import/no-nodejs-modules -- the app root must match Git’s canonical checkout path.
+import { realpath } from "node:fs/promises"
+
 import { z } from "zod"
 
-import { TuneConfig, type TuneConfigInput } from "../core/config"
+import { TuneConfigInputSchema, type TuneConfigInput } from "../core/config"
 import { DialWrite } from "../dial/model"
 import { ComponentName, PropWrite } from "../dial/props"
 import { Ask, Choice, Refine, RepoPath, SessionId, SourceLoc, VariantId } from "../variant/model"
 import { designSystemOf, dial, tagClasses } from "./dial"
-import { type Host, openRepo } from "./git"
+import { configAt, type Host, openRepo } from "./git"
 import { guard } from "./guard"
 import { componentUses, propControls, tagAttributes, writeProp } from "./props"
 import { ask, discard, type Done, keep, look, refine, type Refusal, retry, show } from "./session"
@@ -174,9 +177,13 @@ export function tuneHandler(
   input: TuneConfigInput,
   { bundler, dir }: { bundler: Bundler; dir: string },
 ): Handler {
-  const config = TuneConfig.parse(input)
+  const config = TuneConfigInputSchema.parse(input)
   let host: Promise<Host> | undefined
-  const opened = () => (host ??= openRepo(dir).then((repo) => ({ ...repo, config })))
+  const opened = () =>
+    (host ??= openRepo(dir).then(async (repo) => ({
+      ...repo,
+      config: configAt(repo, await realpath(dir), config),
+    })))
   return async (request, name) => {
     const admitted = guard(request)
     if ("answer" in admitted) return admitted.answer

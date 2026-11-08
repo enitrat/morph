@@ -137,31 +137,35 @@ export type Naming = z.infer<typeof Naming>
 
 const ComponentCommon = {
   /** Free label shown on impact rows: `atom`, `block`, `ui`. */
-  group: z.string().min(1),
+  group: z.string().min(1).default("ui"),
   /**
    * How a pointed element is named by one of these components: `own` when the element is its
    * root (an atom); `container` when the element is anywhere inside it (a block); `nearest` only
    * when no `own` or `container` component claims the element and it is the nearest listed one.
    */
-  naming: Naming,
+  naming: Naming.default("own"),
   /** Lab page with `{slug}`, or null when the app has no catalogue. */
-  href: z.string().includes("{slug}").nullable(),
+  href: z.string().includes("{slug}").nullable().default(null),
   /** The specifier callers import it by, `{slug}` allowed; null: never offered to the agent. */
   importFrom: z.string().min(1).nullable(),
-  /** Where its settable props come from. */
-  props: z.enum(["lab-meta", "cva", "none"]),
 }
 
-const ComponentSource = z
-  .discriminatedUnion("kind", [
-    /** One folder per component, found by its lab meta: the folder's `.tsx` and `.tokens.css`. */
-    z.object({ kind: z.literal("lab-meta"), meta: Glob, ...ComponentCommon }),
-    /** One file per component, as shadcn's `components/ui/*.tsx`. */
-    z.object({ kind: z.literal("files"), files: Glob, ...ComponentCommon }),
-  ])
-  .refine((source) => source.props !== "lab-meta" || source.kind === "lab-meta", {
-    message: "lab-meta props need a lab-meta source",
-  })
+const ComponentSource = z.discriminatedUnion("kind", [
+  /** One folder per component, found by its lab meta: the folder's `.tsx` and `.tokens.css`. */
+  z.object({
+    kind: z.literal("lab-meta"),
+    meta: Glob,
+    ...ComponentCommon,
+    props: z.enum(["lab-meta", "cva", "none"]).default("lab-meta"),
+  }),
+  /** One file per component, as shadcn's `components/ui/*.tsx`. */
+  z.object({
+    kind: z.literal("files"),
+    files: Glob,
+    ...ComponentCommon,
+    props: z.enum(["cva", "none"]).default("cva"),
+  }),
+])
 export type ComponentSource = z.infer<typeof ComponentSource>
 
 const Command = z.object({ bin: z.string().regex(/^[\w.-]+$/), args: z.array(z.string()) })
@@ -172,6 +176,20 @@ const PathRule = z.object({ prefix: z.string().min(1), except: z.array(z.string(
 export type PathRule = z.infer<typeof PathRule>
 
 export const TuneConfig = z.object({
+  /** Base for input paths; normalized configurations use repo-relative paths. */
+  pathBase: z.enum(["app", "repo"]).default("app"),
+  /** App directory relative to the Git root, populated by the bridge. */
+  appRoot: z
+    .string()
+    .refine(
+      (path) =>
+        path === "" ||
+        (!path.startsWith("/") &&
+          !path.includes("\\") &&
+          path.split("/").every((part) => part !== "" && part !== "." && part !== "..")),
+      "appRoot must be Git-relative",
+    )
+    .default(""),
   tokens: TokenSource,
   components: z.array(ComponentSource),
   /** Project-specific styling instructions supplied to the variant agent. */
@@ -181,14 +199,15 @@ export const TuneConfig = z.object({
       "Style with the Tailwind utilities and ds tokens the code already uses. Never add a colour, a token, or an arbitrary value.",
     ]),
   /** Call sites here are rarely what a designer means when picking an element. */
-  plumbing: z.array(PathRule),
+  plumbing: z.array(PathRule).default([]),
   checks: z.object({
     lint: Command.nullable(),
     /** Dial and prop writes format the file they touch. */
     format: Command,
-    /** `workspace`: once per workspace a change reaches; `root`: once at the repo root. */
-    typecheck: Command.extend({ scope: z.enum(["workspace", "root"]) }),
+    /** `workspace`: once per workspace a change reaches; `root`: once at the repo root; `app`: once at the app root. */
+    typecheck: Command.extend({ scope: z.enum(["workspace", "root", "app"]) }),
   }),
 })
 export type TuneConfig = z.infer<typeof TuneConfig>
-export type TuneConfigInput = z.input<typeof TuneConfig>
+export const TuneConfigInputSchema = TuneConfig.omit({ appRoot: true })
+export type TuneConfigInput = z.input<typeof TuneConfigInputSchema>

@@ -44,8 +44,10 @@ pnpm add -D "github:enitrat/tune#path:/packages/tune"
 ## Set it up
 
 Describe your design system in `tune.config.ts` at your app's root, the folder that runs the dev
-server. Every path in it is relative to the git root, which differs from the app's root when the
-app sits in a monorepo. See the example below. The schema is `TuneConfigInput`:
+server. Paths are relative to that app directory, including token files, component globs, tier
+rules and plumbing prefixes. Paths may reach shared files in the same Git checkout with `..`.
+Existing Git-root-relative configurations can retain their meaning by setting `pathBase: "repo"`.
+The schema is `TuneConfigInput`:
 
 ```ts
 import { type TuneConfigInput } from "@enitrat/tune/config"
@@ -173,25 +175,27 @@ export default {
     {
       kind: "files",
       files: "components/ui/*.tsx",
-      group: "ui",
-      naming: "own",
-      href: null,
       importFrom: "@/components/ui/{slug}",
-      props: "cva",
     },
   ],
-  plumbing: [],
   checks: {
     lint: { bin: "eslint", args: ["--fix"] },
     format: { bin: "prettier", args: ["--write"] },
-    typecheck: { bin: "tsc", args: ["--noEmit"], scope: "root" },
+    typecheck: { bin: "tsc", args: ["--noEmit"], scope: "app" },
   },
 } satisfies TuneConfigInput
 ```
 
-Check binaries run from `node_modules/.bin` at the git root, with the git root as the working
-directory. For an app in a subfolder, with shared shadcn/ui components, see
-`examples/next/tune.config.ts`.
+Formatting and linting run in the app directory. Tune looks for their binaries in the app’s
+`node_modules/.bin`, then the Git root’s. Typechecks run in each affected workspace with
+`scope: "workspace"`, in the app with `scope: "app"`, or at the Git root with `scope: "root"`.
+For each typecheck Tune looks in that workspace first, then the app and Git root. Worktree jobs
+use the corresponding directories inside the worktree. See `examples/next/tune.config.ts` for
+Git-root-relative shared sources.
+
+Component sources default to group `ui`, naming `own`, and no catalogue link. File sources
+default to CVA props; lab-meta sources default to lab metadata. Set `props` to `"none"` when
+there are no editable props. `importFrom` and theme ownership remain explicit.
 
 The default agent styling rule uses existing Tailwind utilities and design tokens. To use a
 different project convention, set `styleRules` to an array of instructions in `tune.config.ts`.

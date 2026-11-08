@@ -3,7 +3,7 @@ import { execFile, spawn } from "node:child_process"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
 import { existsSync, readFileSync } from "node:fs"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
-import { join } from "node:path"
+import { join, relative } from "node:path"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
 import { promisify } from "node:util"
 
@@ -64,11 +64,24 @@ function failureOf(label: string, cwd: string, bin: string, args: readonly strin
   })
 }
 
+/** Resolves a check binary in its workspace, then the app and repository. */
+export function commandAt(root: string, workspace: string, app: string, bin: string): string {
+  const candidates = [...new Set([workspace, app, ""])].map((dir) =>
+    join(root, dir, "node_modules", ".bin", bin),
+  )
+  return candidates.find(existsSync) ?? candidates[0] ?? bin
+}
+
 export async function formatFile(repo: Host, path: string): Promise<void> {
   const { bin, args } = repo.config.checks.format
-  await promisify(execFile)(join(repo.root, "node_modules", ".bin", bin), [...args, path], {
-    cwd: repo.root,
-  })
+  const cwd = join(repo.root, repo.config.appRoot)
+  await promisify(execFile)(
+    commandAt(repo.root, repo.config.appRoot, repo.config.appRoot, bin),
+    [...args, relative(cwd, join(repo.root, path))],
+    {
+      cwd,
+    },
+  )
 }
 
 /** `href="#"`, `href=""`, `href={"#"}`: a link that goes nowhere. */
@@ -176,26 +189,36 @@ export async function checks(
   const present = files.filter((path) => existsSync(join(dir, path)))
   const code = present.filter((path) => CODE.test(path))
   const formatted = present.filter((path) => FORMATTED.test(path))
-  const bin = (name: string) => join(dir, "node_modules", ".bin", name)
+  const app = config.appRoot
+  const cwd = join(dir, app)
+  const appPaths = (paths: readonly string[]) => paths.map((path) => relative(cwd, join(dir, path)))
+  const bin = (name: string, workspace = app) => commandAt(dir, workspace, app, name)
   const { lint: linter, format: formatter, typecheck } = config.checks
 
   // Lint fixes run before formatting, which then settles whatever layout the fixes left.
   const lint =
     code.length === 0 || linter === null
       ? null
-      : await failureOf(linter.bin, dir, bin(linter.bin), [...linter.args, ...code])
+      : await failureOf(linter.bin, cwd, bin(linter.bin), [...linter.args, ...appPaths(code)])
   const format =
     formatted.length === 0
       ? null
-      : await failureOf(formatter.bin, dir, bin(formatter.bin), [...formatter.args, ...formatted])
+      : await failureOf(formatter.bin, cwd, bin(formatter.bin), [
+          ...formatter.args,
+          ...appPaths(formatted),
+        ])
   const projects =
-    typecheck.scope === "workspace" ? await projectsOf(dir, files) : files.length > 0 ? [""] : []
+    typecheck.scope === "workspace"
+      ? await projectsOf(dir, files)
+      : files.length > 0
+        ? [typecheck.scope === "app" ? app : ""]
+        : []
   const types = await Promise.all(
     projects.map((project) =>
       failureOf(
         project === "" ? typecheck.bin : `${typecheck.bin} in ${project}`,
         join(dir, project),
-        bin(typecheck.bin),
+        bin(typecheck.bin, project),
         typecheck.args,
       ),
     ),

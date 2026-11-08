@@ -33,12 +33,14 @@ const copy = (from: string, to: string) =>
  * copied, never symlinked. Only the package store, `node_modules/.pnpm/*`, is shared. A
  * workspace's own `node_modules` is copied at its declared path.
  */
-export async function farm(live: string, slot: string): Promise<void> {
+export async function farm(live: string, slot: string, appRoot = ""): Promise<void> {
   const from = join(live, "node_modules")
   const to = join(slot, "node_modules")
   const store = join(from, ".pnpm")
   const hasStore = await exists(store)
-  const workspaces = await workspacesIn(live)
+  const workspaces = [
+    ...new Set([...(await workspacesIn(live)), ...(appRoot === "" ? [] : [appRoot])]),
+  ]
   await Promise.all([
     rm(to, { recursive: true, force: true }),
     ...workspaces.map((workspace) =>
@@ -48,7 +50,7 @@ export async function farm(live: string, slot: string): Promise<void> {
   await mkdir(to, { recursive: true })
   if (hasStore) await mkdir(join(to, ".pnpm"), { recursive: true })
   await Promise.all([
-    ...(await readdir(from))
+    ...(await exists(from).then((present) => (present ? readdir(from) : [])))
       .filter((entry) => entry !== ".pnpm")
       .map((entry) => copy(join(from, entry), join(to, entry))),
     ...(hasStore ? await readdir(store) : []).map((entry) =>
@@ -70,7 +72,7 @@ export async function slotsRoot(repo: Repo): Promise<string> {
 }
 
 /** Resets the slot to `base`, creating its worktree on first use and refreshing its dependencies. */
-async function prepare(repo: Repo, dir: string, base: CommitId): Promise<void> {
+async function prepare(repo: Repo, dir: string, base: CommitId, appRoot: string): Promise<void> {
   if (await exists(join(dir, ".git"))) {
     await git(dir, ["checkout", "--quiet", "--detach", "--force", base])
     await git(dir, ["clean", "-fdq"])
@@ -78,8 +80,8 @@ async function prepare(repo: Repo, dir: string, base: CommitId): Promise<void> {
     await git(repo.root, ["worktree", "prune"])
     await git(repo.root, ["worktree", "add", "--quiet", "--detach", "--force", dir, base])
   }
-  await farm(repo.root, dir)
-  for (const workspace of ["", ...(await workspacesIn(repo.root))]) {
+  await farm(repo.root, dir, appRoot)
+  for (const workspace of new Set(["", appRoot, ...(await workspacesIn(repo.root))])) {
     for (const generated of [
       join(workspace, ".next", "types"),
       join(workspace, ".next", "dev", "types"),
@@ -101,14 +103,14 @@ async function prepare(repo: Repo, dir: string, base: CommitId): Promise<void> {
 }
 
 /** Takes a free slot for this process and checks `base` out in it. */
-export async function acquire(repo: Repo, base: CommitId): Promise<Slot> {
+export async function acquire(repo: Repo, base: CommitId, appRoot = ""): Promise<Slot> {
   const root = await slotsRoot(repo)
   for (const id of SLOT_IDS) {
     const dir = join(root, `slot-${id}`)
     const lock = await tryLock(`${dir}.lock`)
     if (!lock) continue
     try {
-      await prepare(repo, dir, base)
+      await prepare(repo, dir, base, appRoot)
       return { id, dir, lock }
     } catch (error) {
       await unlock(lock)

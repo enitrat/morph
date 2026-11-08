@@ -1,5 +1,6 @@
 import { type TuneConfigInput } from "@enitrat/tune/config"
 export default {
+  pathBase: "repo",
   tokens: {
     kind: "css",
     files: ["examples/shared/styles.css"],
@@ -9,14 +10,9 @@ export default {
     {
       kind: "files",
       files: "examples/shared/ui/*.tsx",
-      group: "ui",
-      naming: "own",
-      href: null,
       importFrom: "example-shared/ui/{slug}",
-      props: "cva",
     },
   ],
-  plumbing: [],
   checks: {
     lint: null,
     format: { bin: "oxfmt", args: ["--write"] },
