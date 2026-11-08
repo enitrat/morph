@@ -57,4 +57,5 @@ export async function setupNext(root: string): Promise<void> {
   console.log(
     'In next.config, include "dev.ts" in pageExtensions only during development. See the Tune README.',
   )
+  console.log("Run tune doctor after completing the wiring to check your setup.")
 }

@@ -61,7 +61,11 @@ Then follow the steps for your bundler.
 
 Run `pnpm exec tune setup-next` to create the route and client mount shown below. The command
 leaves existing files alone and prints the remaining layout and configuration steps. You can also
-create the files manually.
+create the files manually. After completing the layout and configuration steps, run `pnpm exec tune
+doctor` from the app root. It checks the config, local tools, Git checkout, Claude executable, and
+recognizable Next wiring. It reads source text, so passing does not prove that the bridge is running
+or that a production build excludes it. Start the app to check the bridge and run `pnpm check:prod`
+for the production build check. Doctor loads the config as code; use it only with a trusted config.
 
 1. Add the bridge route at `app/api/tune/[op]/route.dev.ts`:
 
