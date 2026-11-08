@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
 import { dependentsOf, impactOf, type TokenName } from "../core"
-import { importableOf, readImportable } from "./design-system"
+import { buildDesignSystem, importableOf, readImportable } from "./design-system"
 import { CONFIG, REPO, repoCatalog } from "./test-fixtures"
 
 const ds = repoCatalog()
@@ -72,4 +72,27 @@ describe("component read sets", () => {
     expect(touch.get("order-summary")).toBe("reached")
     expect(touch.has("badge")).toBe(false)
   })
+})
+
+it("identifies a default component without offering a named import", () => {
+  const config = {
+    ...CONFIG,
+    components: [
+      {
+        kind: "files" as const,
+        files: "src/*.tsx",
+        group: "ui",
+        naming: "own" as const,
+        href: null,
+        importFrom: "@ui/button",
+        props: "none" as const,
+      },
+    ],
+  }
+  const design = buildDesignSystem(
+    config,
+    new Map([["src/button.tsx", "export default function Button() { return <button /> }"]]),
+  )
+  expect(design.components[0]?.exports).toEqual(["Button"])
+  expect(importableOf(design).flatMap(({ names }) => names)).not.toContain("Button")
 })

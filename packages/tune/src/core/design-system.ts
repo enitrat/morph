@@ -91,6 +91,8 @@ export interface Component {
   importFrom: string | null
   /** The React names its files export. */
   exports: readonly string[]
+  /** Names importable with named import syntax, when known. */
+  namedExports: readonly string[]
   files: readonly string[]
   /** Every token its own files read. */
   reads: ReadonlySet<TokenName>

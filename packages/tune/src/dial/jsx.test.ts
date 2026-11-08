@@ -51,3 +51,11 @@ describe("swapping a class in one JSX tag", () => {
     expect(classesIn(FILE.replace("gap-2", "p-4"), 3, 5)).not.toContain("p-4")
   })
 })
+
+it("ignores tag-shaped comments and handles nested braces in attributes", () => {
+  const text = `const Demo = () => (
+  <div /* comment <Fake /> */ className={cn({ key: "active" })} title="before" />
+)`
+  const changed = swapClass(text, 2, 3, "active", "selected")
+  expect(changed).toEqual({ ok: true, changed: true, text: text.replace("active", "selected") })
+})

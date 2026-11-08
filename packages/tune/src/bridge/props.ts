@@ -18,6 +18,7 @@ import {
   type PropWrite,
   type PropWritten,
 } from "../dial/props"
+import { componentUseCount } from "../syntax/source"
 import { type SourceLoc } from "../variant/model"
 import { formatFile } from "./checks"
 import { componentFor, readDesignSystem } from "./design-system"
@@ -87,22 +88,15 @@ export async function componentUses(
   component: string,
   definedIn: string,
 ): Promise<ComponentUses> {
-  const name = component.replaceAll(/[.$]/g, String.raw`\$&`)
-  const found = await grep(repo.root, ["--untracked", "-E", `<${name}([[:space:]/>]|$)`])
-  const perFile = new Map<string, number>()
-  for (const line of found) {
-    const path = line.slice(0, line.indexOf(":"))
-    if (/\.(?:tsx|jsx)$/.test(path) && !isTestCode(path))
-      perFile.set(path, (perFile.get(path) ?? 0) + 1)
-  }
-  const imports = new RegExp(
-    String.raw`import\s+(?:type\s+)?(?:[\w$]+\s*,\s*)?\{[^}]*\b${name}\b[^}]*\}\s*from|import\s+${name}\s+from`,
-  )
+  const found = await grep(repo.root, ["--untracked", "-l", "-F", "<"])
+  const paths = found.filter((path) => /\.(?:tsx|jsx)$/.test(path) && !isTestCode(path))
   const counted = await Promise.all(
-    [...perFile].map(async ([path, count]) => {
-      if (path === definedIn) return { path, count }
+    paths.map(async (path) => {
       const text = await readFile(join(repo.root, path), "utf8").catch(absent)
-      return { path, count: text !== null && imports.test(text) ? count : 0 }
+      return {
+        path,
+        count: text === null ? 0 : componentUseCount(text, component, path === definedIn),
+      }
     }),
   )
   const examples = counted.filter(({ path }) => path.includes("/examples/"))

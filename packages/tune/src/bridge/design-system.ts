@@ -14,6 +14,7 @@ import {
   tokensReadIn,
 } from "../core"
 import { type ComponentSource, type TuneConfig } from "../core/config"
+import { moduleNames } from "../syntax/source"
 
 /** Every file the config's globs match, path to text. */
 export type Snapshot = ReadonlyMap<string, string>
@@ -46,40 +47,6 @@ const byPath = ([a]: [string, string], [b]: [string, string]) => (a < b ? -1 : a
 /** The snapshot's files a glob matches, sorted by path, as `globSync(...).toSorted()` lists them. */
 const matching = (files: Snapshot, pattern: string) =>
   [...files].filter(([path]) => matchesGlob(path, pattern)).toSorted(byPath)
-
-const EXPORT = /^export\s+(?:async\s+)?(?:function|const|class)\s+([A-Z]\w*)/gm
-const EXPORT_LIST = /^export\s+\{([^}]*)\}/gm
-const IMPORT = /^import\s+\{([^}]*)\}\s+from\s+["']([^"']*)["']/gm
-
-/** The React names a source exports: `export function Button`, or `export { Button }`. */
-const exportedNames = (text: string): string[] => [
-  ...[...text.matchAll(EXPORT)].map(([, name = ""]) => name),
-  ...[...text.matchAll(EXPORT_LIST)].flatMap(([, list = ""]) =>
-    list
-      .split(",")
-      .map(
-        (specifier) =>
-          specifier
-            .trim()
-            .split(/\s+as\s+/)
-            .at(-1) ?? "",
-      )
-      .filter((name) => /^[A-Z]\w*$/.test(name)),
-  ),
-]
-
-/** The value names a source imports from one of `specifiers` or a relative path. */
-function importedNames(text: string, specifiers: ReadonlySet<string>): string[] {
-  return [...text.matchAll(IMPORT)].flatMap(([, list = "", from = ""]) =>
-    specifiers.has(from) || from.startsWith(".")
-      ? list
-          .split(",")
-          .map((specifier) => specifier.trim())
-          .filter((specifier) => specifier !== "" && !specifier.startsWith("type "))
-          .map((specifier) => specifier.split(/\s+as\s+/)[0] ?? specifier)
-      : [],
-  )
-}
 
 interface Listed {
   slug: string
@@ -129,10 +96,12 @@ function componentsOf(config: TuneConfig, files: Snapshot): Component[] {
   )
   const parsed = listed.map((entry) => {
     const tsx = entry.files.filter(([path]) => path.endsWith(".tsx")).map(([, text]) => text)
+    const modules = tsx.map((text) => moduleNames(text, specifiers))
     return {
       entry,
-      exports: tsx.flatMap(exportedNames),
-      imports: new Set(tsx.flatMap((text) => importedNames(text, specifiers))),
+      exports: modules.flatMap((module) => module.exports),
+      namedExports: modules.flatMap((module) => module.namedExports),
+      imports: new Set(modules.flatMap((module) => module.imports)),
       reads: new Set(tokensReadIn(entry.files.map(([, text]) => text).join("\n"))),
     }
   })
@@ -153,7 +122,7 @@ function componentsOf(config: TuneConfig, files: Snapshot): Component[] {
         }),
       ),
   )
-  return parsed.map(({ entry, exports, reads }, index): Component => {
+  return parsed.map(({ entry, exports, namedExports, reads }, index): Component => {
     const seen = new Set<number>([index])
     const queue = [...(renders[index] ?? [])]
     const childReads = new Set<TokenName>()
@@ -172,6 +141,7 @@ function componentsOf(config: TuneConfig, files: Snapshot): Component[] {
       href: source.href?.replaceAll("{slug}", slug) ?? null,
       importFrom: source.importFrom?.replaceAll("{slug}", slug) ?? null,
       exports,
+      namedExports,
       files: entry.files.map(([path]) => path),
       reads,
       childReads,
@@ -219,8 +189,9 @@ export function importableOf(ds: DesignSystem): { specifier: string; names: stri
 
 function importsOf(components: readonly Component[]): { specifier: string; names: string[] }[] {
   const names = new Map<string, string[]>()
-  for (const { importFrom, exports } of components)
-    if (importFrom !== null) names.set(importFrom, [...(names.get(importFrom) ?? []), ...exports])
+  for (const { importFrom, namedExports } of components)
+    if (importFrom !== null)
+      names.set(importFrom, [...(names.get(importFrom) ?? []), ...namedExports])
   return [...names].map(([specifier, imported]) => ({ specifier, names: imported }))
 }
 

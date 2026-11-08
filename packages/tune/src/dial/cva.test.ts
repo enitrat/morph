@@ -42,3 +42,16 @@ function Toggle(props: VariantProps<typeof toggleVariants>) {}`
     ])
   })
 })
+
+it("keeps controls when comments and an aliased cva import appear in the source", () => {
+  const text = `import { cva as variants } from "class-variance-authority"
+const styles = variants("base", {
+  // styles
+  variants: { tone: { quiet: "a", loud: "b" } },
+  /* default */ defaultVariants: { tone: "quiet" },
+})
+export function Button(props: VariantProps<typeof styles>) {}`
+  expect(cvaControls(text, "Button")).toEqual([
+    { kind: "enum", name: "tone", options: ["quiet", "loud"], default: "quiet" },
+  ])
+})
