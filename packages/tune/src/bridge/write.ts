@@ -14,58 +14,22 @@ import { formatFile } from "./checks"
 import { readDesignSystem } from "./design-system"
 import type { Host } from "./git"
 import { withLive } from "./live"
-import { propControls } from "./controls"
+import { propControls } from "./props"
 import { openSessions } from "./session"
 import type { Done, Refusal } from "./session"
 
 const refuse = (refusal: Refusal): Done<never> => ({ ok: false, ...refusal })
 type UtilityWrite = Extract<DialWrite, { kind: "utility" }>
 type Command = DialWrite | { kind: "prop"; write: PropWrite }
-class SourceReadFailed extends Error {
-  readonly tag = "SourceReadFailed" as const
-  constructor(
-    readonly path: string,
-    override readonly cause: unknown,
-  ) {
-    super(`Could not read ${path}`, { cause })
-  }
-}
-class SourceWriteFailed extends Error {
-  readonly tag = "SourceWriteFailed" as const
-  constructor(
-    readonly path: string,
-    override readonly cause: unknown,
-  ) {
-    super(`Could not write ${path}`, { cause })
-  }
-}
-class DesignSystemReadFailed extends Error {
-  readonly tag = "DesignSystemReadFailed" as const
-  constructor(override readonly cause: unknown) {
-    super("Could not read the design system", { cause })
-  }
-}
-class ControlsLoadFailed extends Error {
-  readonly tag = "ControlsLoadFailed" as const
-  constructor(
-    readonly component: string,
-    override readonly cause: unknown,
-  ) {
-    super(`Could not load controls for ${component}`, { cause })
-  }
-}
-type WriteFailure =
-  | SourceReadFailed
-  | SourceWriteFailed
-  | DesignSystemReadFailed
-  | ControlsLoadFailed
-type WriteResult<T> = Done<T> | { ok: false; failure: WriteFailure }
+/** A dependency failed while reading or writing the released edit. */
+export type WriteFailure = { ok: false; failure: unknown }
+type WriteResult<T> = Done<T> | WriteFailure
 
 function tokensOf(repo: Host) {
   try {
     return { ok: true, tokens: readDesignSystem(repo.root, repo.config).tokens } as const
   } catch (cause) {
-    return { ok: false, failure: new DesignSystemReadFailed(cause) } as const
+    return { ok: false, failure: cause } as const
   }
 }
 
@@ -92,7 +56,7 @@ function writeToken(repo: Host, edit: TokenEdit): WriteResult<Dialed> {
     try {
       writeFileSync(join(repo.root, path), css)
     } catch (cause) {
-      return { ok: false, failure: new SourceWriteFailed(path, cause) }
+      return { ok: false, failure: cause }
     }
   }
   return { ok: true, value: { changed: true, file: [...written.files.keys()].join(", ") } }
@@ -115,13 +79,14 @@ async function writeJsx(
     try {
       controls = await propControls(repo, component)
     } catch (cause) {
-      return { ok: false, failure: new ControlsLoadFailed(component, cause) }
+      return { ok: false, failure: cause }
     }
     const control = controls.find((entry) => entry.name === name)
     if (control === undefined)
       return refuse({ kind: "invalid", detail: `${component} has no ${name} control` })
-    const allowed = control.kind === "enum" ? control.options : [true, false]
-    if (to !== null && !(allowed as readonly (string | boolean)[]).includes(to))
+    const allowed: readonly (string | boolean)[] =
+      control.kind === "enum" ? control.options : [true, false]
+    if (to !== null && !allowed.includes(to))
       return refuse({ kind: "invalid", detail: `${component} takes no ${name} ${String(to)}` })
   }
   if (!/\.(?:tsx|jsx)$/.test(site.path))
@@ -132,11 +97,13 @@ async function writeJsx(
     text = await readFile(file, "utf8")
   } catch (cause) {
     if (
-      (cause as NodeJS.ErrnoException).code === "ENOENT" ||
-      (cause as NodeJS.ErrnoException).code === "ENOTDIR"
+      typeof cause === "object" &&
+      cause !== null &&
+      "code" in cause &&
+      (cause.code === "ENOENT" || cause.code === "ENOTDIR")
     )
       return refuse({ kind: "not-found" })
-    return { ok: false, failure: new SourceReadFailed(site.path, cause) }
+    return { ok: false, failure: cause }
   }
   const edited =
     command.kind === "utility"
@@ -152,12 +119,12 @@ async function writeJsx(
   try {
     await writeFile(file, edited.text)
   } catch (cause) {
-    return { ok: false, failure: new SourceWriteFailed(site.path, cause) }
+    return { ok: false, failure: cause }
   }
   const formattedResult = await formatFile(repo, site.path)
   const warning = formattedResult.ok
     ? undefined
-    : `Edit applied, but formatting failed: ${String(formattedResult.error.cause)}`
+    : `Edit applied, but formatting failed: ${String(formattedResult.error)}`
   if (command.kind === "utility")
     return { ok: true, value: { changed: true, file: site.path, ...(warning ? { warning } : {}) } }
   const formatted = await readFile(file, "utf8").catch(() => edited.text)
@@ -168,7 +135,10 @@ async function writeJsx(
   }
 }
 
-/** Writes a released dial or prop under the live lock, refusing while a session owns the tree. */
+/**
+ * Writes a released dial or prop under the live lock, refusing while a session owns the tree.
+ * Dependency failures are returned with their original cause; lock and unexpected failures throw.
+ */
 export function writeReleased(repo: Host, command: DialWrite): Promise<WriteResult<Dialed>>
 export function writeReleased(
   repo: Host,

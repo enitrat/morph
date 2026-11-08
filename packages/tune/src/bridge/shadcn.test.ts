@@ -8,7 +8,7 @@ import { editError, stepsFor } from "../core/edit"
 import { ThemeName, TuneConfig, type TuneConfigInput } from "../core/config"
 import { scalesOf } from "../dial/utilities"
 import { buildDesignSystem, componentFor, importableOf, snapshotOf } from "./design-system"
-import { propControls } from "./controls"
+import { propControls } from "./props"
 
 const FIXTURES = join(import.meta.dirname, "fixtures")
 const DASH = join(FIXTURES, "shadcn-dash")

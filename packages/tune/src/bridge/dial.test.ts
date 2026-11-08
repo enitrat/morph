@@ -16,7 +16,7 @@ import { dirname, join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { RepoPath, SessionId } from "../variant/model"
-import { dial } from "./dial"
+import { writeReleased } from "./write"
 import config from "./fixtures/acme/tune.config"
 import { tuneHandler } from "./handler"
 import { operations } from "../protocol"
@@ -64,8 +64,8 @@ describe("dial", () => {
   it("swaps one class at the tag and formats the file; the same write again is a no-op", async () => {
     const { root, repo } = await fixture()
 
-    const first = await dial(repo, { kind: "utility", site, from: "p-4", to: "p-5" })
-    const again = await dial(repo, { kind: "utility", site, from: "p-4", to: "p-5" })
+    const first = await writeReleased(repo, { kind: "utility", site, from: "p-4", to: "p-5" })
+    const again = await writeReleased(repo, { kind: "utility", site, from: "p-4", to: "p-5" })
 
     expect(first).toEqual({ ok: true, value: { changed: true, file: TILE } })
     expect(again).toEqual({ ok: true, value: { changed: false, file: TILE } })
@@ -110,8 +110,8 @@ describe("dial", () => {
       to: "var(--neutral-700)",
     } as const
 
-    const first = await dial(repo, write)
-    const again = await dial(repo, write)
+    const first = await writeReleased(repo, write)
+    const again = await writeReleased(repo, write)
 
     expect(first).toMatchObject({ ok: true, value: { changed: true, file: SEMANTIC } })
     expect(again).toMatchObject({ ok: true, value: { changed: false } })
@@ -123,7 +123,7 @@ describe("dial", () => {
 
   it("refuses a token edit the design-system rules forbid", async () => {
     const { repo } = await fixture()
-    const split = await dial(repo, {
+    const split = await writeReleased(repo, {
       kind: "token",
       token: "--button-secondary-bg",
       scope: DARK,
@@ -148,7 +148,7 @@ describe("dial", () => {
       directions: [{ title: "X", description: "X." }],
     })
 
-    const refused = await dial(repo, { kind: "utility", site, from: "p-4", to: "p-5" })
+    const refused = await writeReleased(repo, { kind: "utility", site, from: "p-4", to: "p-5" })
 
     expect(refused).toEqual({ ok: false, kind: "busy", session: id })
     expect(readFileSync(join(root, TILE), "utf8")).toBe(TILE_SOURCE)

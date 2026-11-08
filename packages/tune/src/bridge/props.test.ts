@@ -17,12 +17,12 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { operations } from "../protocol"
 import { RepoPath, SessionId } from "../variant/model"
-import { propControls } from "./controls"
 import { writeJson } from "./disk"
 import config from "./fixtures/acme/tune.config"
 import { homeOf } from "./git"
 import { tuneHandler } from "./handler"
-import { componentUses, writeProp } from "./props"
+import { componentUses, propControls } from "./props"
+import { writeReleased } from "./write"
 import { MODULES, openHost, REPO, SPAWNING_TEST_MS } from "./test-fixtures"
 
 vi.setConfig({ testTimeout: SPAWNING_TEST_MS })
@@ -86,7 +86,10 @@ describe("writing a prop", () => {
   it("adds, replaces and removes one attribute at the call site, formatted", async () => {
     const { root, repo } = await fixture()
 
-    const added = await writeProp(repo, { ...write, name: "variant", to: "secondary" })
+    const added = await writeReleased(repo, {
+      kind: "prop",
+      write: { ...write, name: "variant", to: "secondary" },
+    })
     expect(added).toEqual({ ok: true, value: { changed: true, site } })
     expect(changed(root)).toEqual([
       '-      <Button size="sm">Save</Button>',
@@ -98,8 +101,8 @@ describe("writing a prop", () => {
       "+      </Button>",
     ])
 
-    await writeProp(repo, { ...write, name: "size", to: "lg" })
-    await writeProp(repo, { ...write, name: "variant", to: null })
+    await writeReleased(repo, { kind: "prop", write: { ...write, name: "size", to: "lg" } })
+    await writeReleased(repo, { kind: "prop", write: { ...write, name: "variant", to: null } })
     expect(changed(root)).toEqual([
       '-      <Button size="sm">Save</Button>',
       '+      <Button size="lg">Save</Button>',
@@ -164,9 +167,14 @@ describe("writing a prop", () => {
   })
 
   it("keeps source read failures as HTTP crashes with their original detail", async () => {
-    const { root } = await fixture()
+    const { root, repo } = await fixture()
     rmSync(join(root, PAGE))
     mkdirSync(join(root, PAGE))
+    const result = await writeReleased(repo, {
+      kind: "prop",
+      write: { ...write, name: "size", to: "lg" },
+    })
+    expect(result).toMatchObject({ ok: false, failure: { code: "EISDIR" } })
     const handle = tuneHandler(config, {
       dir: root,
       bundler: { symbolicate: async () => [] },
@@ -192,12 +200,13 @@ describe("writing a prop", () => {
 
   it("refuses a value the controls do not offer, and a prop the code computes", async () => {
     const { root, repo } = await fixture()
-    const unknown = await writeProp(repo, { ...write, name: "variant", to: "huge" })
-    const computed = await writeProp(repo, {
-      ...write,
-      site: { ...site, line: 5 },
-      name: "variant",
-      to: "ghost",
+    const unknown = await writeReleased(repo, {
+      kind: "prop",
+      write: { ...write, name: "variant", to: "huge" },
+    })
+    const computed = await writeReleased(repo, {
+      kind: "prop",
+      write: { ...write, site: { ...site, line: 5 }, name: "variant", to: "ghost" },
     })
     expect(unknown).toMatchObject({ ok: false, kind: "invalid" })
     expect(computed).toMatchObject({ ok: false, kind: "invalid" })
@@ -220,7 +229,10 @@ describe("writing a prop", () => {
       directions: [{ title: "X", description: "X." }],
     })
 
-    const refused = await writeProp(repo, { ...write, name: "size", to: "lg" })
+    const refused = await writeReleased(repo, {
+      kind: "prop",
+      write: { ...write, name: "size", to: "lg" },
+    })
 
     expect(refused).toEqual({ ok: false, kind: "busy", session: id })
     expect(readFileSync(join(root, PAGE), "utf8")).toBe(PAGE_SOURCE)

@@ -7,13 +7,13 @@ import { TuneConfigInputSchema, type TuneConfigInput } from "../core/config"
 import { operations, type Operation } from "../protocol"
 import { ComponentName } from "../dial/props"
 import { RepoPath, SessionId, SourceLoc } from "../variant/model"
-import { propControls } from "./controls"
-import { designSystemOf, dial, tagClasses } from "./dial"
+import { designSystemOf, tagClasses } from "./dial"
 import { configAt, type Host, openRepo } from "./git"
 import { guard } from "./guard"
-import { componentUses, tagAttributes, writeProp } from "./props"
+import { componentUses, propControls, tagAttributes } from "./props"
 import { ask, discard, type Done, keep, look, refine, type Refusal, retry, show } from "./session"
 import { type Bundler, type Frame } from "./symbolicate"
+import { writeReleased, type WriteFailure } from "./write"
 
 const FRAME = /^(.+):(\d+):(\d+)$/
 const SERVER_FRAME = /^(?:about|rsc):\/\/React\//
@@ -51,7 +51,7 @@ type Ops = {
       request: Request,
       repo: Host,
       bundler: Bundler,
-    ): Promise<Done<z.output<(typeof operations)[K]["response"]>>>
+    ): Promise<Done<z.output<(typeof operations)[K]["response"]>> | WriteFailure>
   }
 }
 
@@ -116,11 +116,12 @@ const OPS = {
   },
   prop: {
     method: "POST",
-    run: async (request, repo) => writeProp(repo, await body(request, operations.prop.request)),
+    run: async (request, repo) =>
+      writeReleased(repo, { kind: "prop", write: await body(request, operations.prop.request) }),
   },
   dial: {
     method: "POST",
-    run: async (request, repo) => dial(repo, await body(request, operations.dial.request)),
+    run: async (request, repo) => writeReleased(repo, await body(request, operations.dial.request)),
   },
   session: {
     method: "GET",
@@ -190,12 +191,7 @@ export function tuneHandler(
     const op = Object.entries(OPS).find(([key]) => key === name)?.[1]
     if (op === undefined) return json({ error: { kind: "not-found" } }, 404)
     if (op.method !== request.method) return json({ error: { kind: "method" } }, 405)
-    try {
-      const answer = await op.run(request, await opened(), bundler)
-      if (answer.ok) return json(answer.value)
-      const { ok: _, ...refusal } = answer
-      return json({ error: refusal }, STATUS[refusal.kind])
-    } catch (error) {
+    const failed = (error: unknown) => {
       if (error instanceof z.ZodError || error instanceof SyntaxError) {
         const issues =
           error instanceof z.ZodError ? error.issues.map((issue) => issue.message) : [error.message]
@@ -204,6 +200,15 @@ export function tuneHandler(
       console.error(error)
       const detail = error instanceof Error ? error.message : String(error)
       return json({ error: { kind: "crashed", detail } }, 500)
+    }
+    try {
+      const answer = await op.run(request, await opened(), bundler)
+      if (answer.ok) return json(answer.value)
+      if ("failure" in answer) return failed(answer.failure)
+      const { ok: _, ...refusal } = answer
+      return json({ error: refusal }, STATUS[refusal.kind])
+    } catch (error) {
+      return failed(error)
     }
   }
 }
