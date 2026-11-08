@@ -87,6 +87,10 @@ async function askAbout(locator, words, dy = 0) {
   await page.keyboard.type(words)
   await page.keyboard.press("Enter")
   await inTune("textarea").waitFor({ state: "detached" })
+  await page.waitForTimeout(1500)
+  const notice = await inTune("[role=status]").allTextContents()
+  if (notice.some((text) => text.startsWith("Could not")))
+    throw new Error(`the ask was dropped: ${notice.join(" ")}`)
 }
 
 const sessionIds = []
