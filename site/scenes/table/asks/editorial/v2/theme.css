@@ -303,6 +303,135 @@
 }
 
 /* palette */
+[data-object="palette"] {
+  --color-paper: #1f3a2e;
+  --color-ink: #f1ead9;
+  --color-ink-2: #a9b5a6;
+  --color-rule: rgb(216 180 106 / 0.4);
+  --color-accent: #d8b46a;
+  --color-on-accent: #1f3a2e;
+  --font-body: var(--font-editorial);
+  --font-display: var(--font-editorial);
+  --font-num: var(--font-editorial);
+  rotate: 0deg;
+  filter: none;
+}
+/* A framed card: a gold double rule set in from the edge. */
+[data-object="palette"] [data-role="paper"] {
+  border-radius: 4px;
+  box-shadow:
+    inset 0 0 0 7px var(--color-paper),
+    inset 0 0 0 8px var(--color-accent),
+    inset 0 0 0 10px var(--color-paper),
+    inset 0 0 0 11px var(--color-accent),
+    0 30px 60px -28px rgb(0 0 0 / 0.9);
+  text-shadow: none;
+}
+[data-object="palette"]:is([data-layout="radial"], [data-layout="wheel"]) [data-role="paper"] {
+  border-radius: 50%;
+}
+[data-object="palette"] [data-role="scanlines"] {
+  display: none;
+}
+[data-object="palette"] :is([data-role="input"], [data-role="ghost"]) {
+  font-weight: 400;
+}
+[data-object="palette"] [data-role="heading"] {
+  font-weight: 500;
+  color: var(--color-accent);
+}
+[data-object="palette"] [data-role="group"] {
+  font: 600 11px/1 var(--font-body);
+  font-variant: all-small-caps;
+  letter-spacing: 0.18em;
+  text-transform: lowercase;
+  color: var(--color-accent);
+  border-bottom: 3px double var(--color-rule);
+  padding-bottom: 5px;
+  margin-bottom: 3px;
+}
+[data-object="palette"] [data-role="hit"] {
+  text-decoration: none;
+  color: var(--color-accent);
+  font-weight: 600;
+}
+[data-object="palette"] [data-role="key"] {
+  border: 0;
+  background: transparent;
+  color: var(--color-accent);
+}
+[data-object="palette"] button[data-role="scope"],
+[data-object="palette"] [data-role="pick"] {
+  border-color: var(--color-rule);
+  border-radius: 2px;
+  color: var(--color-ink);
+}
+[data-object="palette"] [data-role="scope"][aria-pressed="true"] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+}
+[data-object="palette"] [data-part="results"] [data-role="icon"] {
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-accent);
+}
+[data-object="palette"]:is(
+    [data-layout="dialog"],
+    [data-layout="spotlight"],
+    [data-layout="terminal"],
+    [data-layout="teletype"]
+  )
+  [data-role="keys"]::before {
+  content: "";
+  align-self: end;
+  width: 48px;
+  margin: 0 6px 4px 0;
+  border-bottom: 1.5px dotted var(--color-accent);
+}
+[data-object="palette"]:is(
+    [data-layout="dialog"],
+    [data-layout="spotlight"],
+    [data-layout="terminal"],
+    [data-layout="teletype"]
+  )
+  [data-role="row"] {
+  border-radius: 0;
+}
+[data-object="palette"]:not([data-layout="radial"], [data-layout="dial"], [data-layout="wheel"])
+  [data-role="row"][aria-selected="true"] {
+  background: rgb(216 180 106 / 0.14);
+  color: var(--color-ink);
+  font-style: italic;
+  box-shadow: none;
+}
+[data-object="palette"]:not([data-layout="radial"], [data-layout="dial"], [data-layout="wheel"])
+  [data-role="row"][aria-selected="true"]
+  :is([data-role="icon"], [data-role="detail"], [data-role="key"]) {
+  color: var(--color-accent);
+  background: transparent;
+}
+[data-object="palette"]:is([data-layout="tiles"]) [data-role="row"] {
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--color-rule);
+}
+[data-object="palette"]:is([data-layout="radial"], [data-layout="dial"])
+  [data-role="row"][aria-selected="true"]
+  [data-role="icon"] {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: none;
+}
+[data-object="palette"] [data-part="footer"] {
+  font-style: italic;
+  color: var(--color-ink-2);
+}
+/* The radial hub inverts the sheet, so its type takes the paper colour. */
+[data-object="palette"][data-layout="radial"]
+  :is([data-role="heading"], button[data-role="scope"]) {
+  color: var(--color-paper);
+}
 
 /* player */
 [data-object="player"] {

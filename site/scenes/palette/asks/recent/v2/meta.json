@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Jump back in, as chips",
+    "description": "Put the last three commands in a row of chips above the groups, one click to run again, and keep the list as it was."
+  },
+  "title": "Jump-back-in chips",
+  "summary": "Adds a row of three chips above the results while the query is empty, each the icon and name of a command that ran recently.",
+  "ms": {
+    "agent": 41000,
+    "checks": 9000,
+    "total": 67000
+  }
+}

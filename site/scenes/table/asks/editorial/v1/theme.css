@@ -321,6 +321,137 @@
 }
 
 /* palette */
+[data-object="palette"] {
+  --color-paper: #f4efe4;
+  --color-ink: #1d1a16;
+  --color-ink-2: #6b6257;
+  --color-rule: #d3c8b6;
+  --color-accent: #7a1f1f;
+  --color-on-accent: #f4efe4;
+  --font-body: var(--font-editorial);
+  --font-display: var(--font-editorial);
+  --font-num: var(--font-editorial);
+  rotate: 0deg;
+  filter: none;
+}
+[data-object="palette"] [data-role="paper"] {
+  border-radius: 3px;
+  box-shadow:
+    inset 0 0 0 6px var(--color-paper),
+    inset 0 0 0 7px var(--color-rule),
+    0 30px 60px -28px rgb(0 0 0 / 0.85);
+  text-shadow: none;
+}
+[data-object="palette"]:is([data-layout="radial"], [data-layout="wheel"]) [data-role="paper"] {
+  border-radius: 50%;
+}
+[data-object="palette"] [data-role="scanlines"] {
+  display: none;
+}
+[data-object="palette"] :is([data-role="input"], [data-role="ghost"]) {
+  font-style: italic;
+  font-weight: 300;
+}
+[data-object="palette"] [data-role="heading"] {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--color-accent);
+}
+/* Small capitals for the groups, centred like a menu card. */
+[data-object="palette"] [data-role="group"] {
+  font: 500 11px/1 var(--font-body);
+  font-variant: all-small-caps;
+  letter-spacing: 0.16em;
+  text-align: center;
+  text-transform: lowercase;
+  color: var(--color-accent);
+}
+[data-object="palette"] [data-role="hit"] {
+  text-decoration: none;
+  font-style: italic;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+[data-object="palette"] [data-role="key"] {
+  border: 0;
+  background: transparent;
+  font-style: italic;
+  color: var(--color-ink-2);
+}
+[data-object="palette"] button[data-role="scope"],
+[data-object="palette"] [data-role="pick"] {
+  border-color: var(--color-rule);
+  font-style: italic;
+}
+[data-object="palette"] [data-role="scope"][aria-pressed="true"] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent);
+}
+[data-object="palette"] [data-part="results"] [data-role="icon"] {
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-accent);
+}
+/* Leader dots run from each name to its keys. */
+[data-object="palette"]:is(
+    [data-layout="dialog"],
+    [data-layout="spotlight"],
+    [data-layout="terminal"],
+    [data-layout="teletype"]
+  )
+  [data-role="keys"]::before {
+  content: "";
+  align-self: end;
+  width: 48px;
+  margin: 0 6px 4px 0;
+  border-bottom: 1.5px dotted var(--color-ink-2);
+}
+[data-object="palette"]:is(
+    [data-layout="dialog"],
+    [data-layout="spotlight"],
+    [data-layout="terminal"],
+    [data-layout="teletype"]
+  )
+  [data-role="row"] {
+  border-radius: 0;
+}
+[data-object="palette"]:not([data-layout="radial"], [data-layout="dial"], [data-layout="wheel"])
+  [data-role="row"][aria-selected="true"] {
+  background: transparent;
+  color: var(--color-accent);
+  font-style: italic;
+  box-shadow: inset 2px 0 0 var(--color-accent);
+}
+[data-object="palette"]:not([data-layout="radial"], [data-layout="dial"], [data-layout="wheel"])
+  [data-role="row"][aria-selected="true"]
+  :is([data-role="icon"], [data-role="detail"], [data-role="key"]) {
+  color: var(--color-accent);
+  background: transparent;
+}
+[data-object="palette"]:is([data-layout="tiles"]) [data-role="row"] {
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--color-rule);
+}
+[data-object="palette"]:is([data-layout="radial"], [data-layout="dial"])
+  [data-role="row"][aria-selected="true"]
+  [data-role="icon"] {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: none;
+}
+[data-object="palette"] [data-role="name"] {
+  font-weight: 400;
+}
+[data-object="palette"] [data-part="footer"] {
+  font-style: italic;
+}
+/* The radial hub inverts the sheet, so its type takes the paper colour. */
+[data-object="palette"][data-layout="radial"]
+  :is([data-role="heading"], button[data-role="scope"]) {
+  color: var(--color-paper);
+}
 
 /* player */
 [data-object="player"] {

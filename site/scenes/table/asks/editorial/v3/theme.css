@@ -303,6 +303,126 @@
 }
 
 /* palette */
+[data-object="palette"] {
+  --color-paper: #f3ddd4;
+  --color-ink: #2a1d1a;
+  --color-ink-2: #84665d;
+  --color-rule: #ddbfb3;
+  --color-accent: #7a1f1f;
+  --color-on-accent: #f3ddd4;
+  --font-body: var(--font-editorial);
+  --font-display: var(--font-editorial);
+  --font-num: var(--font-sans);
+  rotate: 0deg;
+  filter: none;
+}
+[data-object="palette"] [data-role="paper"] {
+  border-radius: 0;
+  box-shadow: 0 30px 60px -28px rgb(60 20 10 / 0.75);
+  text-shadow: none;
+}
+[data-object="palette"]:is([data-layout="radial"], [data-layout="wheel"]) [data-role="paper"] {
+  border-radius: 50%;
+}
+[data-object="palette"] [data-role="scanlines"] {
+  display: none;
+}
+/* The query is the masthead, large and light; the headings carry an oxblood initial. */
+[data-object="palette"] :is([data-role="input"], [data-role="ghost"]) {
+  font-weight: 300;
+  font-size: 1.15em;
+  letter-spacing: -0.02em;
+}
+[data-object="palette"] [data-role="input"]::placeholder {
+  font-style: italic;
+}
+[data-object="palette"] [data-role="heading"] {
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+[data-object="palette"] [data-role="heading"]::first-letter {
+  color: var(--color-accent);
+}
+[data-object="palette"] [data-role="name"] {
+  font-style: italic;
+  font-weight: 400;
+}
+[data-object="palette"] [data-role="group"] {
+  font: 500 10px/1 var(--font-sans);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+[data-object="palette"] [data-role="hit"] {
+  text-decoration: underline 1px var(--color-accent);
+  text-underline-offset: 3px;
+  font-weight: 500;
+}
+[data-object="palette"] [data-role="key"] {
+  border: 0;
+  background: transparent;
+  font-family: var(--font-sans);
+  color: var(--color-ink-2);
+}
+[data-object="palette"] button[data-role="scope"],
+[data-object="palette"] [data-role="pick"] {
+  border-radius: 0;
+  border-color: var(--color-rule);
+  font-style: italic;
+}
+[data-object="palette"] [data-role="scope"][aria-pressed="true"] {
+  background: transparent;
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+[data-object="palette"] [data-part="results"] [data-role="icon"] {
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-ink-2);
+}
+/* Hairlines between the rows, and the selected one set in oxblood. */
+[data-object="palette"]:is(
+    [data-layout="dialog"],
+    [data-layout="spotlight"],
+    [data-layout="terminal"],
+    [data-layout="teletype"]
+  )
+  [data-role="row"] {
+  border-radius: 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+[data-object="palette"]:not([data-layout="radial"], [data-layout="dial"], [data-layout="wheel"])
+  [data-role="row"][aria-selected="true"] {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: none;
+}
+[data-object="palette"]:not([data-layout="radial"], [data-layout="dial"], [data-layout="wheel"])
+  [data-role="row"][aria-selected="true"]
+  :is([data-role="icon"], [data-role="detail"], [data-role="key"]) {
+  color: var(--color-on-accent);
+  background: transparent;
+}
+[data-object="palette"]:is([data-layout="tiles"]) [data-role="row"] {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--color-rule);
+}
+[data-object="palette"]:is([data-layout="radial"], [data-layout="dial"])
+  [data-role="row"][aria-selected="true"]
+  [data-role="icon"] {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: none;
+}
+[data-object="palette"] [data-part="footer"] {
+  font-family: var(--font-sans);
+}
+/* The radial hub inverts the sheet, so its type takes the paper colour. */
+[data-object="palette"][data-layout="radial"]
+  :is([data-role="heading"], button[data-role="scope"]) {
+  color: var(--color-paper);
+}
 
 /* player */
 [data-object="player"] {

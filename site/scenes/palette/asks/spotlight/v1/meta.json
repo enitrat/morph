@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A launcher with rich rows",
+    "description": "Set the field at 24 px like a system launcher and give every result an icon tile and a line on what it does."
+  },
+  "title": "Big field, rich rows",
+  "summary": "Sets the query at 24 px, gives each row a 32 px icon tile and its description, and fills the selected row in blue.",
+  "ms": {
+    "agent": 58000,
+    "checks": 11000,
+    "total": 88000
+  }
+}

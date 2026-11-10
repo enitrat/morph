@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Usage on every row",
+    "description": "Keep one list, and mark each command that ran with a small meter and a count, so the habits show without a separate section."
+  },
+  "title": "Usage meter on each row",
+  "summary": "Adds a 32 px meter and a run count to every command that ran, scaled to the most used one; the list keeps its groups.",
+  "ms": {
+    "agent": 46000,
+    "checks": 10000,
+    "total": 72000
+  }
+}

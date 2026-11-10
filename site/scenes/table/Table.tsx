@@ -1,5 +1,6 @@
 import { Pass } from "../pass/Pass"
 import { Player } from "../player/Player"
+import { Palette } from "../palette/Palette"
 import { Receipt } from "../receipt/Receipt"
 
 /**
@@ -16,6 +17,7 @@ export function Table() {
       <Receipt />
       <Pass />
       <Player />
+      <Palette />
     </div>
   )
 }

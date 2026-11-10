@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A segmented wheel",
+    "description": "Cut the ring into eight wedges, one per command, and fill the selected wedge solid around a small hub."
+  },
+  "title": "Segmented wheel",
+  "summary": "Splits a 400 px wheel into eight 45° wedges with hairline dividers; the selected wedge fills black and the hub shows its keys.",
+  "ms": {
+    "agent": 71000,
+    "checks": 13000,
+    "total": 104000
+  }
+}

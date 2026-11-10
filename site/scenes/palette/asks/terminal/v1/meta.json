@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A shell with ghost completion",
+    "description": "Turn the palette into a dark terminal: the query is a prompt, the rest of the best match trails it in grey, and the results print as plain lines."
+  },
+  "title": "Dark shell, ghost completion",
+  "summary": "Sets everything in Geist Mono on a dark window: a ~/studio prompt with ghost completion, results as lines with a › cursor and a status bar.",
+  "ms": {
+    "agent": 59000,
+    "checks": 11000,
+    "total": 89000
+  }
+}

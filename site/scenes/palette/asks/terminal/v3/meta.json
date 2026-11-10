@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A teletype printout",
+    "description": "Print the palette on tractor-feed paper: the last commands as a log above the prompt, the matches below like a manual page."
+  },
+  "title": "Paper teletype, printed log",
+  "summary": "Sets Space Mono on perforated cream paper with feed holes; prints the last three runs above a $ prompt and the matches as dotted rows.",
+  "ms": {
+    "agent": 67000,
+    "checks": 12000,
+    "total": 99000
+  }
+}
