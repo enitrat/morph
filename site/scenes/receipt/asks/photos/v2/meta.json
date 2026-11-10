@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A grid of tiles",
+    "description": "Lay the order out as illustrated tiles, drinks above and food below."
+  },
+  "title": "Photo grid",
+  "summary": "Turns the list into tiles with a large illustration, the name and the price under each.",
+  "ms": {
+    "agent": 84000,
+    "checks": 14000,
+    "total": 128000
+  }
+}

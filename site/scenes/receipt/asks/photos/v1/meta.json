@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A thumbnail per line",
+    "description": "Put a small round illustration of each item at the start of its line."
+  },
+  "title": "Round thumbnails",
+  "summary": "Adds a 28 px round illustration of each item beside its line.",
+  "ms": {
+    "agent": 63000,
+    "checks": 12000,
+    "total": 96000
+  }
+}
