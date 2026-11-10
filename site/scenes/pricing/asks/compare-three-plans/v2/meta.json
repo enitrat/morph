@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Feature comparison table",
+    "description": "Put the three plans in columns and the features in rows, so a buyer can read across."
+  },
+  "title": "Comparison table",
+  "summary": "Moves plans into a table with grouped feature rows, checks and dashes, and a tinted band down the Pro column. The table lives in a new PlanTable.tsx.",
+  "ms": {
+    "agent": 101000,
+    "checks": 18000,
+    "total": 129000
+  }
+}

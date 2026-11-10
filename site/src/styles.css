@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --ease-morph: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html {
+  background: var(--color-zinc-50);
+  color: var(--color-zinc-950);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  /* Only the named parts of a scene morph; the overlay and the rest of the page stay live. */
+  view-transition-name: none;
+}
+
+.board {
+  background-color: white;
+  background-image: radial-gradient(var(--color-zinc-300) 1px, transparent 1px);
+  background-size: 16px 16px;
+  background-position: 8px 8px;
+}
+
+::view-transition-group(*) {
+  animation-duration: 520ms;
+  animation-timing-function: var(--ease-morph);
+}
+
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--ease-morph);
+}
+
+/* A part that only one design has fades and settles into place rather than popping. */
+::view-transition-new(*):only-child {
+  animation: 420ms var(--ease-morph) 80ms both morph-in;
+}
+::view-transition-old(*):only-child {
+  animation: 200ms ease-out both morph-out;
+}
+
+@keyframes morph-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@keyframes morph-out {
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
