@@ -231,7 +231,6 @@
   font-style: normal;
   letter-spacing: -0.02em;
   text-transform: uppercase;
-  color: var(--color-accent);
 }
 [data-object="player"] [data-role="meta"] {
   font-family: var(--font-body);
