@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A people stepper",
+    "description": "Add a minus and plus stepper under the total that shows what each person pays."
+  },
+  "title": "Stepper, amount each",
+  "summary": "Adds a − 2 + stepper under the total with the per-person share, live with the tip.",
+  "ms": {
+    "agent": 61000,
+    "checks": 12000,
+    "total": 94000
+  }
+}
