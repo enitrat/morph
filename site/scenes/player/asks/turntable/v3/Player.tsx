@@ -65,7 +65,7 @@ export function Player() {
             />
           </svg>
         </div>
-        <div className="relative z-10 mt-auto grid gap-2 before:absolute before:-inset-x-4 before:-top-16 before:-bottom-4 before:-z-10 before:bg-[linear-gradient(transparent,rgb(20_20_20/0.92)_38%)]">
+        <div className="relative z-10 mt-auto grid gap-2 before:absolute before:-inset-x-4 before:-top-16 before:-bottom-4 before:-z-10 before:bg-[linear-gradient(transparent,var(--color-paper)_42%)] before:opacity-95">
           <p data-role="meta" className="font-num text-[10px] tracking-[0.16em] text-accent">
             A{TRACK.number} · 33⅓ RPM
           </p>

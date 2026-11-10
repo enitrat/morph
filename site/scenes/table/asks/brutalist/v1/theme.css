@@ -201,3 +201,66 @@
 /* palette */
 
 /* player */
+[data-object="player"] {
+  --color-paper: #ffffff;
+  --color-ink: #000000;
+  --color-ink-2: #000000;
+  --color-rule: #000000;
+  --color-accent: #ffe14d;
+  --color-on-accent: #000000;
+  --font-body: var(--font-thermal);
+  --font-display: var(--font-grotesk);
+  --font-num: var(--font-thermal);
+  rotate: 0deg;
+}
+[data-object="player"] [data-role="paper"] {
+  background: var(--color-paper);
+  border: 0;
+  outline: 3px solid #000000;
+  outline-offset: -3px;
+  border-radius: 0;
+  text-shadow: none;
+  box-shadow: 10px 10px 0 #000000;
+}
+[data-object="player"] [data-role="heading"] {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: normal;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+[data-object="player"] [data-role="meta"] {
+  font-family: var(--font-body);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: #000000;
+}
+[data-object="player"] [data-role="play"] {
+  border: 3px solid #000000;
+  border-radius: 0;
+  background: var(--color-accent);
+  color: #000000;
+  box-shadow: 4px 4px 0 #000000;
+}
+[data-object="player"] :is([data-role="key"], [data-role="toggle"]) {
+  border: 2px solid #000000;
+  border-radius: 0;
+  background: #ffffff;
+  color: #000000;
+  box-shadow: none;
+}
+[data-object="player"] [data-role="toggle"][aria-pressed="true"] {
+  background: var(--color-accent);
+}
+[data-object="player"] :is([data-role="fill"], [data-role="head"]) {
+  border-radius: 0;
+  background: #000000;
+  box-shadow: none;
+}
+[data-object="player"] [data-role="lyric"] {
+  font-family: var(--font-display);
+  font-weight: 900;
+  text-transform: uppercase;
+}

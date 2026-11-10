@@ -31,7 +31,7 @@ export function Player() {
           </div>
           <span className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(ellipse_62%_36%_at_40%_18%,rgb(255_255_255/0.85),transparent_70%)]" />
         </div>
-        <div className="mt-3 flex w-full items-center justify-between rounded-full bg-[linear-gradient(180deg,#fff0fb,#ffc2ec_60%,#ffe0f6)] px-4 py-1.5 shadow-[inset_0_2px_5px_rgb(120_20_90/0.3),0_1px_0_rgb(255_255_255/0.9)]">
+        <div className="mt-3 flex w-full items-center justify-between rounded-full text-ink [--color-ink-2:#9a4a8d] [--color-ink:#5a1650] bg-[linear-gradient(180deg,#fff0fb,#ffc2ec_60%,#ffe0f6)] px-4 py-1.5 shadow-[inset_0_2px_5px_rgb(120_20_90/0.3),0_1px_0_rgb(255_255_255/0.9)]">
           <span className="min-w-0">
             <h3 data-role="heading" className="truncate font-num text-[11px]/[1.3]">
               ♪ {TRACK.title.toUpperCase()}

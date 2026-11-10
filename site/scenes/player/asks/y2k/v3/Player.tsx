@@ -56,7 +56,7 @@ export function Player() {
             {clock(at)}
           </span>
         </div>
-        <div className="mt-auto w-full rounded-full bg-[#16181d] px-2 py-1.5 shadow-[inset_0_2px_6px_rgb(0_0_0/0.7),0_1px_0_rgb(255_255_255/0.12)] [&_[data-role=key]]:bg-[linear-gradient(180deg,#7b8291,#3a3f4a_60%,#2a2e36)] [&_[data-role=key]]:text-accent [&_[data-role=key]]:shadow-[inset_0_2px_0_rgb(255_255_255/0.3),0_3px_6px_rgb(0_0_0/0.5)] [&_[data-role=play]]:bg-[linear-gradient(180deg,#e6ff9e,#a8f02a_55%,#7cc400)] [&_[data-role=play]]:shadow-[inset_0_3px_0_rgb(255_255_255/0.7),0_6px_12px_-4px_rgb(120_200_0/0.6)]">
+        <div className="mt-auto w-full rounded-full bg-[#16181d] px-2 py-1.5 [--color-ink-2:#9aa3b2] [--color-ink:#e9edf3] [--color-rule:rgb(255_255_255/0.14)] shadow-[inset_0_2px_6px_rgb(0_0_0/0.7),0_1px_0_rgb(255_255_255/0.12)] [&_[data-role=key]]:bg-[linear-gradient(180deg,#7b8291,#3a3f4a_60%,#2a2e36)] [&_[data-role=key]]:text-accent [&_[data-role=key]]:shadow-[inset_0_2px_0_rgb(255_255_255/0.3),0_3px_6px_rgb(0_0_0/0.5)] [&_[data-role=play]]:bg-[linear-gradient(180deg,#e6ff9e,#a8f02a_55%,#7cc400)] [&_[data-role=play]]:shadow-[inset_0_3px_0_rgb(255_255_255/0.7),0_6px_12px_-4px_rgb(120_200_0/0.6)]">
           <PlayerControls />
         </div>
       </div>

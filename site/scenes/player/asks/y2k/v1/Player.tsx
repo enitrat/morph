@@ -28,7 +28,7 @@ export function Player() {
           </div>
           <span className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(ellipse_70%_42%_at_42%_16%,rgb(255_255_255/0.8),transparent_70%)]" />
         </div>
-        <div className="mt-5 w-full overflow-hidden rounded-[14px] bg-[linear-gradient(180deg,#e6fbff,#a9e6ff_60%,#d3f4ff)] px-3 py-2 shadow-[inset_0_2px_5px_rgb(10_60_120/0.35),0_1px_0_rgb(255_255_255/0.9)]">
+        <div className="mt-5 w-full overflow-hidden rounded-[14px] text-ink [--color-ink-2:#4b6596] [--color-ink:#16306a] bg-[linear-gradient(180deg,#e6fbff,#a9e6ff_60%,#d3f4ff)] px-3 py-2 shadow-[inset_0_2px_5px_rgb(10_60_120/0.35),0_1px_0_rgb(255_255_255/0.9)]">
           <div className="overflow-hidden">
             <h3
               data-role="heading"

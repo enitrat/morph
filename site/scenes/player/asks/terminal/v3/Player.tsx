@@ -19,9 +19,9 @@ export function Player() {
         className="flex h-full flex-col bg-paper px-4 pt-3 pb-3 font-body text-[10.5px]/[1.55] text-ink shadow-[0_30px_50px_-22px_rgb(0_0_0/0.85),0_1px_3px_rgb(0_0_0/0.3)] [&_[data-role=key]]:rounded-none [&_[data-role=play]]:rounded-none [&_[data-role=play]]:shadow-none [&_[data-role=toggle]]:rounded-none"
       >
         <p data-role="meta" className="flex justify-between text-[9.5px] text-ink-2">
-          <span>NOW-PLAYING(1)</span>
-          <span>User Commands</span>
-          <span>NOW-PLAYING(1)</span>
+          <span className="whitespace-nowrap">NOW-PLAYING(1)</span>
+          <span className="min-w-0 truncate px-2">User Commands</span>
+          <span className="whitespace-nowrap">NOW-PLAYING(1)</span>
         </p>
         <Section name="NAME">
           <h3 data-role="heading" className="inline font-display font-bold">

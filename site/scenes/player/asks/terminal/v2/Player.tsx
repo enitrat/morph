@@ -58,7 +58,7 @@ export function Player() {
         <Pane title="keys" side={loop ? "loop on" : "loop off"}>
           <PlayerControls />
         </Pane>
-        <div className="mt-auto rounded-[2px] bg-[#16204a] px-2.5 pt-2 pb-1.5 shadow-[inset_0_0_0_1px_var(--color-rule)]">
+        <div className="mt-auto rounded-[2px] bg-ink/8 px-2.5 pt-2 pb-1.5 shadow-[inset_0_0_0_1px_var(--color-rule)]">
           <PlayerProgress />
           <p data-role="meta" className="mt-1 flex justify-between text-[9.5px] text-ink-2">
             <span>NORMAL · flac 44.1k</span>
