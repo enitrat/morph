@@ -62,6 +62,33 @@ export const choicesOf = (view: SessionView): Choice[] => [
   ...view.variants.flatMap((variant) => (variant.state === "ready" ? [variant.id] : [])),
 ]
 
+/** What a key on the open card does: flip to a choice, or say why that variant cannot show. */
+export type Flip = { kind: "show"; choice: Choice } | { kind: "notice"; text: string }
+
+/** 0 to 3 pick a row and ←/→ step through the ready ones; a row not ready says so. */
+export function flipOf(view: SessionView, key: string): Flip | null {
+  const choices = choicesOf(view)
+  if (key === "arrowleft" || key === "arrowright") {
+    const at = Math.max(0, choices.indexOf(currentOf(view) ?? "original"))
+    const choice = choices[(at + (key === "arrowright" ? 1 : -1) + choices.length) % choices.length]
+    return choice === undefined ? null : { kind: "show", choice }
+  }
+  if (key === "0") return { kind: "show", choice: "original" }
+  const variant = /^[1-3]$/.test(key)
+    ? view.variants.find((entry) => entry.id === `v${key}`)
+    : undefined
+  if (variant === undefined) return null
+  if (variant.state === "ready") return { kind: "show", choice: variant.id }
+  const letter = letterOf(variant.id)
+  return {
+    kind: "notice",
+    text:
+      variant.state === "pending"
+        ? `${letter} is still being written. It flips in once it is ready.`
+        : `${letter} failed. Retry it from its row.`,
+  }
+}
+
 /** What the page shows for the session, or waits to show. */
 export function currentOf(view: SessionView): Choice | null {
   const { place } = view

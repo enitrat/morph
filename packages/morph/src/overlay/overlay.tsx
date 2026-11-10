@@ -21,7 +21,7 @@ import { fileOf, useSettled, useSource, useTick } from "./ui/hooks"
 import { Inspector } from "./ui/Inspector"
 import { Lens } from "./ui/Lens"
 import { frameBox, PageLayer } from "./ui/PageLayer"
-import { boxOfPin, choicesOf, currentOf, Pins } from "./ui/Pins"
+import { boxOfPin, flipOf, Pins } from "./ui/Pins"
 
 /** Pointer travel before a press on the page becomes a frame drag. */
 const DRAG_PX = 5
@@ -250,22 +250,12 @@ function useKeys(state: State, dispatch: Dispatch<Event>, actions: SessionAction
     }
     const card = state.sessions.card
     const view = state.sessions.page.sessions.find((session) => session.id === card)
-    if (view !== undefined) {
-      const choices = choicesOf(view)
-      let choice = /^[0-3]$/.test(key)
-        ? key === "0"
-          ? "original"
-          : choices.find((entry) => entry === `v${key}`)
-        : undefined
-      if (key === "arrowleft" || key === "arrowright") {
-        const at = Math.max(0, choices.indexOf(currentOf(view) ?? "original"))
-        choice = choices[(at + (key === "arrowright" ? 1 : -1) + choices.length) % choices.length]
-      }
-      if (choice !== undefined) {
-        handled()
-        actions.show(view.id, choice)
-        return
-      }
+    const flip = view === undefined ? null : flipOf(view, key)
+    if (view !== undefined && flip !== null) {
+      handled()
+      if (flip.kind === "show") actions.show(view.id, flip.choice)
+      else dispatch({ kind: "notice", text: flip.text, tone: "info" })
+      return
     }
     if (selection.kind === "frame" && key === "a") {
       handled()

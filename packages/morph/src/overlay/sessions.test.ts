@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 import { type Event, initial, reduce, type State } from "./model"
 import { ids, page, path, pending, ready, session } from "./session-fixtures"
 import { holdersOf, type NewPin, pinned, progressOf, statusOf } from "./sessions"
+import { flipOf } from "./ui/Pins"
 
 const pinOf = (
   id: (typeof ids)[keyof typeof ids],
@@ -180,5 +181,28 @@ describe("reading a session", () => {
       files: [path("app/(marketing)/hero.tsx")],
     }
     expect(holdersOf([hold], state.sessions.pins)).toBe("#1 Hero · hero.tsx")
+  })
+})
+
+describe("flipping the open card by key", () => {
+  const view = session(ids.hero, { kind: "shown", variant: "v1", edited: false }, [
+    ready("v1"),
+    pending("v2", "checks"),
+    { ...ready("v3"), state: "failed", reason: "Checks failed.", retryable: true },
+  ])
+
+  it("shows a ready row, the original, or the next ready one along", () => {
+    expect(flipOf(view, "1")).toEqual({ kind: "show", choice: "v1" })
+    expect(flipOf(view, "0")).toEqual({ kind: "show", choice: "original" })
+    expect(flipOf(view, "arrowright")).toEqual({ kind: "show", choice: "original" })
+  })
+
+  it("says a row that is still being written or failed cannot show yet", () => {
+    expect(flipOf(view, "2")).toEqual({
+      kind: "notice",
+      text: "B is still being written. It flips in once it is ready.",
+    })
+    expect(flipOf(view, "3")).toEqual({ kind: "notice", text: "C failed. Retry it from its row." })
+    expect(flipOf(view, "4")).toBeNull()
   })
 })
