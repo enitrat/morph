@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Slide with a readout",
+    "description": "Replace the tip buttons with a slider and a large live percent beside quick presets."
+  },
+  "title": "Slider, live percent",
+  "summary": "Swaps the tip buttons for a 0 to 25% slider with a live percent and small presets.",
+  "ms": {
+    "agent": 60000,
+    "checks": 12000,
+    "total": 92000
+  }
+}

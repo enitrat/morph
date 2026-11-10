@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Ticks and a bubble",
+    "description": "Mark the usual tips as ticks under the track and float the value over the thumb."
+  },
+  "title": "Ticks and a value bubble",
+  "summary": "Puts a bubble with the percent over the thumb and clickable ticks at 0, 10, 15 and 20%.",
+  "ms": {
+    "agent": 76000,
+    "checks": 14000,
+    "total": 118000
+  }
+}
