@@ -23,4 +23,7 @@ createRoot(document.getElementById("root") as HTMLElement).render(
   </StrictMode>,
 )
 
+// Verification scripts compose states through the same commands the overlay's replies run.
+Object.assign(window, { stage })
+
 if (!touch) requestIdleCallback(() => mountMorph(replayTransport(stage)))
