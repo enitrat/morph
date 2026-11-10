@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A preview pane beside the list",
+    "description": "Split the launcher: a narrow list on the left and, on the right, a pane that shows the selected command large with its keys and how often it ran."
+  },
+  "title": "Side pane with usage",
+  "summary": "Splits the body into a list and a 172 px pane: a 56 px icon, the name, description, keycaps, how often it ran and a Run button.",
+  "ms": {
+    "agent": 58000,
+    "checks": 11000,
+    "total": 87000
+  }
+}

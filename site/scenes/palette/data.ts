@@ -18,7 +18,7 @@ export const ICONS = {
   search: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM20 20l-4-4",
   file: "M6.5 3h7.5l4.5 4.5V21h-12ZM14 3v4.5h4.5",
   hash: "M9.5 4 8 20M16 4l-1.5 16M4.5 9h15M4 15h15",
-  frame: "M8 3v18M16 3v18M3 8h18M3 16h18",
+  frame: "M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1ZM4 9h16M9 9v11",
   copy: "M9 9h11v11H9ZM5 15H4V4h11v1",
   grid: "M4 4h6v6H4ZM14 4h6v6h-6ZM4 14h6v6H4ZM14 14h6v6h-6Z",
   code: "M9 8l-4 4 4 4M15 8l4 4-4 4M13.5 5l-3 14",
@@ -187,19 +187,17 @@ function scored(name: string, query: string): { segments: Segment[]; score: numb
 /** The scope token a query may carry, as in `in:canvas dup`. */
 const SCOPE = /(?:^|\s)in:(\w*)/
 
-/** The group a query is scoped to, and the words it searches for. */
+/** The group a query is scoped to, by a prefix of its id, and the words it searches for. */
 export function parse(query: string): { readonly scope: GroupId | null; readonly words: string } {
-  const token = SCOPE.exec(query)
-  const scope = GROUPS.find((group) => group.id === token?.[1])?.id ?? null
-  const words = (token ? query.replace(SCOPE, " ") : query).trim().toLowerCase()
-  return { scope, words: words.replace(/\s+/g, " ") }
+  const token = SCOPE.exec(query)?.[1]
+  const scope = token ? (GROUPS.find((group) => group.id.startsWith(token))?.id ?? null) : null
+  const words = query.replace(SCOPE, " ").trim().toLowerCase().replace(/\s+/g, " ")
+  return { scope, words }
 }
 
-/** The query with its scope set to `scope`, or cleared, keeping the words. */
-export function scoped(query: string, scope: GroupId | null): string {
-  const rest = query.replace(SCOPE, " ").trim()
-  return scope === null ? rest : `in:${scope} ${rest}`
-}
+/** `words` searched within `scope`, as a query: the token first, then the words. */
+export const scoped = (words: string, scope: GroupId | null) =>
+  scope === null ? words : `in:${scope} ${words}`
 
 /**
  * The commands a query matches, grouped: groups in the order of their best match, commands by
@@ -255,7 +253,10 @@ const FRESH: Live = {
   history: [
     { id: "toggle-grid", at: "08:44" },
     { id: "duplicate", at: "08:41" },
+    { id: "toggle-grid", at: "08:30" },
     { id: "export-png", at: "08:12" },
+    { id: "duplicate", at: "08:05" },
+    { id: "toggle-grid", at: "07:58" },
   ],
 }
 
@@ -280,11 +281,18 @@ export interface Palette {
   /** Every match in the order the sections show them, which is the order the arrows walk. */
   readonly matches: readonly Match[]
   readonly selected: Match | null
-  /** The rest of the selected command's name after the query, when the query starts it. */
+  readonly scope: GroupId | null
+  /** The query without its scope token, as typed. */
+  readonly words: string
+  /** The rest of the selected command's name after the words, when the words start it. */
   readonly completion: string
-  readonly history: readonly Run[]
+  /** Commands that ran, newest first, each once. */
+  readonly recent: readonly (Run & { readonly command: Command })[]
+  /** How many times each command ran, and when last. */
+  readonly runs: ReadonlyMap<CommandId, { readonly count: number; readonly at: string }>
   readonly last: (Run & { readonly command: Command }) | null
   readonly setQuery: (query: string) => void
+  readonly setScope: (scope: GroupId | null) => void
   readonly select: (id: CommandId) => void
   readonly move: (by: number) => void
   readonly run: (id: CommandId) => void
@@ -298,18 +306,24 @@ export function usePalette(): Palette {
   const matches = sections.flatMap((section) => section.matches)
   const selected =
     matches.find((match) => match.command.id === state.selected) ?? matches[0] ?? null
-  const { words } = parse(state.query)
+  const { scope } = parse(state.query)
+  const words = state.query.replace(SCOPE, " ").trimStart()
   const name = selected?.command.name ?? ""
   const completion =
-    words !== "" && name.toLowerCase().startsWith(words) && !SCOPE.test(state.query)
+    words.trim() !== "" && name.toLowerCase().startsWith(words.toLowerCase())
       ? name.slice(words.length)
       : ""
-  const last = state.history[0]
+  const recent = state.history
+    .filter((run, at) => state.history.findIndex((other) => other.id === run.id) === at)
+    .map((run) => ({ ...run, command: commandOf(run.id) }))
+  const runs = new Map<CommandId, { count: number; at: string }>()
+  for (const run of state.history)
+    runs.set(run.id, {
+      count: (runs.get(run.id)?.count ?? 0) + 1,
+      at: runs.get(run.id)?.at ?? run.at,
+    })
   const setQuery = (query: string) => {
     update({ query, selected: null })
-  }
-  const select = (id: CommandId) => {
-    if (live.selected !== id) update({ selected: id })
   }
   const move = (by: number) => {
     if (matches.length === 0) return
@@ -318,25 +332,33 @@ export function usePalette(): Palette {
     if (next) update({ selected: next.command.id })
   }
   const run = (id: CommandId) => {
-    update({ selected: id, history: [{ id, at: clock(new Date()) }, ...live.history].slice(0, 6) })
+    update({ selected: id, history: [{ id, at: clock(new Date()) }, ...live.history].slice(0, 8) })
   }
   return {
     query: state.query,
+    scope,
+    words,
     sections,
     matches,
     selected,
     completion,
-    history: state.history,
-    last: last ? { ...last, command: commandOf(last.id) } : null,
+    recent,
+    runs,
+    last: recent[0] ?? null,
     setQuery,
-    select,
+    setScope: (next) => {
+      setQuery(scoped(words, next))
+    },
+    select: (id) => {
+      if (live.selected !== id) update({ selected: id })
+    },
     move,
     run,
     onKeyDown: (event) => {
       const key = event.key
       if (key === "ArrowDown" || key === "ArrowUp") move(key === "ArrowDown" ? 1 : -1)
       else if (key === "Enter" && selected) run(selected.command.id)
-      else if (key === "Tab" && completion !== "") setQuery(name)
+      else if (key === "Tab" && completion !== "") setQuery(scoped(name, scope))
       else if (key === "Escape" && state.query !== "") setQuery("")
       else if (key === "Escape") event.currentTarget.blur()
       else return

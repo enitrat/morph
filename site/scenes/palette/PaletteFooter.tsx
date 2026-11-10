@@ -11,7 +11,11 @@ export function PaletteFooter() {
   return (
     <footer data-part="footer" className="flex items-center gap-3.5 text-[11.5px] text-ink-2">
       {LEGEND.map((entry) => (
-        <span key={entry.label} data-role="legend" className="flex items-center gap-1">
+        <span
+          key={entry.label}
+          data-role="legend"
+          className="flex items-center gap-1 whitespace-nowrap"
+        >
           {entry.keys.map((key) => (
             <kbd
               key={key}
@@ -25,7 +29,7 @@ export function PaletteFooter() {
         </span>
       ))}
       {last && (
-        <span data-role="status" aria-live="polite" className="ml-auto truncate">
+        <span data-role="status" aria-live="polite" className="ml-auto min-w-0 truncate">
           Ran {last.command.name} · {last.at}
         </span>
       )}

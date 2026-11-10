@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A phosphor screen in a bezel",
+    "description": "Put the palette on a green CRT inside a grey bezel, all capitals, with the matches as a two-column completion menu."
+  },
+  "title": "Green phosphor, two columns",
+  "summary": "Sets Space Mono capitals on a green CRT with scanlines and glow; matches print as a two-column menu with inverted hits.",
+  "ms": {
+    "agent": 63000,
+    "checks": 12000,
+    "total": 94000
+  }
+}

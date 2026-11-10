@@ -34,13 +34,14 @@ export function PaletteSearch() {
           aria-autocomplete="list"
           autoComplete="off"
           spellCheck={false}
-          placeholder="Type a command or search…"
+          placeholder="Search commands…"
           value={palette.query}
           onChange={(event) => {
             palette.setQuery(event.target.value)
           }}
           onKeyDown={palette.onKeyDown}
-          className="col-start-1 row-start-1 min-w-0 bg-transparent font-[inherit] text-ink outline-none placeholder:text-ink-2/70"
+          style={{ outline: "none" }}
+          className="col-start-1 row-start-1 min-w-0 bg-transparent font-[inherit] text-ink placeholder:text-ink-2/70"
         />
       </span>
       <kbd
