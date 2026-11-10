@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "NODE_ENV=development vite build --mode development",
-    "typecheck": "node tools/rootdirs.ts && tsc --noEmit",
+    "typecheck": "node tools/typecheck.ts",
     "test": "vitest run"
   },
   "dependencies": {

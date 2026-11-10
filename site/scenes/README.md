@@ -51,7 +51,8 @@ import { money, useTip } from "./data" // a plain module
 The plugin resolves a variant's relative imports from its scene folder. An import of a repo file
 resolves to a live binding (`stage/live.tsx`) that renders the revision of that file the board
 draws, so `Receipt.tsx` v2 renders whichever `ReceiptTotal.tsx` is kept. `pnpm --filter
-morph-site typecheck` regenerates `tsconfig.scenes.json` so tsc resolves imports the same way.
+morph-site typecheck` writes one tsconfig per scene into `.tsconfigs/`, with that scene's variant
+folders as `rootDirs`, so tsc resolves imports the same way and two scenes' `./data` stay apart.
 
 ## The part props contract
 
