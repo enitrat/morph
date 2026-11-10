@@ -12,8 +12,14 @@ type Handler = (call: WireCall, now: number) => Reply | Promise<Reply>
 
 const ok = (body: unknown): Reply => ({ status: 200, body })
 
-/** The page shell renders every scene, so picking looks past its call sites. */
-const PLUMBING = [{ prefix: "site/src/", except: [] }]
+/**
+ * The page shell renders the board, and every repo file renders through its live binding, so
+ * picking looks past both to the scene code that placed a component.
+ */
+const PLUMBING = [
+  { prefix: "site/src/", except: [] },
+  { prefix: "site/stage/", except: [] },
+]
 
 type Posted = {
   [K in Operation]: (typeof operations)[K] extends { request: z.ZodType } ? K : never
@@ -66,20 +72,22 @@ export function replayTransport(
       ok({
         files: [],
         themes: { shared: [], list: [{ name: "light", selectors: [":root"] }] },
-        components: stage.manifest.scenes.map((scene) => ({
-          slug: scene.id,
-          title: scene.entry,
-          group: "scene",
-          naming: "own",
-          href: null,
-          importFrom: null,
-          exports: [scene.entry],
-          namedExports: [scene.entry],
-          files: [`${scene.dir}/${scene.entry}.tsx`],
-          reads: [],
-          childReads: [],
-          props: { kind: "none" },
-        })),
+        components: [...stage.manifest.files.values()]
+          .filter((file) => file.kind === "component")
+          .map((file) => ({
+            slug: file.name,
+            title: file.name,
+            group: file.scene.title,
+            naming: "own",
+            href: null,
+            importFrom: null,
+            exports: [file.name],
+            namedExports: [file.name],
+            files: [file.path],
+            reads: [],
+            childReads: [],
+            props: { kind: "none" },
+          })),
         plumbing: PLUMBING,
       }),
     plumbing: () => ok({ plumbing: PLUMBING }),

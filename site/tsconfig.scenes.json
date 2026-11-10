@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "rootDirs": [
+      "./scenes/receipt",
+      "./scenes/receipt/asks/total-hero/v1",
+      "./scenes/receipt/asks/total-hero/v2",
+      "./scenes/receipt/asks/total-hero/v3",
+      "./scenes/table"
+    ]
+  }
+}

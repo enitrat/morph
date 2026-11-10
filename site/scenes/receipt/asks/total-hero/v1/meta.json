@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Lead with the amount",
+    "description": "Put the total first, set large, with the subtotal and tip folded into one line under it."
+  },
+  "title": "Total first, set huge",
+  "summary": "Moves the total above everything and sets it at 46 px; subtotal and tip fold into one line.",
+  "ms": {
+    "agent": 62000,
+    "checks": 12000,
+    "total": 93000
+  }
+}

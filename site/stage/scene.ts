@@ -1,19 +1,15 @@
 /**
- * What a scene author writes. A scene is a folder under `site/scenes/`:
- *
- *   scenes/<id>/scene.ts            defineScene
- *   scenes/<id>/<Entry>.tsx         the original, the folder's only top-level .tsx, exporting <Entry>
- *   scenes/<id>/asks/<slug>/ask.ts  defineAsk
- *   scenes/<id>/asks/<slug>/v1..v3/ what that variant wrote: <Entry>.tsx, any added files, meta.json
- *
- * A refine is an `asks/` folder inside a variant folder. The scenes plugin derives everything else
- * (the revision tree, each variant's files and stat) and fails the build on a missing piece.
+ * What a scene author writes. The folder convention, the part props contract and the table-style
+ * hooks are in `scenes/README.md`.
  */
 
 export interface SceneInput {
   readonly title: string
-  /** The cell's fixed size in px. Every variant must fit it, so a pin re-picks at its spot. */
-  readonly cell: { readonly width: number; readonly height: number }
+  /**
+   * `object`: a thing on the board, whose entry is its layout and whose other components are its
+   * parts. `table`: the board itself, whose stylesheets art-direct every object at once.
+   */
+  readonly kind: "object" | "table"
 }
 
 export const defineScene = (scene: SceneInput): SceneInput => scene

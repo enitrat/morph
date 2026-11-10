@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "An inverted band",
+    "description": "Close the receipt on a solid band that carries the total in reverse."
+  },
+  "title": "Total on an inverted band",
+  "summary": "Sets the total in a solid ink band at the foot of the block; the tip folds into its label.",
+  "ms": {
+    "agent": 80000,
+    "checks": 14000,
+    "total": 118000
+  }
+}

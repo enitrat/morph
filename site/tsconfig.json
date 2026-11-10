@@ -1,4 +1,5 @@
 {
+  "extends": "./tsconfig.scenes.json",
   "compilerOptions": {
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
