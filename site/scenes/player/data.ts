@@ -376,4 +376,4 @@ export function useSeek(label = "Seek") {
 }
 
 /** Puts the song back where a fresh visit finds it, paused. */
-export const resetPlayer = () => set(START)
+export const reset = () => set(START)

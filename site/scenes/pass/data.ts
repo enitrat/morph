@@ -63,7 +63,7 @@ export function useSeat(): readonly [Seat, (id: SeatId) => void] {
 }
 
 /** Puts the seat back as it was on a fresh visit. */
-export const resetPass = () => setSeatId("14A")
+export const reset = () => setSeatId("14A")
 
 /**
  * The gate closes 23:40 after the page opens, then the next window of `GATE_WINDOW` starts, so a

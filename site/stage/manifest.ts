@@ -54,6 +54,8 @@ export interface FileNode {
   readonly path: RepoPath
   /** The component it exports, `ReceiptTotal`, or the stylesheet's name. */
   readonly name: string
+  /** What a visitor calls it, "The total", from its scene's `files`. */
+  readonly label: string
   readonly kind: "component" | "style"
   readonly level: Level
   readonly scene: SceneNode
@@ -141,11 +143,15 @@ function askOf(from: RawAsk, base: Revision): AskNode {
   return ask
 }
 
-function fileOf(from: RawFile, scene: SceneNode): FileNode {
+function fileOf(from: RawFile, scene: SceneNode, labels: SceneInput["files"]): FileNode {
   const path = RepoPath.parse(from.path)
+  const label = labels[from.name]
+  if (label === undefined)
+    throw new Error(`morph-scenes: ${scene.id}/scene.ts names no label for ${from.name}`)
   const file: Mutable<FileNode> = {
     path,
     name: from.name,
+    label,
     kind: from.kind,
     level: scene.kind === "table" ? "table" : path === scene.entry ? "object" : "part",
     scene,
@@ -169,7 +175,7 @@ export function manifestOf(list: readonly RawScene[]): Manifest {
       entry: RepoPath.parse(from.entry),
       files: [],
     }
-    scene.files = from.files.map((file) => fileOf(file, scene))
+    scene.files = from.files.map((file) => fileOf(file, scene, from.scene.files))
     return scene
   })
   const files = new Map(scenes.flatMap((scene) => scene.files.map((file) => [file.path, file])))

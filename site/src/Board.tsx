@@ -21,6 +21,23 @@ const same = (a: Repo, b: Repo) =>
   a.size === b.size && [...a].every(([path, revision]) => b.get(path) === revision)
 
 /**
+ * Names every object and part on the live board after its own attributes, so each one morphs as
+ * itself wherever its new layout puts it, and an object added later needs no stylesheet entry.
+ */
+function nameMorphs() {
+  const board = document.querySelector<HTMLElement>('[data-repo="live"] [data-board]')
+  if (board === null) return
+  board.style.viewTransitionName = "board"
+  // With reduced motion only the board is named, so it cross-fades as one and nothing moves.
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return
+  for (const element of board.querySelectorAll<HTMLElement>("[data-object], [data-part]")) {
+    const object = element.closest<HTMLElement>("[data-object]")?.dataset.object
+    const part = element.dataset.part
+    element.style.viewTransitionName = part === undefined ? `${object}` : `${object}-${part}`
+  }
+}
+
+/**
  * The repo the stage shows, drawn once every file's chunk has loaded, so the old design stays up
  * until the new one replaces it. Each change is one View Transition, however many files moved.
  */
@@ -35,9 +52,16 @@ function useShown(stage: Stage): Drawn {
       if (!current || drawn === null) return
       const next = { repo: shown, drawn }
       if (document.startViewTransition === undefined) setView(next)
-      else
+      else {
+        nameMorphs()
         // A morph that starts before the last one finished skips it, which rejects `ready`.
-        document.startViewTransition(() => flushSync(() => setView(next))).ready.catch(() => {})
+        document
+          .startViewTransition(() => {
+            flushSync(() => setView(next))
+            nameMorphs()
+          })
+          .ready.catch(() => {})
+      }
     })
     return () => {
       current = false

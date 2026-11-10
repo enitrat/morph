@@ -11,13 +11,6 @@ const LETTERS = [
   ["v3", "C"],
 ] as const
 
-const TITLE: Record<string, string> = {
-  ReceiptTotal: "The total",
-  ReceiptItems: "The items",
-  Receipt: "The receipt",
-  theme: "The whole table",
-}
-
 /** Where a phone drives the stage without the overlay: the same asks, flips and keeps, by tap. */
 export function Touch({ stage }: { stage: Stage }) {
   const snapshot = useSyncExternalStore(stage.subscribe, stage.snapshot)
@@ -52,7 +45,7 @@ export function Touch({ stage }: { stage: Stage }) {
     // The chips sit under the board: bring the object back into view to watch it morph.
     document
       .querySelector(
-        file.level === "table" ? "#board" : '[data-repo="live"] [data-object="receipt"]',
+        file.level === "table" ? "#board" : `[data-repo="live"] [data-object="${file.scene.id}"]`,
       )
       ?.scrollIntoView({
         block: "center",
@@ -131,7 +124,7 @@ export function Touch({ stage }: { stage: Stage }) {
       {groups.map(({ file, asks }) => (
         <div key={file.path} className="grid gap-1.5">
           <p className="text-[11.5px] text-faint">
-            <span className="font-mono">{LEVEL[file.level]}</span> · {TITLE[file.name] ?? file.name}
+            <span className="font-mono">{LEVEL[file.level]}</span> · {file.label}
           </p>
           <div className="flex flex-wrap gap-1.5">
             {asks.map((node) => (

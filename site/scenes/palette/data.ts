@@ -386,6 +386,6 @@ export function reveal(row: HTMLElement | null) {
 }
 
 /** Puts the query, the selection and the history back as they were on a fresh visit. */
-export const resetPalette = () => {
+export const reset = () => {
   update(FRESH)
 }

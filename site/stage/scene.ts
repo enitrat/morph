@@ -10,6 +10,8 @@ export interface SceneInput {
    * parts. `table`: the board itself, whose stylesheets art-direct every object at once.
    */
   readonly kind: "object" | "table"
+  /** What a visitor calls each of the scene's repo files, by component or stylesheet name. */
+  readonly files: Readonly<Record<string, string>>
 }
 
 export const defineScene = (scene: SceneInput): SceneInput => scene

@@ -1,6 +1,9 @@
 import { useSyncExternalStore } from "react"
 
-import { resetReceipt } from "../scenes/receipt/data"
+/** Every scene's live state; each `data.ts` exports `reset`, which puts it back as first drawn. */
+const live = Object.values(
+  import.meta.glob<{ reset: () => void }>("../scenes/*/data.ts", { eager: true }),
+)
 import type { Stage, Version } from "../stage/stage"
 import { Board, drawnOf } from "./Board"
 import { LEVEL } from "./Ledger"
@@ -71,7 +74,7 @@ export function Versions({ stage }: { stage: Stage }) {
           disabled={versions.length === 1 && at === 0}
           onClick={() => {
             stage.reset()
-            resetReceipt()
+            for (const scene of live) scene.reset()
           }}
           className="rounded-[7px] border border-[#2c2f36] bg-[#16181c] px-2.5 py-1.5 text-[12px]/none font-medium text-text transition-colors hover:border-[#3a3e47] disabled:opacity-40"
         >

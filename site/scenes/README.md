@@ -17,11 +17,11 @@ There are three levels:
 
 ```
 scenes/<id>/
-  scene.ts                 defineScene({ title, kind: "object" | "table" })
+  scene.ts                 defineScene({ title, kind, files }): files names each repo file for visitors
   <Id>.tsx                 the entry: exports function <Id>. For an object, its layout.
   <Part>.tsx               a part: exports function <Part>
   <name>.css               a stylesheet (table scene only): offered at the entry
-  data.ts                  plain modules: data, live state, helpers. Never revisioned.
+  data.ts                  plain modules: data, live state, helpers. Never revisioned. Exports reset().
   asks/<slug>/ask.ts       defineAsk({ words, aliases })
   asks/<slug>/v1/<File>    what variant A wrote: exactly one file, the one the ask rewrites
   asks/<slug>/v1/meta.json direction, title, summary, ms (see VariantMeta in stage/scene.ts)
@@ -60,7 +60,8 @@ Parts take no props. A layout places `<ReceiptItems />` and `<ReceiptTotal />` a
 inside them. Every variant of a part must work inside every layout, and every layout variant must
 render every part. To make that hold:
 
-1. **State lives in `data.ts`, never in a component.** The tip and the number of people are a
+1. **State lives in `data.ts`, never in a component, and `data.ts` exports `reset()`**, which the
+   page's Reset calls for every scene. The tip and the number of people are a
    store (`useTip`, `usePeople`). A tip set on one design survives every morph, and the version
    thumbnails show the same live state.
 2. **Parts draw only with the object tokens.** Colour, type and rules come from the tokens below,
@@ -170,5 +171,7 @@ names there. A name must be unique on the board, so never set one inside a scene
 ## How to add an object
 
 Create `scenes/<id>/` with `scene.ts` (`kind: "object"`), its entry `<Id>.tsx`, its parts and its
-`data.ts`. Render it from `table/Table.tsx` with `import { <Id> } from "../<id>/<Id>"`. Fill its
-block in every theme file and add its view-transition names.
+`data.ts` (with `reset()`). Name every repo file in `scene.ts` `files`; the build fails on a file
+with no name. Render it from `table/Table.tsx` with `import { <Id> } from "../<id>/<Id>"`, and fill
+its block in every theme file. Morph names come from `data-object` and `data-part`, so a new
+object morphs part by part with no stylesheet entry.

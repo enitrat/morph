@@ -54,37 +54,6 @@ body {
   outline-offset: 2px;
 }
 
-/* Each object and part on the live board morphs as itself, wherever its new layout puts it. */
-[data-repo="live"] {
-  [data-board] {
-    view-transition-name: board;
-  }
-  [data-object="receipt"] {
-    view-transition-name: receipt;
-  }
-  [data-object="placard"] {
-    view-transition-name: placard;
-  }
-  [data-part="items"] {
-    view-transition-name: receipt-items;
-  }
-  [data-part="total"] {
-    view-transition-name: receipt-total;
-  }
-  [data-object="palette"] {
-    view-transition-name: palette;
-  }
-  [data-part="search"] {
-    view-transition-name: palette-search;
-  }
-  [data-part="results"] {
-    view-transition-name: palette-results;
-  }
-  [data-part="footer"] {
-    view-transition-name: palette-footer;
-  }
-}
-
 /*
  * Hit testing reaches the new page during a transition, so the overlay's re-pick of a swapped
  * target finds the new design rather than the transition's own layer.
@@ -108,9 +77,6 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   /* Nothing moves: the board cross-fades from one design to the next. */
-  [data-repo="live"] [data-board] * {
-    view-transition-name: none !important;
-  }
   ::view-transition-group(*) {
     animation-duration: 0s;
   }
@@ -145,4 +111,11 @@ body {
   box-shadow:
     inset 0 1px 0 #3b3f48,
     0 0 0 #08090b;
+}
+
+/* Objects keep their designed footprint; on a phone the live board shows them a little smaller. */
+@media (max-width: 440px) {
+  [data-repo="live"] [data-board] > [data-object] {
+    zoom: 0.86;
+  }
 }

@@ -89,4 +89,4 @@ export function usePeople(): readonly [number, (people: number) => void] {
 }
 
 /** Puts the tip and the split back as they were on a fresh visit. */
-export const resetReceipt = () => update({ tip: 15, people: 2 })
+export const reset = () => update({ tip: 15, people: 2 })

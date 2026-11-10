@@ -4,9 +4,9 @@ import type { Level } from "../stage/manifest"
 import type { Stage } from "../stage/stage"
 
 const STEPS: readonly { level: Level; title: string; short: string; hint: string }[] = [
-  { level: "part", title: "Pick a part", short: "Part", hint: "the total or the items" },
-  { level: "object", title: "Restyle the object", short: "Object", hint: "the receipt itself" },
-  { level: "table", title: "Art-direct the table", short: "Table", hint: "the board around it" },
+  { level: "part", title: "Pick a part", short: "Part", hint: "one piece inside an object" },
+  { level: "object", title: "Restyle the object", short: "Object", hint: "a whole object" },
+  { level: "table", title: "Art-direct the table", short: "Table", hint: "the board around them" },
 ]
 
 /**
