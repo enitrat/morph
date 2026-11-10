@@ -14,8 +14,8 @@ import type {
 /** Recorded job times play this many times faster, so a first variant lands in about 3 s. */
 export const REPLAY_SPEED = 30
 /** Recorded milliseconds each early phase lasts, before the variant's own agent and checks times. */
-const QUEUED_MS = 2000
-const SLOT_MS = 6000
+const QUEUED_MS = 6000
+const SLOT_MS = 15000
 
 /** One ask on the playground. Only facts are stored: place and phases are derived on read. */
 interface StageSession {

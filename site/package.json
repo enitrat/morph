@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "NODE_ENV=development vite build --mode development",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@enitrat/morph": "workspace:*",
@@ -23,6 +24,7 @@
     "diff": "^8.0.2",
     "tailwindcss": "^4.3.3",
     "typescript": "7.0.2",
-    "vite": "^8.3.5"
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   }
 }
