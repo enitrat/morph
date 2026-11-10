@@ -203,6 +203,104 @@
 }
 
 /* pass */
+[data-object="pass"] {
+  --color-paper: #1f3a2e;
+  --color-ink: #f1ead9;
+  --color-ink-2: #a9b5a6;
+  --color-rule: rgb(216 180 106 / 0.4);
+  --color-accent: #d8b46a;
+  --color-on-accent: #1f3a2e;
+  --font-body: var(--font-editorial);
+  --font-display: var(--font-editorial);
+  --font-num: var(--font-editorial);
+  rotate: 0deg;
+}
+/* A framed green card: a gold hairline inset from the edge, gold small capitals, double rules. */
+[data-object="pass"] [data-role="paper"] {
+  border-radius: 2px;
+  outline: 1px solid rgb(216 180 106 / 0.45);
+  outline-offset: -7px;
+  box-shadow:
+    0 30px 60px -26px rgb(0 0 0 / 0.85),
+    0 1px 3px rgb(0 0 0 / 0.3);
+}
+[data-object="pass"] [data-role="heading"] {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+[data-object="pass"] [data-role="meta"],
+[data-object="pass"] [data-role="label"] {
+  font-weight: 600;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  color: var(--color-accent);
+}
+[data-object="pass"] [data-role="label"] {
+  font-size: 10.5px;
+}
+[data-object="pass"] [data-role="rule"] {
+  border-top: 3px double var(--color-accent);
+}
+[data-object="pass"] [data-role="code"] {
+  font-weight: 400;
+  letter-spacing: 0;
+}
+[data-object="pass"] [data-role="city"],
+[data-object="pass"] [data-role="duration"],
+[data-object="pass"] [data-role="kind"] {
+  font-style: italic;
+  color: var(--color-ink-2);
+}
+[data-object="pass"] [data-role="value"],
+[data-object="pass"] [data-role="time"] {
+  font-weight: 400;
+  font-variant-numeric: oldstyle-nums proportional-nums;
+}
+[data-object="pass"] [data-role="plane"] {
+  color: var(--color-accent);
+}
+[data-object="pass"] [data-role="seat-option"] {
+  border: 1px solid rgb(216 180 106 / 0.6);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--color-ink);
+}
+[data-object="pass"] [data-role="seat-option"][aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+[data-object="pass"] [data-part="stub"] {
+  padding-top: 10px;
+  border-top: 3px double var(--color-accent);
+}
+[data-object="pass"] [data-role="countdown"] [data-role="label"] {
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--color-ink-2);
+}
+[data-object="pass"] [data-role="clock"] {
+  font-style: italic;
+  font-weight: 300;
+  font-variant-numeric: oldstyle-nums;
+  color: var(--color-accent);
+}
+[data-object="pass"] [data-role="barcode"] {
+  opacity: 0.9;
+}
+[data-object="pass"] [data-role="flap"] {
+  border: 1px solid var(--color-rule);
+  border-radius: 1px;
+  background: transparent;
+  color: var(--color-accent);
+  font-family: var(--font-editorial);
+  font-weight: 500;
+}
+[data-object="pass"] [data-role="flap"]::after {
+  content: none;
+}
 
 /* palette */
 

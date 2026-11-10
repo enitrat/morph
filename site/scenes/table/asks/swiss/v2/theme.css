@@ -191,6 +191,91 @@
 }
 
 /* pass */
+[data-object="pass"] {
+  --color-paper: #e3261b;
+  --color-ink: #ffffff;
+  --color-ink-2: #ffc9c4;
+  --color-rule: #f07068;
+  --color-accent: #111111;
+  --color-on-accent: #ffffff;
+  --font-body: var(--font-grotesk);
+  --font-display: var(--font-grotesk);
+  --font-num: var(--font-grotesk);
+  rotate: 0deg;
+}
+[data-object="pass"] [data-role="paper"] {
+  border-radius: 0;
+  box-shadow: 0 30px 60px -28px rgb(0 0 0 / 0.8);
+}
+[data-object="pass"] [data-role="heading"] {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: none;
+  color: var(--color-ink);
+}
+/* Small print goes to spaced capitals; the rules turn black and heavy. */
+[data-object="pass"] [data-role="meta"],
+[data-object="pass"] [data-role="label"],
+[data-object="pass"] [data-role="city"],
+[data-object="pass"] [data-role="duration"] {
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-2);
+}
+[data-object="pass"] [data-role="label"],
+[data-object="pass"] [data-role="city"],
+[data-object="pass"] [data-role="duration"] {
+  font-size: 8.5px;
+}
+[data-object="pass"] [data-role="rule"] {
+  border-top: 3px solid #111111;
+}
+[data-object="pass"] [data-role="code"] {
+  font-weight: 900;
+  letter-spacing: -0.06em;
+}
+[data-object="pass"] [data-role="value"] {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+[data-object="pass"] [data-role="plane"] {
+  color: #111111;
+}
+[data-object="pass"] [data-role="seat-option"] {
+  border: 2px solid #111111;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-weight: 700;
+}
+[data-object="pass"] [data-role="seat-option"][aria-pressed="true"] {
+  background: #111111;
+  color: #ffffff;
+}
+[data-object="pass"] [data-part="stub"] {
+  padding-top: 10px;
+  border-top: 3px solid #111111;
+}
+[data-object="pass"] [data-role="countdown"] [data-role="label"] {
+  font-size: 8.5px;
+  color: var(--color-ink);
+}
+[data-object="pass"] [data-role="clock"] {
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: var(--color-ink);
+}
+[data-object="pass"] [data-role="notch"] {
+  border-radius: 0;
+}
+[data-object="pass"] [data-role="flap"] {
+  border-radius: 0;
+  background: #111111;
+  color: #ffffff;
+  font-family: var(--font-grotesk);
+  font-weight: 800;
+}
 
 /* palette */
 

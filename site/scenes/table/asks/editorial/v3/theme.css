@@ -196,6 +196,111 @@
 }
 
 /* pass */
+[data-object="pass"] {
+  --color-paper: #f3ddd4;
+  --color-ink: #2a1d1a;
+  --color-ink-2: #84665d;
+  --color-rule: #ddbfb3;
+  --color-accent: #7a1f1f;
+  --color-on-accent: #f3ddd4;
+  --font-body: var(--font-editorial);
+  --font-display: var(--font-editorial);
+  --font-num: var(--font-editorial);
+  rotate: 0deg;
+}
+[data-object="pass"] [data-role="paper"] {
+  border-radius: 3px;
+  box-shadow:
+    0 30px 60px -26px rgb(0 0 0 / 0.75),
+    0 1px 3px rgb(0 0 0 / 0.25);
+}
+/* A magazine page: light codes with an oxblood initial, italic asides, underlined seats. */
+[data-object="pass"] [data-role="heading"] {
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+[data-object="pass"] [data-role="meta"],
+[data-object="pass"] [data-role="label"] {
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-ink-2);
+}
+[data-object="pass"] [data-role="label"] {
+  font-size: 11.5px;
+}
+[data-object="pass"] [data-role="rule"] {
+  border-top-style: solid;
+  border-top-color: var(--color-ink);
+  opacity: 0.35;
+}
+[data-object="pass"] [data-role="code"] {
+  font-weight: 300;
+  letter-spacing: -0.04em;
+}
+[data-object="pass"] [data-role="code"]::first-letter {
+  font-style: italic;
+  color: var(--color-accent);
+}
+[data-object="pass"] [data-role="city"],
+[data-object="pass"] [data-role="duration"],
+[data-object="pass"] [data-role="kind"] {
+  font-style: italic;
+}
+[data-object="pass"] [data-role="value"],
+[data-object="pass"] [data-role="time"] {
+  font-weight: 400;
+}
+[data-object="pass"] [data-role="seat-option"] {
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink-2);
+  font-style: italic;
+}
+[data-object="pass"] [data-role="seat-option"][aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: transparent;
+  color: var(--color-accent);
+}
+/* A seat drawn as a bare cell, on the cabin plan, keeps a shape to tap. */
+[data-object="pass"] [data-role="seat-option"]:empty {
+  border-radius: 2px;
+  background: var(--color-rule);
+}
+[data-object="pass"] [data-role="seat-option"]:empty[aria-pressed="true"] {
+  background: var(--color-accent);
+}
+[data-object="pass"] [data-role="countdown"] [data-role="label"] {
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--color-ink-2);
+}
+[data-object="pass"] [data-role="clock"] {
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  color: var(--color-ink);
+}
+[data-object="pass"] [data-role="barcode"] {
+  opacity: 0.8;
+}
+[data-object="pass"] [data-role="flap"] {
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-family: var(--font-editorial);
+  font-weight: 300;
+}
+[data-object="pass"] [data-role="flap"]::after {
+  content: none;
+}
+[data-object="pass"] [data-role="flap"]:first-child {
+  font-style: italic;
+  color: var(--color-accent);
+}
 
 /* palette */
 

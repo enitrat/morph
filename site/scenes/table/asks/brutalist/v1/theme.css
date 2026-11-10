@@ -197,6 +197,99 @@
 }
 
 /* pass */
+[data-object="pass"] {
+  --color-paper: #ffffff;
+  --color-ink: #000000;
+  --color-ink-2: #000000;
+  --color-rule: #000000;
+  --color-accent: #ffe14d;
+  --color-on-accent: #000000;
+  --font-body: var(--font-thermal);
+  --font-display: var(--font-grotesk);
+  --font-num: var(--font-grotesk);
+  rotate: 0deg;
+}
+[data-object="pass"] [data-role="paper"] {
+  border: 3px solid #000000;
+  border-radius: 0;
+  box-shadow: 10px 10px 0 #000000;
+}
+/* A black bar for the airline, uppercase mono for every label, the countdown on a yellow band. */
+[data-object="pass"] [data-role="heading"] {
+  padding: 3px 7px;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+[data-object="pass"] [data-role="meta"],
+[data-object="pass"] [data-role="label"],
+[data-object="pass"] [data-role="city"],
+[data-object="pass"] [data-role="duration"] {
+  font-family: var(--font-thermal);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+[data-object="pass"] [data-role="rule"] {
+  border-top: 3px solid var(--color-ink);
+}
+[data-object="pass"] [data-role="code"] {
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+[data-object="pass"] [data-role="value"] {
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+[data-object="pass"] [data-role="plane"] {
+  color: var(--color-ink);
+}
+[data-object="pass"] [data-role="seat-option"] {
+  border: 2px solid var(--color-ink);
+  border-radius: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-thermal);
+  font-weight: 700;
+  text-transform: uppercase;
+  box-shadow: 2px 2px 0 var(--color-ink);
+}
+[data-object="pass"] [data-role="seat-option"][aria-pressed="true"] {
+  background: var(--color-accent);
+  color: var(--color-ink);
+}
+[data-object="pass"] [data-role="countdown"] {
+  padding: 6px 8px;
+  border: 3px solid var(--color-ink);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: 4px 4px 0 var(--color-ink);
+}
+[data-object="pass"] [data-role="countdown"] [data-role="label"] {
+  font-family: var(--font-thermal);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: inherit;
+}
+[data-object="pass"] [data-role="clock"] {
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: inherit;
+}
+[data-object="pass"] [data-role="notch"] {
+  border-radius: 0;
+  background: #000000;
+}
+[data-object="pass"] [data-role="flap"] {
+  border-radius: 0;
+  background: #000000;
+  color: #ffffff;
+}
 
 /* palette */
 

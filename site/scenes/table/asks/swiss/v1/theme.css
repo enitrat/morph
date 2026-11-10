@@ -189,6 +189,101 @@
 }
 
 /* pass */
+[data-object="pass"] {
+  --color-paper: #f7f6f2;
+  --color-ink: #111111;
+  --color-ink-2: #7a7973;
+  --color-rule: #dcdbd5;
+  --color-accent: #e3261b;
+  --color-on-accent: #ffffff;
+  --font-body: var(--font-grotesk);
+  --font-display: var(--font-grotesk);
+  --font-num: var(--font-grotesk);
+  rotate: 0deg;
+}
+[data-object="pass"] [data-role="paper"] {
+  border-radius: 0;
+  box-shadow: 0 30px 60px -28px rgb(0 0 0 / 0.8);
+}
+[data-object="pass"] [data-role="heading"] {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+[data-object="pass"] [data-role="meta"] {
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-ink-2);
+}
+[data-object="pass"] [data-role="rule"] {
+  border-top-style: solid;
+  border-top-color: var(--color-ink);
+}
+[data-object="pass"] [data-role="code"] {
+  font-weight: 900;
+  letter-spacing: -0.06em;
+}
+[data-object="pass"] [data-role="city"],
+[data-object="pass"] [data-role="duration"] {
+  font-weight: 500;
+  color: var(--color-ink);
+}
+/* Swiss numbers the fields like the receipt's lines: 01 Boarding, 02 Gate, in red. */
+[data-object="pass"] [data-part="seat"] {
+  counter-reset: field;
+}
+[data-object="pass"] [data-part="seat"] [data-role="field"] > [data-role="label"]::before {
+  counter-increment: field;
+  content: counter(field, decimal-leading-zero) " ";
+  color: var(--color-accent);
+}
+[data-object="pass"] [data-role="label"] {
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-ink);
+}
+[data-object="pass"] [data-role="value"] {
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+[data-object="pass"] [data-role="seat-option"] {
+  border: 1px solid var(--color-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-weight: 700;
+}
+[data-object="pass"] [data-role="seat-option"][aria-pressed="true"] {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+[data-object="pass"] [data-part="stub"] {
+  padding-top: 8px;
+  border-top: 5px solid var(--color-accent);
+}
+[data-object="pass"] [data-role="countdown"] [data-role="label"] {
+  color: var(--color-ink);
+}
+[data-object="pass"] [data-role="status"] {
+  color: var(--color-accent);
+}
+[data-object="pass"] [data-role="clock"] {
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: var(--color-ink);
+}
+[data-object="pass"] [data-role="notch"] {
+  border-radius: 0;
+}
+[data-object="pass"] [data-role="flap"] {
+  border-radius: 0;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-grotesk);
+  font-weight: 800;
+}
 
 /* palette */
 

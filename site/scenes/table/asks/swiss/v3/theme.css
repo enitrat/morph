@@ -215,6 +215,117 @@
 }
 
 /* pass */
+[data-object="pass"] {
+  --color-paper: #111111;
+  --color-ink: #f2f1ec;
+  --color-ink-2: #8a8984;
+  --color-rule: #2b2b2b;
+  --color-accent: #e3261b;
+  --color-on-accent: #ffffff;
+  --font-body: var(--font-grotesk);
+  --font-display: var(--font-grotesk);
+  --font-num: var(--font-grotesk);
+  rotate: 0deg;
+}
+[data-object="pass"] [data-role="paper"] {
+  border-radius: 0;
+  box-shadow:
+    0 30px 60px -28px rgb(0 0 0 / 0.9),
+    0 0 0 1px rgb(255 255 255 / 0.06);
+}
+/* Names in spaced capitals, red numbers on the fields, the countdown flush right and huge. */
+[data-object="pass"] [data-role="heading"] {
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+[data-object="pass"] [data-role="meta"] {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--color-ink-2);
+}
+[data-object="pass"] [data-role="rule"] {
+  border-top-style: solid;
+  border-top-color: var(--color-accent);
+}
+[data-object="pass"] [data-role="code"] {
+  font-weight: 900;
+  letter-spacing: -0.05em;
+}
+[data-object="pass"] [data-role="city"] {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+[data-object="pass"] [data-part="seat"] {
+  counter-reset: field;
+}
+[data-object="pass"] [data-part="seat"] [data-role="field"] > [data-role="label"]::before {
+  counter-increment: field;
+  content: counter(field) " ";
+  color: var(--color-accent);
+}
+[data-object="pass"] [data-role="label"] {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-transform: uppercase;
+  color: var(--color-ink-2);
+}
+[data-object="pass"] [data-role="value"] {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+[data-object="pass"] [data-role="plane"] {
+  color: var(--color-accent);
+}
+[data-object="pass"] [data-role="seat-option"] {
+  border: 1px solid #3a3a3a;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-weight: 700;
+}
+[data-object="pass"] [data-role="seat-option"][aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #ffffff;
+}
+[data-object="pass"] [data-role="countdown"] {
+  align-items: flex-end;
+}
+[data-object="pass"] [data-role="countdown"] [data-role="label"] {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 9px;
+  color: var(--color-ink-2);
+}
+[data-object="pass"] [data-role="status"] {
+  color: var(--color-accent);
+}
+[data-object="pass"] [data-role="clock"] {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  line-height: 0.85;
+  color: var(--color-ink);
+}
+[data-object="pass"] [data-role="barcode"] {
+  opacity: 0.85;
+}
+[data-object="pass"] [data-role="notch"] {
+  border-radius: 0;
+}
+[data-object="pass"] [data-role="flap"] {
+  border-radius: 0;
+  background: #1f1f1f;
+  color: var(--color-ink);
+  font-family: var(--font-grotesk);
+  font-weight: 800;
+}
 
 /* palette */
 
