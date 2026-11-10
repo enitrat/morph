@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Hard edges, yellow band",
+    "description": "Frame every sheet in 3 px black with an offset shadow, set it in uppercase mono and band the total yellow."
+  },
+  "title": "White sheets, yellow band",
+  "summary": "Frames the sheets in 3 px black with 10 px offset shadows, sets them in uppercase Space Mono and puts the total on a yellow band.",
+  "ms": {
+    "agent": 66000,
+    "checks": 12000,
+    "total": 98000
+  }
+}

@@ -1,0 +1,206 @@
+/*
+ * Brutalist, cobalt and yellow. Blue sheets with black frames on a midnight grid, everything in
+ * Space Mono down to the money, yellow for the name, the prices and the total band.
+ */
+
+/* board */
+[data-board] {
+  --color-board: #0a0c22;
+  --color-board-edge: #000000;
+  --color-dot: #12153a;
+  border-width: 3px;
+  border-radius: 0;
+  background-image:
+    linear-gradient(var(--color-dot) 2px, transparent 2px),
+    linear-gradient(90deg, var(--color-dot) 2px, transparent 2px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+}
+
+/* placard */
+[data-object="placard"] {
+  --color-paper: #2b3dff;
+  --color-ink: #ffffff;
+  --color-ink-2: #ffffff;
+  --color-rule: #ffffff;
+  --color-accent: #ffe14d;
+  --font-body: var(--font-thermal);
+  --font-display: var(--font-thermal);
+  rotate: 0deg;
+}
+[data-object="placard"] [data-role="paper"] {
+  border: 3px solid #000000;
+  border-radius: 0;
+  padding: 14px 14px 12px;
+  text-align: left;
+  box-shadow: 10px 10px 0 #000000;
+}
+[data-object="placard"] [data-role="meta"] {
+  font: 700 11px/1.3 var(--font-body);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+[data-object="placard"] [data-role="heading"] {
+  display: inline-block;
+  margin-top: 26px;
+  padding: 6px 8px 4px;
+  border: 3px solid #000000;
+  background: var(--color-accent);
+  color: #000000;
+  font: 700 30px/1 var(--font-display);
+  font-style: normal;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  box-shadow: 4px 4px 0 #000000;
+}
+[data-object="placard"] [data-role="rule"] {
+  width: 100%;
+  margin: 16px 0 10px;
+  border: 0;
+  border-top: 3px solid var(--color-rule);
+}
+
+/* receipt */
+[data-object="receipt"] {
+  --color-paper: #2b3dff;
+  --color-ink: #ffffff;
+  --color-ink-2: #c9ceff;
+  --color-rule: #ffffff;
+  --color-accent: #ffe14d;
+  --color-on-accent: #000000;
+  --font-body: var(--font-thermal);
+  --font-display: var(--font-thermal);
+  --font-num: var(--font-thermal);
+  rotate: 0deg;
+  filter: none;
+}
+[data-object="receipt"] [data-role="paper"] {
+  mask: none;
+  background-clip: padding-box;
+  border: 3px solid #000000;
+  border-radius: 0;
+  padding: 12px 12px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-transform: uppercase;
+  box-shadow: 10px 10px 0 #000000;
+}
+[data-object="receipt"] [data-role="heading"] {
+  padding: 8px 10px 7px;
+  border: 3px solid #000000;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font: 700 17px/1 var(--font-display);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-align: left;
+}
+[data-object="receipt"] [data-role="meta"] {
+  margin-top: 7px;
+  font: 700 10px/1.45 var(--font-body);
+  letter-spacing: 0;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--color-ink-2);
+}
+[data-object="receipt"] [data-role="rule"] {
+  margin-block: 10px;
+  border: 0;
+  border-top: 3px solid var(--color-rule);
+}
+[data-object="receipt"] [data-part="items"] {
+  gap: 3px;
+}
+[data-object="receipt"] [data-role="price"] {
+  color: var(--color-accent);
+}
+[data-object="receipt"] [data-role="qty"] {
+  margin-right: 2px;
+  padding: 0 3px;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+[data-object="receipt"] [data-role="group"] {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 6px;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font: 700 10px/1.3 var(--font-body);
+  text-transform: uppercase;
+}
+[data-object="receipt"] [data-role="photo"] {
+  border: 3px solid #000000;
+  border-radius: 0;
+  filter: grayscale(1) contrast(1.3);
+  mix-blend-mode: luminosity;
+}
+[data-object="receipt"] [data-role="label"] {
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+[data-object="receipt"] [data-role="tips"] {
+  gap: 6px;
+  margin-block: 10px;
+}
+[data-object="receipt"] [data-role="tip"] {
+  padding-block: 0;
+  border: 2px solid #000000;
+  border-radius: 0;
+  background: var(--color-ink);
+  color: #000000;
+  font: 700 11px/1.9 var(--font-body);
+  text-transform: uppercase;
+  box-shadow: 3px 3px 0 #000000;
+}
+[data-object="receipt"] [data-role="tip"][aria-pressed="true"] {
+  translate: 3px 3px;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: none;
+}
+[data-object="receipt"] [data-role="grand"] {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 3px solid #000000;
+  border-radius: 0;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: 6px 6px 0 #000000;
+}
+[data-object="receipt"] [data-role="grand"] [data-role="label"] {
+  font: 700 11px/1.2 var(--font-body);
+  color: inherit;
+}
+[data-object="receipt"] [data-role="amount"] {
+  font: 700 34px/0.95 var(--font-num);
+  letter-spacing: -0.07em;
+  font-variant-numeric: tabular-nums;
+}
+[data-object="receipt"] [data-role="grand"][class*="bg-"] [data-role="label"] {
+  white-space: nowrap;
+}
+[data-object="receipt"] [data-role="grand"][class*="bg-"] [data-role="amount"] {
+  font-size: 30px;
+}
+/* A round total stays a round sticker, slapped on at an angle with the same hard shadow. */
+[data-object="receipt"] [data-role="grand"][class*="rounded-full"] {
+  padding: 0;
+  border-radius: 50%;
+  box-shadow: 5px 5px 0 #000000;
+}
+[data-object="receipt"] [data-role="grand"][class*="rounded-full"] [data-role="amount"] {
+  font-size: 26px;
+}
+[data-object="receipt"] [data-role="barcode"] {
+  height: 30px;
+  color: var(--color-ink);
+}
+
+/* pass */
+
+/* palette */
+
+/* clock */

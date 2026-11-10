@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Acid green, pasted crooked",
+    "description": "Print the sheets acid green and paste them on askew, with shouted names, striped rows and a white total."
+  },
+  "title": "Acid green, pasted askew",
+  "summary": "Prints the sheets acid green at a tilt with 14 px shadows, shouts the names in Archivo over striped rows and welds the tips into one bar.",
+  "ms": {
+    "agent": 79000,
+    "checks": 13000,
+    "total": 121000
+  }
+}

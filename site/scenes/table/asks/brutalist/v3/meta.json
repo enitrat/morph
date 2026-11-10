@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Cobalt and yellow mono",
+    "description": "Turn the sheets cobalt in black frames and set everything in mono, with yellow for the name, the prices and the total."
+  },
+  "title": "Cobalt, all mono",
+  "summary": "Turns the sheets cobalt in black frames on a midnight grid, sets even the money in Space Mono and picks out the name and prices in yellow.",
+  "ms": {
+    "agent": 86000,
+    "checks": 14000,
+    "total": 131000
+  }
+}
