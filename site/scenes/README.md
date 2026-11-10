@@ -68,10 +68,21 @@ render every part. To make that hold:
 3. **Parts mark their anatomy with `data-role`**, so a layout or a table style can reach inside
    without knowing which variant is on the page:
 
-| Part           | Root                | Roles inside                                                                                                                               |
-| -------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ReceiptItems` | `data-part="items"` | `line` (one item), `name`, `qty`, `price`, `group` (a course heading), `photo`                                                             |
-| `ReceiptTotal` | `data-part="total"` | `row` (subtotal, tip), `label`, `tips` (the control), `tip` (a button, `aria-pressed`), `grand` (the total), `amount` (its number), `rule` |
+| Part             | Root                  | Roles inside                                                                                                                                                                                                                                      |
+| ---------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ReceiptItems`   | `data-part="items"`   | `line` (one item), `name`, `qty`, `price`, `group` (a course heading), `photo`                                                                                                                                                                    |
+| `ReceiptTotal`   | `data-part="total"`   | `row` (subtotal, tip), `label`, `tips` (the control), `tip` (a button, `aria-pressed`), `grand` (the total), `amount` (its number), `rule`                                                                                                        |
+| `PaletteSearch`  | `data-part="search"`  | `icon`, `input` (the field), `ghost` (the completion drawn under it), `key`; with filters: `scopes`, `scope` (a chip or token, `aria-pressed`), `count`, `label`                                                                                  |
+| `PaletteResults` | `data-part="results"` | `section` (a group's wrapper), `group` (its heading), `row` (a command, `aria-selected`, `--slot`), `icon`, `name`, `hit` (a matched letter), `detail`, `keys`, `key`, `empty`; with recent: `recent`, `pick` (a recent command), `uses`, `meter` |
+| `PaletteFooter`  | `data-part="footer"`  | `legend` (a key and its label), `key`, `label`, `status` (what ran last)                                                                                                                                                                          |
+
+The palette's query, selection and history live in `palette/data.ts`. A row's `--slot` is the
+command's fixed index, so a ring or a grid can keep each command in its place while the query
+filters the others out. A ring layout lays rows out with `translate` from `--slot`; a table style
+never sets a row's position. Ring layouts (`radial`, `dial`, `wheel`) hide the `recent` block and
+show only the pressed scope chip. A rule that changes the field's type must also cover `ghost`,
+which sits under the input letter for letter. The CRT marks its overlay `scanlines`, so a light
+style can drop it.
 
 A total that draws its `grand` as a shape says so with `data-shape`: `stamp` for a round seal,
 `band` for a filled bar. Table styles restyle those through the attribute, never through the
