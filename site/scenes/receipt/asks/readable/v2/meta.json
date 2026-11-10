@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Airy cards",
+    "description": "Lay the receipt out as roomy white cards on a tinted sheet, centred under a monogram."
+  },
+  "title": "Airy cards on a tint",
+  "summary": "Splits the order and the total into two white cards on a tinted sheet, under a centred monogram.",
+  "ms": {
+    "agent": 78000,
+    "checks": 13000,
+    "total": 116000
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Group it, sum it up",
+    "description": "A clean sans receipt: the order under one heading, the money in a soft summary card."
+  },
+  "title": "Order list, summary card",
+  "summary": "Sets it in Inter Tight on white, rules each item and moves the total into a grey card with a segmented tip.",
+  "ms": {
+    "agent": 64000,
+    "checks": 12000,
+    "total": 96000
+  }
+}
