@@ -193,5 +193,114 @@
 /* pass */
 
 /* palette */
+[data-object="palette"] {
+  --color-paper: #e3261b;
+  --color-ink: #ffffff;
+  --color-ink-2: #ffc9c4;
+  --color-rule: #f07068;
+  --color-accent: #111111;
+  --color-on-accent: #ffffff;
+  --font-body: var(--font-grotesk);
+  --font-display: var(--font-grotesk);
+  --font-num: var(--font-grotesk);
+  rotate: 0deg;
+  filter: none;
+}
+[data-object="palette"] [data-role="paper"] {
+  border-radius: 0;
+  box-shadow: 0 30px 60px -28px rgb(0 0 0 / 0.8);
+  text-shadow: none;
+}
+[data-object="palette"]:is([data-layout="radial"], [data-layout="wheel"]) [data-role="paper"] {
+  border-radius: 50%;
+}
+[data-object="palette"] [data-role="scanlines"] {
+  display: none;
+}
+[data-object="palette"] :is([data-role="input"], [data-role="ghost"]) {
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+[data-object="palette"] [data-role="input"]::placeholder {
+  color: var(--color-ink-2);
+}
+[data-object="palette"] [data-role="heading"] {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+/* Small print goes to spaced capitals. */
+[data-object="palette"] :is([data-role="group"], [data-role="meta"], [data-part="footer"]) {
+  font-family: var(--font-body);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+[data-object="palette"] [data-role="group"] {
+  font-size: 9.5px;
+  border-bottom: 3px solid var(--color-accent);
+  padding-bottom: 5px;
+  margin-bottom: 4px;
+}
+[data-object="palette"] [data-part="footer"] {
+  font-size: 9.5px;
+}
+[data-object="palette"] [data-role="hit"] {
+  text-decoration: underline 3px var(--color-accent);
+  text-underline-offset: 3px;
+}
+[data-object="palette"] [data-role="key"],
+[data-object="palette"] button[data-role="scope"],
+[data-object="palette"] [data-role="pick"] {
+  border-radius: 0;
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+}
+[data-object="palette"] [data-part="results"] [data-role="icon"] {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-ink);
+}
+/* No hairlines: the rows open up, and the selected one prints black. */
+[data-object="palette"]:is(
+    [data-layout="dialog"],
+    [data-layout="spotlight"],
+    [data-layout="terminal"],
+    [data-layout="teletype"]
+  )
+  [data-role="row"] {
+  border-radius: 0;
+  border: 0;
+  padding-block: 7px;
+  font-weight: 600;
+}
+[data-object="palette"]:not([data-layout="radial"], [data-layout="dial"], [data-layout="wheel"])
+  [data-role="row"][aria-selected="true"] {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: none;
+}
+[data-object="palette"]:not([data-layout="radial"], [data-layout="dial"], [data-layout="wheel"])
+  [data-role="row"][aria-selected="true"]
+  :is([data-role="icon"], [data-role="detail"], [data-role="key"]) {
+  color: var(--color-on-accent);
+  background: transparent;
+}
+[data-object="palette"]:is([data-layout="tiles"]) [data-role="row"] {
+  border-radius: 0;
+  background: rgb(0 0 0 / 0.08);
+  box-shadow: none;
+}
+[data-object="palette"]:is([data-layout="radial"], [data-layout="dial"])
+  [data-role="row"][aria-selected="true"]
+  [data-role="icon"] {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: none;
+}
+[data-object="palette"] [data-role="meter"] {
+  background: var(--color-accent);
+}
 
 /* clock */

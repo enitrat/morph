@@ -202,5 +202,123 @@
 /* pass */
 
 /* palette */
+[data-object="palette"] {
+  --color-paper: #2b3dff;
+  --color-ink: #ffffff;
+  --color-ink-2: #c9ceff;
+  --color-rule: #ffffff;
+  --color-accent: #ffe14d;
+  --color-on-accent: #000000;
+  --font-body: var(--font-thermal);
+  --font-display: var(--font-thermal);
+  --font-num: var(--font-thermal);
+  rotate: 0deg;
+  filter: none;
+}
+[data-object="palette"] [data-role="paper"] {
+  border: 3px solid #000000;
+  border-radius: 0;
+  box-shadow: 10px 10px 0 #000000;
+  text-shadow: none;
+}
+[data-object="palette"]:is([data-layout="radial"], [data-layout="wheel"]) [data-role="paper"] {
+  border-radius: 50%;
+}
+[data-object="palette"] [data-role="scanlines"] {
+  display: none;
+}
+[data-object="palette"] :is([data-role="input"], [data-role="ghost"]) {
+  font-weight: 700;
+}
+[data-object="palette"] [data-role="input"]::placeholder {
+  color: var(--color-ink-2);
+}
+/* Yellow for the names and the keys; Space Mono down to the numbers. */
+[data-object="palette"]:not([data-layout="radial"]) [data-role="heading"] {
+  color: var(--color-accent);
+}
+[data-object="palette"] [data-role="heading"] {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+[data-object="palette"] [data-role="group"] {
+  font: 700 10px/1 var(--font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+[data-object="palette"] [data-role="group"]::before {
+  content: "## ";
+  color: var(--color-accent);
+}
+[data-object="palette"] [data-role="hit"] {
+  text-decoration: none;
+  color: var(--color-accent);
+}
+[data-object="palette"] [data-role="key"] {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-accent);
+  font-weight: 700;
+}
+[data-object="palette"] button[data-role="scope"],
+[data-object="palette"] [data-role="pick"] {
+  border: 2px solid #000000;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+}
+[data-object="palette"] [data-role="scope"][aria-pressed="true"] {
+  background: var(--color-accent);
+  color: #000000;
+}
+[data-object="palette"] [data-part="results"] [data-role="icon"] {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-ink);
+}
+[data-object="palette"]:is(
+    [data-layout="dialog"],
+    [data-layout="spotlight"],
+    [data-layout="terminal"],
+    [data-layout="teletype"]
+  )
+  [data-role="row"] {
+  border-radius: 0;
+  border-bottom: 2px solid #000000;
+}
+[data-object="palette"]:not([data-layout="radial"], [data-layout="dial"], [data-layout="wheel"])
+  [data-role="row"][aria-selected="true"] {
+  background: var(--color-accent);
+  color: #000000;
+  box-shadow: none;
+}
+[data-object="palette"]:not([data-layout="radial"], [data-layout="dial"], [data-layout="wheel"])
+  [data-role="row"][aria-selected="true"]
+  :is([data-role="icon"], [data-role="detail"], [data-role="key"], [data-role="hit"]) {
+  color: #000000;
+  background: transparent;
+}
+[data-object="palette"]:is([data-layout="tiles"]) [data-role="row"] {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 2px #000000;
+}
+[data-object="palette"]:is([data-layout="radial"], [data-layout="dial"])
+  [data-role="row"][aria-selected="true"]
+  [data-role="icon"] {
+  background: var(--color-accent);
+  color: #000000;
+  box-shadow: 0 0 0 2px #000000;
+}
+[data-object="palette"] [data-role="meter"] {
+  background: var(--color-accent);
+}
+[data-object="palette"] [data-part="footer"] {
+  font-weight: 700;
+  text-transform: uppercase;
+}
 
 /* clock */

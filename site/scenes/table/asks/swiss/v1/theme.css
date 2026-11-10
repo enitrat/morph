@@ -191,5 +191,126 @@
 /* pass */
 
 /* palette */
+[data-object="palette"] {
+  --color-paper: #f7f6f2;
+  --color-ink: #111111;
+  --color-ink-2: #7a7973;
+  --color-rule: #dcdbd5;
+  --color-accent: #e3261b;
+  --color-on-accent: #ffffff;
+  --font-body: var(--font-grotesk);
+  --font-display: var(--font-grotesk);
+  --font-num: var(--font-grotesk);
+  rotate: 0deg;
+  filter: none;
+}
+[data-object="palette"] [data-role="paper"] {
+  border-radius: 0;
+  box-shadow: 0 30px 60px -28px rgb(0 0 0 / 0.8);
+  text-shadow: none;
+}
+/* A ring stays round; every other sheet carries the heavy red rule along its top. */
+[data-object="palette"]:is([data-layout="radial"], [data-layout="wheel"]) [data-role="paper"] {
+  border-radius: 50%;
+}
+[data-object="palette"]:not([data-layout="radial"], [data-layout="wheel"]) [data-role="paper"] {
+  border-top: 5px solid var(--color-accent);
+}
+[data-object="palette"] :is([data-role="input"], [data-role="ghost"]) {
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+[data-object="palette"] [data-role="heading"] {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+[data-object="palette"] [data-role="group"] {
+  font: 700 10px/1 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+[data-object="palette"] [data-role="hit"] {
+  text-decoration: none;
+  font-weight: 800;
+  color: var(--color-accent);
+}
+[data-object="palette"] [data-role="key"],
+[data-object="palette"] button[data-role="scope"],
+[data-object="palette"] [data-role="pick"] {
+  border-radius: 0;
+}
+[data-object="palette"] [data-part="results"] [data-role="icon"] {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+/* A list numbers its commands and rules each one off with a hairline. */
+[data-object="palette"]:is(
+    [data-layout="dialog"],
+    [data-layout="spotlight"],
+    [data-layout="terminal"],
+    [data-layout="teletype"]
+  )
+  [data-part="results"] {
+  counter-reset: command;
+}
+[data-object="palette"]:is(
+    [data-layout="dialog"],
+    [data-layout="spotlight"],
+    [data-layout="terminal"],
+    [data-layout="teletype"]
+  )
+  [data-role="row"] {
+  counter-increment: command;
+  border-radius: 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+[data-object="palette"]:is(
+    [data-layout="dialog"],
+    [data-layout="spotlight"],
+    [data-layout="terminal"],
+    [data-layout="teletype"]
+  )
+  [data-role="name"]::before {
+  content: counter(command, decimal-leading-zero);
+  display: inline-block;
+  width: 22px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-ink-2);
+}
+[data-object="palette"]:not([data-layout="radial"], [data-layout="dial"], [data-layout="wheel"])
+  [data-role="row"][aria-selected="true"] {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  box-shadow: none;
+}
+[data-object="palette"]:not([data-layout="radial"], [data-layout="dial"], [data-layout="wheel"])
+  [data-role="row"][aria-selected="true"]
+  :is([data-role="icon"], [data-role="detail"], [data-role="key"]) {
+  color: var(--color-paper);
+  background: transparent;
+}
+[data-object="palette"]:is([data-layout="tiles"]) [data-role="row"] {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--color-rule);
+}
+/* On a ring the selected command is a red square. */
+[data-object="palette"]:is([data-layout="radial"], [data-layout="dial"])
+  [data-role="row"][aria-selected="true"]
+  [data-role="icon"] {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: none;
+}
+[data-object="palette"] [data-part="footer"] {
+  font-weight: 600;
+}
+/* The CRT's scanlines would grey out a paper sheet. */
+[data-object="palette"] [data-role="scanlines"] {
+  display: none;
+}
 
 /* clock */
