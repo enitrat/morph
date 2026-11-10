@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Forest and gold",
+    "description": "Frame the menu in a gold double rule on forest green, upright and formal."
+  },
+  "title": "Forest green, gold frame",
+  "summary": "Sets it on forest green inside a gold double frame, with gold leaders and a centred upright total.",
+  "ms": {
+    "agent": 81000,
+    "checks": 13000,
+    "total": 118000
+  }
+}

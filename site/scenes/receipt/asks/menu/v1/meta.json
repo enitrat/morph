@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A bistro menu",
+    "description": "Set the receipt like a printed menu: Fraunces, centred, small caps, leader dots to each price."
+  },
+  "title": "Cream and oxblood",
+  "summary": "Centres it in Fraunces on cream with an oxblood ornament, dotted leaders and italic tip choices.",
+  "ms": {
+    "agent": 68000,
+    "checks": 12000,
+    "total": 100000
+  }
+}

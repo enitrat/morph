@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Blush, set left",
+    "description": "A left-set editorial page on blush paper with a large light title and a ruled masthead."
+  },
+  "title": "Blush, left-set",
+  "summary": "Sets it left on blush under a 42 px light title, with a ruled masthead and the total set italic.",
+  "ms": {
+    "agent": 90000,
+    "checks": 14000,
+    "total": 126000
+  }
+}
