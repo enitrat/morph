@@ -33,12 +33,11 @@ function fakeBridge(script: (request: Request, now: PageView) => PageView, start
     now = start
   }
   const requests: Request[] = []
-  vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
-    const op = url.split("/").at(-1) ?? ""
-    const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : null
+  connect(async ({ op, body: sent }) => {
+    const body = (sent ?? null) as Record<string, unknown> | null
     if (op !== "page") requests.push({ op, body })
     now = op === "page" ? now : script({ op, body }, now)
-    return Response.json(now)
+    return { status: 200, body: now }
   })
   return { requests }
 }
@@ -54,7 +53,6 @@ const hero = (place: Parameters<typeof session>[1]) => session(ids.hero, place, 
 const button = (place: Parameters<typeof session>[1]) => session(ids.button, place, buttonVariants)
 
 async function mount({ asks = true } = {}) {
-  connect("/__morph")
   let send: Dispatch<Event> = () => {}
   let poll = () => {}
   const elements = [document.createElement("section"), document.createElement("button")]
@@ -235,8 +233,7 @@ it("gives sessions a reload left open their pins back from what this browser sto
 })
 
 it("pins an ask before locating it, so the next pick is not cleared when the first lands", async () => {
-  connect("/__morph")
-  vi.stubGlobal("fetch", async () => Response.json({ sources: [] }))
+  connect(async () => ({ status: 200, body: { sources: [] } }))
   const element = document.createElement("section")
   document.body.append(element)
   const events: Event[] = []

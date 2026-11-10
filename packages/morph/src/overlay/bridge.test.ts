@@ -140,3 +140,28 @@ it("reads the page every session operation answers", async () => {
   answering(Response.json({ sessions: [view], stuck: [] }))
   expect(await bridge.show(ID, "v1")).toEqual({ ok: true, value: { sessions: [view], stuck: [] } })
 })
+
+describe("a bridge behind an injected transport", () => {
+  afterEach(() => connect("/__morph/"))
+
+  it("sends the operation, query and body to the transport and validates what it answers", async () => {
+    const calls: unknown[] = []
+    connect(async (call) => {
+      calls.push({ op: call.op, query: String(call.query), body: call.body })
+      return { status: 200, body: { tag: null } }
+    })
+    const site = SourceLoc.parse({ path: "app/page.tsx", line: 3, col: 5 })
+    expect(await bridge.attributes(site)).toEqual({ ok: true, value: { tag: null } })
+    await bridge.discard(ID)
+    expect(calls).toEqual([
+      { op: "attributes", query: "path=app%2Fpage.tsx&line=3&col=5", body: undefined },
+      { op: "discard", query: "", body: { id: ID } },
+    ])
+  })
+
+  it("reads a reply that breaks the protocol as an offline bridge", async () => {
+    connect(async () => ({ status: 200, body: { sessions: "nope" } }))
+    const answer = await bridge.page()
+    expect(answer.ok ? null : answer.error.kind).toBe("offline")
+  })
+})

@@ -15,28 +15,56 @@ import {
 type BridgeError = WireError | { kind: "offline"; detail: string } | { kind: "unbuilt" }
 export type Answer<T> = { ok: true; value: T } | { ok: false; error: BridgeError }
 
-let base: string | undefined
+/** One request to the bridge. `body` is undefined for a GET. */
+export interface WireCall {
+  op: Operation
+  query: URLSearchParams
+  body: unknown
+}
+/** The bridge's answer: an HTTP-like status and the parsed JSON body, or `null` when there is none. */
+export interface WireReply {
+  status: number
+  body: unknown
+}
+/**
+ * Carries calls to a bridge and back. It moves bytes only: the overlay validates every reply
+ * against the protocol, so a transport needs no domain knowledge. A throw reads as offline.
+ */
+export type Transport = (call: WireCall) => Promise<WireReply>
 
-/** Points the bridge at the path its adapter mounts it on, before the overlay renders. */
-export function connect(to: string) {
-  base = to.replace(/\/+$/, "")
+/** The dev-server bridge mounted at `base`, such as `/api/morph`. */
+export function httpTransport(base: string): Transport {
+  const root = base.replace(/\/+$/, "")
+  return async ({ op, query, body }) => {
+    const search = query.size === 0 ? "" : `?${query}`
+    const response = await fetch(`${root}/${op}${search}`, {
+      headers: { "x-morph": "1", "content-type": "application/json" },
+      ...(body === undefined ? {} : { method: "POST", body: JSON.stringify(body) }),
+    })
+    return { status: response.status, body: await response.json().catch(() => null) }
+  }
+}
+
+let transport: Transport | undefined
+
+/** Points the overlay at its bridge before it renders: a base path, or a transport. */
+export function connect(to: string | Transport) {
+  transport = typeof to === "string" ? httpTransport(to) : to
 }
 
 async function call<K extends Operation>(
   op: K,
-  query = "",
-  init: RequestInit = {},
+  query = new URLSearchParams(),
+  body?: unknown,
 ): Promise<Answer<z.output<(typeof operations)[K]["response"]>>> {
   const schema = operations[op].response
-  if (base === undefined) throw new Error("morph: the overlay called the bridge before connect()")
+  if (transport === undefined)
+    throw new Error("morph: the overlay called the bridge before connect()")
   try {
-    const response = await fetch(`${base}/${op}${query}`, {
-      ...init,
-      headers: { "x-morph": "1", "content-type": "application/json" },
-    })
-    const body: unknown = await response.json().catch(() => null)
-    if (response.ok) {
-      const parsed = schema.safeParse(body)
+    const { status, body: reply } = await transport({ op, query, body })
+    const ok = status >= 200 && status < 300
+    if (ok) {
+      const parsed = schema.safeParse(reply)
       if (parsed.success)
         // SAFETY: Parsing used this operation's response schema; indexing widens its output to a union.
         return { ok: true, value: parsed.data as z.output<(typeof operations)[K]["response"]> }
@@ -45,14 +73,14 @@ async function call<K extends Operation>(
         error: { kind: "offline", detail: "the bridge sent an invalid response" },
       }
     }
-    const refusal = z.object({ error: WireError }).safeParse(body)
+    const refusal = z.object({ error: WireError }).safeParse(reply)
     if (refusal.success) return { ok: false, error: refusal.data.error }
     // Next's dev server answers every route with its build error page while any module fails to
     // build, so the bridge cannot run until the tree builds again.
-    if (response.status === 500) return { ok: false, error: { kind: "unbuilt" } }
+    if (status === 500) return { ok: false, error: { kind: "unbuilt" } }
     return {
       ok: false,
-      error: { kind: "offline", detail: `the bridge answered ${response.status}` },
+      error: { kind: "offline", detail: `the bridge answered ${status}` },
     }
   } catch (error) {
     return { ok: false, error: { kind: "offline", detail: String(error) } }
@@ -63,14 +91,10 @@ type PostOperation = {
   [K in Operation]: (typeof operations)[K] extends { request: z.ZodType } ? K : never
 }[Operation]
 const post = <K extends PostOperation>(op: K, body: z.input<(typeof operations)[K]["request"]>) =>
-  call(op, "", { method: "POST", body: JSON.stringify(body) })
+  call(op, undefined, body)
 
 const siteQuery = (site: SourceLoc) =>
-  new URLSearchParams({
-    path: site.path,
-    line: String(site.line),
-    col: String(site.col),
-  }).toString()
+  new URLSearchParams({ path: site.path, line: String(site.line), col: String(site.col) })
 
 export const bridge = {
   locate: (frames: readonly string[]) => post("locate", { frames: [...frames] }),
@@ -83,12 +107,12 @@ export const bridge = {
   discard: (id: SessionId) => post("discard", { id }),
   tokens: () => call("tokens"),
   plumbing: () => call("plumbing"),
-  tag: (site: SourceLoc) => call("tag", `?${siteQuery(site)}`),
+  tag: (site: SourceLoc) => call("tag", siteQuery(site)),
   dial: (write: DialWrite) => post("dial", write),
-  props: (component: string) => call("props", `?${new URLSearchParams({ component })}`),
-  attributes: (site: SourceLoc) => call("attributes", `?${siteQuery(site)}`),
+  props: (component: string) => call("props", new URLSearchParams({ component })),
+  attributes: (site: SourceLoc) => call("attributes", siteQuery(site)),
   uses: (component: string, path: RepoPath) =>
-    call("uses", `?${new URLSearchParams({ component, path })}`),
+    call("uses", new URLSearchParams({ component, path })),
   prop: (write: PropWrite) => post("prop", write),
 }
 

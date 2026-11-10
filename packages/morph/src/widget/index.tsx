@@ -3,10 +3,12 @@
 import { useEffect } from "react"
 import { createRoot, type Root } from "react-dom/client"
 
-import { connect } from "../overlay/bridge"
+import { connect, type Transport } from "../overlay/bridge"
 import { Overlay } from "../overlay/overlay"
 import { registerFonts } from "../overlay/ui/fonts"
 import { SENTINEL } from "./sentinel"
+
+export { httpTransport, type Transport, type WireCall, type WireReply } from "../overlay/bridge"
 
 const MOUNTED = Symbol.for("morph.overlay")
 
@@ -17,11 +19,12 @@ interface Holder {
 /**
  * Renders the overlay into a shadow root on a `morph-root` appended to `<html>`, outside `body`
  * so the app's layout never moves for it. The overlay has its own React root: a variant that
- * crashes the host's tree does not take it down, so it is never unmounted with the host. `base` is
- * the path the bridge answers on, which the adapter that mounts it chose.
+ * crashes the host's tree does not take it down, so it is never unmounted with the host. `bridge`
+ * is the path the bridge answers on, which the adapter that mounts it chose, or a transport that
+ * answers in its place.
  */
-export function mountMorph(base: string) {
-  connect(base)
+export function mountMorph(bridge: string | Transport) {
+  connect(bridge)
   registerFonts()
   const holder = window as Holder
   const mounted = holder[MOUNTED]
