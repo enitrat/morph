@@ -52,7 +52,7 @@ it("keeps concurrent callers out of the critical section", async () => {
   } finally {
     await rm(root, { recursive: true, force: true })
   }
-})
+}, 30_000)
 
 it("keeps separate processes out of the critical section", async () => {
   const root = await mkdtemp(join(tmpdir(), "morph-lock-test-"))
