@@ -4,7 +4,7 @@
     "description": "Set LIS over CPH at poster size in Archivo, a red bar under them, everything else on a grid."
   },
   "title": "Stacked codes, red bar",
-  "summary": "Sets the codes at 98 px stacked flush left, a 6 px red bar, black hairlines between blocks.",
+  "summary": "Sets the codes at 76 px stacked flush left, a 6 px red bar, black hairlines between blocks.",
   "ms": {
     "agent": 69000,
     "checks": 12000,

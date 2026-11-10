@@ -4,7 +4,7 @@
     "description": "Lead with the two clock times and put the plane on a track that has barely started."
   },
   "title": "Times on a track",
-  "summary": "Sets both times at 30 px over a track with the plane just leaving, codes and terminals beneath.",
+  "summary": "Sets both times at 28 px over a track with the plane just leaving, the duration on the track.",
   "ms": {
     "agent": 61000,
     "checks": 10000,

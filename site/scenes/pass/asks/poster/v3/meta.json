@@ -4,7 +4,7 @@
     "description": "Black sheet ruled into numbered cells, the route as a footer set huge."
   },
   "title": "Numbered cells at night",
-  "summary": "Rules the sheet into cells numbered 1 to 3 in red and closes on the codes at 64 px.",
+  "summary": "Rules the sheet into cells numbered 1 to 3 in red and closes on the codes at 52 px.",
   "ms": {
     "agent": 74000,
     "checks": 12000,
