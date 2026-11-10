@@ -19,45 +19,6 @@
     14px 14px;
 }
 
-/* placard */
-[data-object="placard"] {
-  --color-paper: #1f3a2e;
-  --color-ink: #f1ead9;
-  --color-ink-2: #d8b46a;
-  --color-rule: #d8b46a;
-  --font-body: var(--font-editorial);
-  --font-display: var(--font-editorial);
-  rotate: 0deg;
-}
-[data-object="placard"] [data-role="paper"] {
-  border-radius: 2px;
-  padding: 24px 24px 22px;
-  text-align: left;
-  box-shadow:
-    inset 0 0 0 6px var(--color-paper),
-    inset 0 0 0 7px rgb(216 180 106 / 0.45),
-    0 30px 60px -26px rgb(0 0 0 / 0.8);
-}
-[data-object="placard"] [data-role="meta"] {
-  font: 500 12px/1.4 var(--font-body);
-  font-variant-caps: all-small-caps;
-  letter-spacing: 0.16em;
-  text-transform: none;
-  color: var(--color-ink-2);
-}
-[data-object="placard"] [data-role="heading"] {
-  margin-top: 14px;
-  font: 300 42px/1 var(--font-display);
-  font-style: normal;
-  letter-spacing: -0.025em;
-}
-[data-object="placard"] [data-role="rule"] {
-  width: 100%;
-  margin: 14px 0 10px;
-  border: 0;
-  border-top: 3px double var(--color-rule);
-}
-
 /* receipt */
 [data-object="receipt"] {
   --color-paper: #1f3a2e;

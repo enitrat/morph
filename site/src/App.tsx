@@ -112,11 +112,11 @@ export function App({ stage, touch }: { stage: Stage; touch: boolean }) {
         </a>
       </header>
 
-      <section data-morph className="py-14 text-center sm:pt-16 sm:pb-10">
-        <h1 className="font-serif text-[clamp(40px,6vw,72px)]/none tracking-[-0.01em] text-balance">
+      <section data-morph className="py-10 text-center sm:pt-10 sm:pb-8">
+        <h1 className="font-serif text-[clamp(40px,5vw,64px)]/none tracking-[-0.01em] text-balance">
           Point at anything. <em className="text-[#cfd6e4]">Get three better ones.</em>
         </h1>
-        <p className="mx-auto mt-4 mb-7 max-w-[520px] text-[15px]/[1.5] text-balance text-muted">
+        <p className="mx-auto mt-3.5 mb-6 max-w-[520px] text-[15px]/[1.5] text-balance text-muted">
           Morph is a dev overlay for React. Pick an element, say what you want, flip between three
           versions live, keep one. It writes the code.
         </p>

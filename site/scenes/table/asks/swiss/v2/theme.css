@@ -16,42 +16,6 @@
   background-position: -1px -1px;
 }
 
-/* placard */
-[data-object="placard"] {
-  --color-paper: #e3261b;
-  --color-ink: #ffffff;
-  --color-ink-2: #ffd3cf;
-  --color-rule: #111111;
-  --font-body: var(--font-grotesk);
-  --font-display: var(--font-grotesk);
-  rotate: 0deg;
-}
-[data-object="placard"] [data-role="paper"] {
-  border-radius: 0;
-  padding: 16px 18px 16px;
-  text-align: left;
-  box-shadow: 0 30px 60px -24px rgb(0 0 0 / 0.85);
-}
-[data-object="placard"] [data-role="meta"] {
-  font: 700 10px/1.3 var(--font-body);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-ink);
-}
-[data-object="placard"] [data-role="heading"] {
-  margin-top: 64px;
-  font: 900 46px/0.85 var(--font-display);
-  font-style: normal;
-  letter-spacing: -0.06em;
-}
-[data-object="placard"] [data-role="rule"] {
-  width: 100%;
-  height: 8px;
-  margin: 14px 0 9px;
-  border: 0;
-  background: var(--color-rule);
-}
-
 /* receipt */
 [data-object="receipt"] {
   --color-paper: #e3261b;

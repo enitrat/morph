@@ -19,51 +19,6 @@
     9px 9px;
 }
 
-/* placard */
-[data-object="placard"] {
-  --color-paper: #f4efe4;
-  --color-ink: #1d1a16;
-  --color-ink-2: #6b6257;
-  --color-rule: #7a1f1f;
-  --font-body: var(--font-editorial);
-  --font-display: var(--font-editorial);
-  rotate: 0deg;
-}
-[data-object="placard"] [data-role="paper"] {
-  border-radius: 2px;
-  padding: 26px 22px 22px;
-  box-shadow:
-    0 30px 60px -26px rgb(0 0 0 / 0.75),
-    0 1px 3px rgb(0 0 0 / 0.25);
-}
-[data-object="placard"] [data-role="meta"] {
-  font: 500 12px/1.4 var(--font-body);
-  font-variant-caps: all-small-caps;
-  letter-spacing: 0.16em;
-  text-transform: none;
-  color: var(--color-ink-2);
-}
-[data-object="placard"] [data-role="heading"] {
-  margin-top: 10px;
-  font: italic 300 44px/1 var(--font-display);
-  letter-spacing: -0.01em;
-}
-[data-object="placard"] [data-role="rule"] {
-  width: auto;
-  height: auto;
-  margin: 10px 0 8px;
-  border: 0;
-  color: var(--color-rule);
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: 0.5em;
-  text-align: center;
-  text-indent: 0.5em;
-}
-[data-object="placard"] [data-role="rule"]::before {
-  content: "✦ ✦ ✦";
-}
-
 /* receipt */
 [data-object="receipt"] {
   --color-paper: #f4efe4;

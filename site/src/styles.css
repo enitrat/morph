@@ -113,7 +113,15 @@ body {
     0 0 0 #08090b;
 }
 
-/* Objects keep their designed footprint; on a phone the live board shows them a little smaller. */
+/*
+ * Objects keep their designed footprint. Between 1200 and 1600 px the live board shows them a
+ * little smaller, so all four sit in one row in the first screen; on a phone, so the widest fits.
+ */
+@media (min-width: 1200px) and (max-width: 1599px) {
+  [data-repo="live"] [data-board] > [data-object] {
+    zoom: 0.84;
+  }
+}
 @media (max-width: 440px) {
   [data-repo="live"] [data-board] > [data-object] {
     zoom: 0.86;

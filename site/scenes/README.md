@@ -148,7 +148,7 @@ plain selectors: `[data-object="receipt"] [data-role="grand"] { … }`. No `@key
 
 Each table variant must change more than colour: type, borders, density, case, alignment. Write
 it per object, in the object's own block, between the markers already in every theme file:
-`/* board */`, `/* placard */`, `/* receipt */`, `/* pass */`, `/* palette */`, `/* player */`.
+`/* board */`, `/* receipt */`, `/* pass */`, `/* palette */`, `/* player */`.
 An object added later fills its own block in the original `theme.css` (usually empty) and in each
 of the nine variants, and nothing else. Its rules must hold over every layout and part variant of
 that object, so prefer roles and tokens over layout-specific selectors.

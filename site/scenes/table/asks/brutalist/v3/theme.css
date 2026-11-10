@@ -17,50 +17,6 @@
   background-position: -1px -1px;
 }
 
-/* placard */
-[data-object="placard"] {
-  --color-paper: #2b3dff;
-  --color-ink: #ffffff;
-  --color-ink-2: #ffffff;
-  --color-rule: #ffffff;
-  --color-accent: #ffe14d;
-  --font-body: var(--font-thermal);
-  --font-display: var(--font-thermal);
-  rotate: 0deg;
-}
-[data-object="placard"] [data-role="paper"] {
-  border: 3px solid #000000;
-  border-radius: 0;
-  padding: 14px 14px 12px;
-  text-align: left;
-  box-shadow: 10px 10px 0 #000000;
-}
-[data-object="placard"] [data-role="meta"] {
-  font: 700 11px/1.3 var(--font-body);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--color-ink);
-}
-[data-object="placard"] [data-role="heading"] {
-  display: inline-block;
-  margin-top: 26px;
-  padding: 6px 8px 4px;
-  border: 3px solid #000000;
-  background: var(--color-accent);
-  color: #000000;
-  font: 700 30px/1 var(--font-display);
-  font-style: normal;
-  letter-spacing: -0.04em;
-  text-transform: uppercase;
-  box-shadow: 4px 4px 0 #000000;
-}
-[data-object="placard"] [data-role="rule"] {
-  width: 100%;
-  margin: 16px 0 10px;
-  border: 0;
-  border-top: 3px solid var(--color-rule);
-}
-
 /* receipt */
 [data-object="receipt"] {
   --color-paper: #2b3dff;
