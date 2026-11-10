@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A minimal statement",
+    "description": "Strip it to a statement that leads with the amount due, set large and light, then the lines."
+  },
+  "title": "Minimal statement",
+  "summary": "Leads with the total at 46 px in light weight, then a one-line reference, a rule and the items.",
+  "ms": {
+    "agent": 88000,
+    "checks": 14000,
+    "total": 128000
+  }
+}

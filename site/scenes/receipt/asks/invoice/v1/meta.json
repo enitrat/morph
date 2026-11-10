@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A classic letterhead",
+    "description": "Turn the receipt into a small invoice: letterhead, billed-to and issue date, a ruled item table."
+  },
+  "title": "Classic letterhead",
+  "summary": "Adds a monogram letterhead over a black rule, Billed to and Issued fields, and right-aligned totals.",
+  "ms": {
+    "agent": 66000,
+    "checks": 12000,
+    "total": 98000
+  }
+}
