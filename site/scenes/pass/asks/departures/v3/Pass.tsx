@@ -63,7 +63,7 @@ export function Pass() {
             <span className="size-1.5 animate-pulse rounded-full bg-on-accent" />
             {statusOf(seconds)}
           </span>
-          <span data-role="meta">{FLIGHT.airline}</span>
+          <span>{FLIGHT.airline}</span>
         </p>
         <div className="mt-3.5">
           <PassRoute />

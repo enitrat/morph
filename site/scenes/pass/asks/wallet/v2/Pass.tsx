@@ -33,7 +33,7 @@ export function Pass() {
             </svg>
             {FLIGHT.airline}
           </h3>
-          <p data-role="meta" className="text-right text-[10px]/[1.25] opacity-85">
+          <p className="text-right text-[10px]/[1.25] opacity-85">
             {FLIGHT.number}
             <br />
             {FLIGHT.day}

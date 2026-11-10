@@ -77,6 +77,18 @@ A total that draws its `grand` as a shape says so with `data-shape`: `stamp` for
 `band` for a filled bar. Table styles restyle those through the attribute, never through the
 part's classes.
 
+The boarding pass (`pass/`) keeps its seat in `useSeat` and its gate countdown in `useGate`:
+
+| Part        | Root                | Roles inside                                                                                                                                                |
+| ----------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PassRoute` | `data-part="route"` | `from`, `to` (an end), `code` (the airport code), `city`, `time`, `path` (the line or map between), `plane`, `duration`                                     |
+| `PassSeat`  | `data-part="seat"`  | `field` (with `data-field`: `boarding`, `gate`, `seat`, `group`), `label`, `value`, `seats` (the control), `seat-option` (a button, `aria-pressed`), `kind` |
+| `PassStub`  | `data-part="stub"`  | `countdown` (the gate line), `label`, `status` (Boarding or Final call), `clock` (its digits), `barcode`, `meta`                                            |
+
+Its layouts add `field`, `label` and `value` for the passenger, flight and date, `tear` and
+`notch` for a perforation, and `flap` for one split-flap tile. A layout may hide the route's
+`code` when it sets the codes itself, so a table style never sets `display` on a part's roles.
+
 A layout styles that anatomy with descendant variants on its root, for example
 `[&_[data-role=label]]:uppercase` on the thermal receipt.
 

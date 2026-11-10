@@ -12,7 +12,7 @@ export function Pass() {
     >
       <div
         data-role="paper"
-        className="grid grid-cols-[62px_minmax(0,1fr)] gap-x-3 bg-paper py-4 pr-4 pl-3 font-body text-ink shadow-[0_30px_60px_-28px_rgb(0_0_0/0.8),0_1px_3px_rgb(0_0_0/0.25)] [&_[data-part=route]_[data-role=code]]:hidden [&_[data-role=kind]]:hidden [&_[data-role=label]]:tracking-[0.02em] [&_[data-role=label]]:normal-case [&_[data-role=countdown]_[data-role=label]]:text-[9.5px] [&_[data-role=clock]]:text-[19px] [&_[data-role=seat-option]]:rounded-none [&_[data-role=seat-option]]:border-ink [&_[data-role=seat-option]]:text-ink"
+        className="grid grid-cols-[62px_minmax(0,1fr)] gap-x-3 bg-paper py-4 pr-4 pl-3 font-body text-ink shadow-[0_30px_60px_-28px_rgb(0_0_0/0.8),0_1px_3px_rgb(0_0_0/0.25)] [&_[data-part=route]_[data-role=code]]:hidden [&_[data-role=kind]]:hidden [&_[data-role=label]]:tracking-[0.02em] [&_[data-role=label]]:normal-case [&_[data-role=countdown]_[data-role=label]]:text-[9.5px] [&_[data-role=clock]]:text-[19px] [&_[data-role=value]]:text-[15px] [&_[data-role=seat-option]]:rounded-none [&_[data-role=seat-option]]:border-ink [&_[data-role=seat-option]]:text-ink"
       >
         <p
           aria-label={`${FLIGHT.from.code} to ${FLIGHT.to.code}`}
