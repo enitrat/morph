@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A dotted line",
+    "description": "A quieter take: the song as a row of dots whose size follows its loudness."
+  },
+  "title": "Dotted loudness",
+  "summary": "Turns the song into a row of dots sized by loudness, fills the ones already played and keeps the times underneath.",
+  "ms": {
+    "agent": 24000,
+    "checks": 7000,
+    "total": 58000
+  }
+}

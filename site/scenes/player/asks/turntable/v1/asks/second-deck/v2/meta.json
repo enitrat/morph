@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Stacked decks, vertical mixer",
+    "description": "Stack the two decks on the left and run a channel strip down the right, like a booth seen from above."
+  },
+  "title": "Stacked, channel strip",
+  "summary": "Stacks deck A over deck B on the left and runs two channel faders and a cue light down a strip on the right.",
+  "ms": {
+    "agent": 55000,
+    "checks": 15000,
+    "total": 97000
+  }
+}

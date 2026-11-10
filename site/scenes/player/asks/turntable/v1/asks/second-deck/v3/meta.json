@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Battle layout",
+    "description": "Two decks face each other across a narrow mixer that holds the transport, the way a DJ sets up for a battle."
+  },
+  "title": "Battle layout, mixer between",
+  "summary": "Turns the decks to face each other across a centre mixer that holds the clock and the crossfader, with the title on a strip above.",
+  "ms": {
+    "agent": 58000,
+    "checks": 16000,
+    "total": 101000
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Chrome and gel",
+    "description": "Make it a 2001 desktop skin: an aqua chrome shell, the cover in a glass bubble, an LCD marquee and gel buttons."
+  },
+  "title": "Chrome and gel",
+  "summary": "Rounds the shell to 44 px in aqua chrome, puts the cover in a glass bubble, scrolls the title across an LCD and turns the buttons to gel.",
+  "ms": {
+    "agent": 57000,
+    "checks": 19000,
+    "total": 103000
+  }
+}

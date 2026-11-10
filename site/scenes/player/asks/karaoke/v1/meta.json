@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "One line, filled as sung",
+    "description": "Show the line being sung, filling word by word in the accent, over a thin progress line."
+  },
+  "title": "One line, filling",
+  "summary": "Shows the line being sung and lights it word by word in the accent, over a 2 px progress line between the times.",
+  "ms": {
+    "agent": 31000,
+    "checks": 7000,
+    "total": 65000
+  }
+}

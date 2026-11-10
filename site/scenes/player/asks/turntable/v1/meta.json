@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A walnut plinth",
+    "description": "Turn the player into a record deck: a walnut plinth, a platter that spins with the song and a tonearm that tracks it."
+  },
+  "title": "Walnut plinth",
+  "summary": "Puts the cover on a spinning record's label, adds a tonearm that crosses the grooves as the song plays and sets the title in Fraunces.",
+  "ms": {
+    "agent": 64000,
+    "checks": 22000,
+    "total": 113000
+  }
+}

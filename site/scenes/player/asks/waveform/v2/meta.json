@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Mirrored peaks",
+    "description": "A mirrored waveform around a centre line, with a playhead and the time riding on it."
+  },
+  "title": "Mirrored, playhead",
+  "summary": "Mirrors the peaks around a centre line, adds a thin playhead with the time on a tag and puts the length at the end.",
+  "ms": {
+    "agent": 28000,
+    "checks": 8000,
+    "total": 63000
+  }
+}

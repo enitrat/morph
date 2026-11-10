@@ -329,4 +329,65 @@
 
 /* palette */
 
-/* clock */
+/* player */
+[data-object="player"] {
+  --color-paper: #111111;
+  --color-ink: #f2f1ec;
+  --color-ink-2: #8a8984;
+  --color-rule: #2b2b2b;
+  --color-accent: #e3261b;
+  --color-on-accent: #ffffff;
+  --font-body: var(--font-grotesk);
+  --font-display: var(--font-grotesk);
+  --font-num: var(--font-grotesk);
+  rotate: 0deg;
+}
+[data-object="player"] [data-role="paper"] {
+  background: var(--color-paper);
+  border: 0;
+  border-radius: 0;
+  text-shadow: none;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.09),
+    0 30px 60px -28px rgb(0 0 0 / 0.9);
+}
+[data-object="player"] [data-role="heading"] {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-style: normal;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+[data-object="player"] [data-role="meta"] {
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+[data-object="player"] [data-role="play"] {
+  border-radius: 0;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  box-shadow: none;
+}
+[data-object="player"] :is([data-role="key"], [data-role="toggle"]) {
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+  box-shadow: inset 0 0 0 1px #3a3a3a;
+}
+[data-object="player"] :is([data-role="fill"], [data-role="head"]) {
+  border-radius: 0;
+  background: var(--color-accent);
+  box-shadow: none;
+}
+[data-object="player"] [data-role="time"] {
+  font-weight: 700;
+  color: var(--color-accent);
+}
+[data-object="player"] [data-role="lyric"] {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}

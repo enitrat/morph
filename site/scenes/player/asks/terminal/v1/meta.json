@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Green phosphor",
+    "description": "Run the player in a terminal: a window bar, the cover through a phosphor screen, key and value lines, and mono controls."
+  },
+  "title": "Green phosphor",
+  "summary": "Sets the player in Space Mono on a phosphor screen with scanlines, prints the track as key and value lines and boxes the controls.",
+  "ms": {
+    "agent": 39000,
+    "checks": 28000,
+    "total": 94000
+  }
+}

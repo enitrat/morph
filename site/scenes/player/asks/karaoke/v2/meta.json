@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "This line and the next",
+    "description": "The sung line in full ink with the next one waiting underneath, and the bar kept for seeking."
+  },
+  "title": "With the next line",
+  "summary": "Sets the sung line in ink with the next one muted under it, and keeps a thin seekable bar with the time.",
+  "ms": {
+    "agent": 33000,
+    "checks": 8000,
+    "total": 68000
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A jelly disc player",
+    "description": "Make it a portable disc player in pink jelly plastic: round, with the cover spinning under a clear lid."
+  },
+  "title": "Jelly disc player",
+  "summary": "Turns the player into a round pink jelly disc player with the cover spinning under a clear lid and an LCD strip below it.",
+  "ms": {
+    "agent": 60000,
+    "checks": 20000,
+    "total": 107000
+  }
+}

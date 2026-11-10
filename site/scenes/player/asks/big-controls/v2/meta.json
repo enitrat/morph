@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Words, not icons",
+    "description": "Wide text buttons that say what they do: Back, Play or Pause, Skip 15."
+  },
+  "title": "Words, not icons",
+  "summary": "Swaps the icons for three wide text keys, Back, Play or Pause and +15 s, and keeps like and loop as outlined chips at the ends.",
+  "ms": {
+    "agent": 24000,
+    "checks": 6000,
+    "total": 57000
+  }
+}

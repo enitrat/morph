@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Big and centred",
+    "description": "Make the lyric the event: large, centred, two lines tall, with tick marks for the song's sections."
+  },
+  "title": "Big, centred",
+  "summary": "Centres the sung line at 16 px, lights it word by word and swaps the bar for a hairline with a tick at each section.",
+  "ms": {
+    "agent": 34000,
+    "checks": 8000,
+    "total": 69000
+  }
+}

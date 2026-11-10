@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A midnight TUI",
+    "description": "A full-screen text interface: panes with titles, the art in its own pane and a status line at the bottom."
+  },
+  "title": "Midnight panes",
+  "summary": "Splits a midnight screen into titled panes for the art and the track, and moves the progress into a status line at the bottom.",
+  "ms": {
+    "agent": 42000,
+    "checks": 27000,
+    "total": 96000
+  }
+}
