@@ -26,7 +26,10 @@ afterEach(() => {
 
 type Request = { op: string; body: Record<string, unknown> | null }
 
-/** A bridge that answers each operation from a script and records what the overlay asked. */
+/**
+ * A bridge that answers each operation from a script and records what the overlay asked. Like a
+ * bridge older than `suggest`, it knows no such operation.
+ */
 function fakeBridge(script: (request: Request, now: PageView) => PageView, start: PageView) {
   let now = page()
   later = () => {
@@ -34,6 +37,7 @@ function fakeBridge(script: (request: Request, now: PageView) => PageView, start
   }
   const requests: Request[] = []
   connect(async ({ op, body: sent }) => {
+    if (op === "suggest") return { status: 404, body: { error: { kind: "not-found" } } }
     const body = (sent ?? null) as Record<string, unknown> | null
     if (op !== "page") requests.push({ op, body })
     now = op === "page" ? now : script({ op, body }, now)
@@ -245,6 +249,59 @@ it("gives sessions a reload left open their pins back from what this browser sto
     (chip) => chip.textContent?.match(/^\d+/)?.[0],
   )
   expect(numbers.filter(Boolean)).toEqual(["4", "5"])
+})
+
+it("offers the bridge's refine suggestions under an empty refine field, and refines with one", async () => {
+  const refined: unknown[] = []
+  const suggested: string[] = []
+  connect(async ({ op, query, body }) => {
+    if (op === "suggest") {
+      suggested.push(query.toString())
+      return {
+        status: 200,
+        body: { suggestions: [{ words: "Highlight the annual savings", kind: "refine" }] },
+      }
+    }
+    if (op === "locate")
+      return { status: 200, body: { sources: [{ path: "app/hero.tsx", line: 1, col: 1 }] } }
+    if (op === "plumbing") return { status: 200, body: { plumbing: [] } }
+    if (op === "refine") refined.push(body)
+    return { status: 200, body: page(hero({ kind: "shown", variant: "v1", edited: false })) }
+  })
+  const ui = await mount({ asks: false })
+  const card = ui.elements[0] as Element
+  Object.assign(card, {
+    __reactFiber$test: {
+      type: "section",
+      memoizedProps: {},
+      _debugStack: { stack: `Error\n    at ${location.origin}/hero.js:1:1` },
+    },
+  })
+  ui.send({
+    kind: "asked",
+    pin: {
+      id: ids.hero,
+      n: null,
+      name: "Hero",
+      words: "Make Hero calmer",
+      file: "hero.tsx",
+      picked: [{ element: card, at: { x: 0, y: 0 } }],
+      baseline: null,
+    },
+  })
+  ui.send({ kind: "page", page: page(hero({ kind: "shown", variant: "v1", edited: false })) })
+  await vi.waitFor(() => expect(ui.text()).toContain("Highlight the annual savings"))
+  expect(suggested).toEqual([`session=${ids.hero}`])
+  ui.press("Highlight the annual savings")
+  await vi.waitFor(() =>
+    expect(refined).toEqual([
+      expect.objectContaining({
+        from: ids.hero,
+        variant: "v1",
+        ask: expect.objectContaining({ words: "Highlight the annual savings" }),
+      }),
+    ]),
+  )
 })
 
 it("pins an ask before locating it, so the next pick is not cleared when the first lands", async () => {

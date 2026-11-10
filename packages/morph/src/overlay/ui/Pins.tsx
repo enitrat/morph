@@ -28,6 +28,7 @@ import { Glyph } from "./Glyph"
 import { useSize } from "./hooks"
 import { Kbd } from "./Kbd"
 import { appear } from "./lib/motion"
+import { enterChips, Suggestions, useSuggestions } from "./Suggestions"
 import { type Area } from "./PageLayer"
 
 const CARD_WIDTH = 340
@@ -427,6 +428,9 @@ function ThreadCard({
   const round = (view?.trail.length ?? 0) + 1
   const last = view?.trail.at(-1)
   const ready = view?.variants.filter((variant) => variant.state === "ready").length ?? 0
+  const field = useRef<HTMLInputElement>(null)
+  const chips = useRef<HTMLDivElement>(null)
+  const suggestions = useSuggestions(from === null ? null : pin.id)
   const tether =
     spot.docked && pinAt !== null && size !== null
       ? { from: { x: pinAt.x + PIN / 2, y: pinAt.y + PIN / 2 }, to: nearestOn(spot, size, pinAt) }
@@ -523,6 +527,7 @@ function ThreadCard({
         <label className="flex h-8 items-center gap-2 rounded-lg bg-[rgb(0_0_0/0.25)] px-2.5 shadow-[inset_0_0_0_1px_var(--line)]">
           <Glyph name="ask" size={13} />
           <input
+            ref={field}
             value={pin.refine}
             disabled={from === null}
             placeholder={
@@ -537,6 +542,8 @@ function ThreadCard({
               if (event.key === "Enter" && from !== null) {
                 event.preventDefault()
                 actions.refine(pin, from)
+              } else if (event.key === "ArrowDown" && pin.refine === "") {
+                if (enterChips(chips.current)) event.preventDefault()
               } else if (event.key === "Escape") {
                 event.preventDefault()
                 event.stopPropagation()
@@ -545,6 +552,16 @@ function ThreadCard({
             }}
           />
         </label>
+        {from !== null && pin.refine === "" && (
+          <Suggestions
+            ref={chips}
+            suggestions={suggestions}
+            onPick={(words) => {
+              actions.refine({ ...pin, refine: words }, from)
+            }}
+            onLeave={() => field.current?.focus()}
+          />
+        )}
         <div className="flex items-center gap-1.5">
           <button
             type="button"

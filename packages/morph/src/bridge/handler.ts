@@ -6,12 +6,13 @@ import { z } from "zod"
 import { MorphConfigInputSchema, type MorphConfigInput } from "../core/config"
 import { operations, type Operation } from "../protocol"
 import { ComponentName } from "../dial/props"
-import { RepoPath, SourceLoc, type Refusal } from "../variant/model"
+import { RepoPath, SessionId, SourceLoc, type Refusal } from "../variant/model"
 import { designSystemOf, tagClasses } from "./dial"
 import { configAt, type Host, openRepo } from "./git"
 import { guard } from "./guard"
 import { componentUses, propControls, tagAttributes } from "./props"
 import { ask, discard, type Done, keep, page, refine, retry, show } from "./session"
+import { refineSuggestions, siteSuggestions } from "./suggest"
 import { type Bundler, type Frame } from "./symbolicate"
 import { writeReleased, type WriteFailure } from "./write"
 
@@ -125,6 +126,16 @@ const OPS = {
     run: async (request, repo) => writeReleased(repo, await body(request, operations.dial.request)),
   },
   page: { method: "GET", run: (_, repo) => page(repo) },
+  suggest: {
+    method: "GET",
+    async run(request, repo) {
+      const session = new URL(request.url).searchParams.get("session")
+      if (session === null)
+        return { ok: true, value: { suggestions: await siteSuggestions(repo, siteOf(request)) } }
+      SessionId.parse(session)
+      return { ok: true, value: { suggestions: refineSuggestions(repo) } }
+    },
+  },
   ask: {
     method: "POST",
     run: async (request, repo) =>

@@ -9,6 +9,7 @@ import { Glyph, type GlyphName } from "./Glyph"
 import { fileOf, useSize, useSource } from "./hooks"
 import { Kbd } from "./Kbd"
 import { appear } from "./lib/motion"
+import { enterChips, Suggestions, useSuggestions } from "./Suggestions"
 import { type Area, frameBox } from "./PageLayer"
 
 const TOOLS: { id: SketchTool; glyph: GlyphName; label: string }[] = [
@@ -66,8 +67,10 @@ export function Composer({
     input.focus({ preventScroll: true })
     input.setSelectionRange(input.value.length, input.value.length)
   }, [composer.target, shown])
-  const send = () => {
-    void ask({ target: composer.target, words: draft.words, marks: draft.marks }, dispatch)
+  const chips = useRef<HTMLDivElement>(null)
+  const suggestions = useSuggestions(source)
+  const send = (words = draft.words) => {
+    void ask({ target: composer.target, words, marks: draft.marks }, dispatch)
   }
   const marks = draft.marks.length
   return (
@@ -125,6 +128,8 @@ export function Composer({
           if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault()
             send()
+          } else if (event.key === "ArrowDown" && draft.words === "") {
+            if (enterChips(chips.current)) event.preventDefault()
           } else if (event.key === "Escape") {
             event.preventDefault()
             event.stopPropagation()
@@ -132,6 +137,14 @@ export function Composer({
           }
         }}
       />
+      {draft.words === "" && (
+        <Suggestions
+          ref={chips}
+          suggestions={suggestions}
+          onPick={send}
+          onLeave={() => field.current?.focus()}
+        />
+      )}
       <div className="flex items-center gap-1">
         <span
           className="flex gap-0.5 rounded-md bg-surface-2 p-0.5 shadow-[inset_0_0_0_1px_var(--line)]"
@@ -167,7 +180,9 @@ export function Composer({
         </span>
         <button
           type="button"
-          onClick={send}
+          onClick={() => {
+            send()
+          }}
           disabled={draft.words.trim() === "" && marks === 0}
           className="ring-focus flex h-7 items-center gap-1.5 rounded-md bg-accent px-2.5 text-[12.5px] font-semibold text-on-accent transition-transform duration-150 active:scale-[0.97] disabled:opacity-40"
         >

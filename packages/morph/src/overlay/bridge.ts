@@ -101,6 +101,11 @@ export const bridge = {
   ask: (ask: Ask) => post("ask", ask),
   refine: (refine: Refine) => post("refine", refine),
   page: () => call("page"),
+  suggest: (about: SourceLoc | SessionId) =>
+    call(
+      "suggest",
+      typeof about === "string" ? new URLSearchParams({ session: about }) : siteQuery(about),
+    ),
   show: (id: SessionId, variant: Choice) => post("show", { id, variant }),
   retry: (id: SessionId, variant: VariantId) => post("retry", { id, variant }),
   keep: (id: SessionId, variant: VariantId) => post("keep", { id, variant }),

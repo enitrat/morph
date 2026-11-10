@@ -147,6 +147,13 @@ export const Ask = z.object({
 })
 export type Ask = z.infer<typeof Ask>
 
+/** Words offered to ask with: a team's house prompt, an earlier ask, or a refinement. */
+export const Suggestion = z.object({
+  words: z.string().trim().min(1).max(120),
+  kind: z.enum(["house", "recent", "refine"]),
+})
+export type Suggestion = z.infer<typeof Suggestion>
+
 /** One way to make the change: a short title the panel shows, and the line the agent follows. */
 export const Direction = z.object({
   title: z.string().min(1).describe("At most six words naming this direction."),

@@ -144,7 +144,7 @@ async function targetOf(repo: Repo, session: Session, variant: VariantId): Promi
 }
 
 /** The open sessions, oldest ask first. */
-async function openSessionFiles(repo: Repo): Promise<Session[]> {
+export async function openSessionFiles(repo: Repo): Promise<Session[]> {
   const sessions = await Promise.all(
     (await openSessions(repo)).map((id) => readSessionFile(repo, id)),
   )

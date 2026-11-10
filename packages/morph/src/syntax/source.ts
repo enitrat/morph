@@ -242,6 +242,33 @@ export function jsxTags(text: string): Tag[] {
   })
 }
 
+/**
+ * The components whose definitions hold the 1-based `line` and `col`, innermost first: function
+ * declarations and capitalised variables, such as `const Card = forwardRef(…)`.
+ */
+export function componentsAround(text: string, line: number, col: number): string[] {
+  const root = source(text)
+  if (!root) return []
+  const at = (point: { line: number; column: number }) => [point.line, point.column + 1] as const
+  const before = (a: readonly [number, number], b: readonly [number, number]) =>
+    a[0] < b[0] || (a[0] === b[0] && a[1] <= b[1])
+  const site = [line, col] as const
+  return walk(root)
+    .flatMap((node) => {
+      const name =
+        node.type === "FunctionDeclaration" ||
+        (node.type === "VariableDeclarator" && node.init != null)
+          ? nameOf(node.id)
+          : undefined
+      if (!upper(name) || !node.loc) return []
+      return before(at(node.loc.start), site) && before(site, at(node.loc.end))
+        ? [{ name, start: node.start ?? 0 }]
+        : []
+    })
+    .toSorted((a, b) => b.start - a.start)
+    .map(({ name }) => name)
+}
+
 /** Counts JSX uses of a component and its local import aliases. */
 export function componentUseCount(text: string, component: string, definedHere: boolean): number {
   const root = source(text)

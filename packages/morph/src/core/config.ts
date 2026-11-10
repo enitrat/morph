@@ -198,6 +198,13 @@ export const MorphConfig = z.object({
     .default([
       "Style with the Tailwind utilities and ds tokens the code already uses. Never add a colour, a token, or an arbitrary value.",
     ]),
+  /**
+   * House prompts the composer offers, keyed by component name, or `*` for every component:
+   * `{ Button: ["Use our destructive pattern"] }`.
+   */
+  prompts: z
+    .record(z.string().min(1), z.array(z.string().trim().min(1).max(120)).max(6))
+    .default({}),
   /** Call sites here are rarely what a designer means when picking an element. */
   plumbing: z.array(PathRule).default([]),
   checks: z.object({

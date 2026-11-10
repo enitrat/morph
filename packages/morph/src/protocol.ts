@@ -13,10 +13,12 @@ import {
   PageView,
   SourceLoc,
   Refusal,
+  Suggestion,
   VariantId,
 } from "./variant/model"
 
 export const MAX_LOCATE_FRAMES = 64
+export const MAX_SUGGESTIONS = 6
 const SessionRef = z.object({ id: SessionId })
 const ChoiceRef = SessionRef.extend({ variant: Choice })
 const VariantRef = SessionRef.extend({ variant: VariantId })
@@ -46,6 +48,8 @@ export const operations = {
   prop: { request: PropWrite, response: PropWritten },
   dial: { request: DialWrite, response: Dialed },
   page: { response: PageView },
+  /** A GET with `path`, `line` and `col` naming a JSX site, or `session` for its refine field. */
+  suggest: { response: z.object({ suggestions: z.array(Suggestion).max(MAX_SUGGESTIONS) }) },
   ask: { request: Ask, response: PageView },
   refine: { request: Refine, response: PageView },
   show: { request: ChoiceRef, response: PageView },
