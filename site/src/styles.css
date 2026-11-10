@@ -23,6 +23,14 @@ html {
   background-position: 8px 8px;
 }
 
+/*
+ * Hit testing reaches the new page during a transition, so the overlay's re-pick of a swapped
+ * target finds the new design rather than the transition's own layer.
+ */
+::view-transition {
+  pointer-events: none;
+}
+
 ::view-transition-group(*) {
   animation-duration: 520ms;
   animation-timing-function: var(--ease-morph);

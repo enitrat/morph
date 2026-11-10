@@ -34,5 +34,11 @@ export function Slot({ stage, scene }: { stage: Stage; scene: SceneNode }) {
     }
   }, [revision, view.key])
 
-  return <view.Entry />
+  // The overlay names a pick after the outermost component it is the root of; without an element
+  // of its own here, the scene's root would read as `Slot`.
+  return (
+    <div className="contents">
+      <view.Entry />
+    </div>
+  )
 }
