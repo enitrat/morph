@@ -1,0 +1,80 @@
+{
+  "name": "@enitrat/morph",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "bin": {
+    "morph": "./dist/morph.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "engines": {
+    "node": "^22.18.0 || >=24.11.0"
+  },
+  "sideEffects": false,
+  "exports": {
+    "./config": {
+      "types": "./dist/types/core/config.d.ts",
+      "default": "./dist/config.js"
+    },
+    "./next": {
+      "types": "./dist/types/next/index.d.ts",
+      "default": "./dist/next.js"
+    },
+    "./package.json": "./package.json",
+    "./vite": {
+      "types": "./dist/types/vite/index.d.ts",
+      "default": "./dist/vite.js"
+    },
+    "./widget": {
+      "types": "./dist/types/widget/index.d.ts",
+      "default": "./dist/widget.js"
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs && tsc -p tsconfig.build.json",
+    "prepare": "npm run build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "generate": "tsx scripts/generate.ts",
+    "morph": "tsx src/bin/morph.ts"
+  },
+  "dependencies": {
+    "@babel/parser": "^8.1.0",
+    "get-tsconfig": "^4.14.3",
+    "source-map-js": "^1.2.2",
+    "tsx": "^4.23.15",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@babel/types": "^8.1.0",
+    "@tailwindcss/node": "4.3.5",
+    "@tailwindcss/oxide": "4.3.5",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.28.2",
+    "geist": "^1.9.2",
+    "happy-dom": "^21.0.4",
+    "motion": "^14.10.1",
+    "oxfmt": "^0.74.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "4.3.5",
+    "typescript": "7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vite": ">=7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  }
+}

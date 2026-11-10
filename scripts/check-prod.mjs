@@ -1,21 +1,21 @@
-// Builds both examples for production and fails if any output file holds a Tune-specific string:
-// Tune must run in development only and leave nothing in a production build.
+// Builds both examples for production and fails if any output file holds a Morph-specific string:
+// Morph must run in development only and leave nothing in a production build.
 import { execFileSync } from "node:child_process"
 import { readdirSync, readFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
 
 const ROOT = join(import.meta.dirname, "..")
 const TELLTALES = [
-  "tune-widget-c0rr3ct10n",
-  "tune-root",
-  "x-tune",
-  "/api/tune",
-  "/__tune",
-  "virtual:tune",
-  "mountTune",
-  "TuneWidget",
-  "@enitrat/tune",
-  "packages/tune/",
+  "morph-widget-c0rr3ct10n",
+  "morph-root",
+  "x-morph",
+  "/api/morph",
+  "/__morph",
+  "virtual:morph",
+  "mountMorph",
+  "MorphWidget",
+  "@enitrat/morph",
+  "packages/morph/",
 ]
 const EXAMPLES = [
   { name: "next-example", out: "examples/next/.next", skip: ["cache", "dev"] },
@@ -44,7 +44,7 @@ for (const { name, out, skip } of EXAMPLES) {
   rmSync(join(ROOT, out), { recursive: true, force: true })
   execFileSync("pnpm", ["--filter", name, "build"], { cwd: ROOT, stdio: "inherit" })
   const files = filesIn(join(ROOT, out), skip)
-  // A source map holds the app's own source text, where the dev-only branch that mounts Tune is
+  // A source map holds the app's own source text, where the dev-only branch that mounts Morph is
   // written; only the files it lists show what was bundled.
   const text = files.map((file) => {
     const body = readFileSync(file, "latin1")
@@ -59,7 +59,7 @@ for (const { name, out, skip } of EXAMPLES) {
       (telltale) => `${file}: ${telltale}`,
     ),
   )
-  console.log(`${name}: ${files.length} files, ${hits.length} Tune strings`)
+  console.log(`${name}: ${files.length} files, ${hits.length} Morph strings`)
   for (const hit of hits) console.error(`  ${hit}`)
   failed ||= hits.length > 0
 }

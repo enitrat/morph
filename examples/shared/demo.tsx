@@ -253,7 +253,7 @@ export function Demo() {
       script={script}
       keys="top"
       cursor={{ at: REST }}
-      className="tune-demo"
+      className="morph-demo"
     >
       {(s, _rect, layout) => (
         <Window url="acme.dev/pricing" className="demo-window">

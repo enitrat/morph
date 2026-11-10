@@ -91,7 +91,7 @@ function PricingCard({
   )
 }
 
-/** A marketing page built from the shared components, for driving Tune against real tokens. */
+/** A marketing page built from the shared components, for driving Morph against real tokens. */
 export function Tour() {
   return (
     <main className="mx-auto flex max-w-264 flex-col gap-24 px-6 pb-32">

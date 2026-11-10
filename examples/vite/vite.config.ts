@@ -1,10 +1,10 @@
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
-import { tune } from "@enitrat/tune/vite"
+import { morph } from "@enitrat/morph/vite"
 import { defineConfig } from "vite"
 
-import tuneConfig from "./tune.config.ts"
+import morphConfig from "./morph.config.ts"
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), tune(tuneConfig)],
+  plugins: [react(), tailwindcss(), morph(morphConfig)],
 })

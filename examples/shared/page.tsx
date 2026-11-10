@@ -5,9 +5,9 @@ export function Page() {
     <main className="site">
       <header className="site-header">
         <a className="site-name" href="#top">
-          Tune
+          Morph
         </a>
-        <a href="https://github.com/enitrat/tune" aria-label="Tune on GitHub">
+        <a href="https://github.com/enitrat/morph" aria-label="Morph on GitHub">
           GitHub ↗
         </a>
       </header>
@@ -17,29 +17,29 @@ export function Page() {
           Point at an element, describe a change, and see variants on your live page. Fine-tune the
           details and keep the one you like.
         </p>
-        <p className="install-label">Install Tune in your project:</p>
+        <p className="install-label">Install Morph in your project:</p>
         <div className="command">
           <span>$</span>
-          <code>pnpm add -D &quot;github:enitrat/tune#path:/packages/tune&quot;</code>
+          <code>pnpm add -D &quot;github:enitrat/morph#path:/packages/morph&quot;</code>
         </div>
       </section>
       <div
         className="demo-wrap"
         role="img"
-        aria-label="Illustration of selecting an element, requesting a change, and previewing a variant in Tune."
+        aria-label="Illustration of selecting an element, requesting a change, and previewing a variant in Morph."
       >
         <Demo />
       </div>
       <div className="below">
         <p>
-          Built for the way you already work. Tune uses your components, your design tokens, and
+          Built for the way you already work. Morph uses your components, your design tokens, and
           real code.
         </p>
-        <a href="https://github.com/enitrat/tune#install">Read the setup guide ↗</a>
+        <a href="https://github.com/enitrat/morph#install">Read the setup guide ↗</a>
       </div>
       <footer>
-        <a href="https://github.com/enitrat/tune">GitHub</a>
-        <a href="https://github.com/enitrat/tune#install">Docs</a>
+        <a href="https://github.com/enitrat/morph">GitHub</a>
+        <a href="https://github.com/enitrat/morph#install">Docs</a>
         <span>React · Next.js · Vite</span>
       </footer>
     </main>

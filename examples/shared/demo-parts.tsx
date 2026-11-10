@@ -5,7 +5,7 @@ export type Variant = "orig" | "A" | "B"
 
 const PATHS = {
   ask: "M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z",
-  tune: "M4 8h9M17 8h3M4 16h3M11 16h9M15 5v6M9 13v6",
+  morph: "M4 8h9M17 8h3M4 16h3M11 16h9M15 5v6M9 13v6",
   specs: "M4 16L16 4l4 4L8 20zM9 9l2 2M12 6l2 2",
   sketch: "M4 20l4-1 11-11-3-3L5 16z",
   check: "M5 12.5l4.5 4.5L19 7",
@@ -116,7 +116,7 @@ export function ActionBar({ file, side }: { file: string; side: "below" | "above
         <Glyph name="ask" /> Ask <kbd>A</kbd>
       </span>
       <span>
-        <Glyph name="tune" /> Tune <kbd>T</kbd>
+        <Glyph name="morph" /> Morph <kbd>T</kbd>
       </span>
       <span>
         <Glyph name="specs" /> Specs <kbd>S</kbd>
@@ -211,7 +211,7 @@ export function Sidebar({ show }: { show: boolean }) {
           Specs <kbd>S</kbd>
         </b>
         <span>
-          Tune <kbd>T</kbd>
+          Morph <kbd>T</kbd>
         </span>
         <span>
           Layers <kbd>L</kbd>

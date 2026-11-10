@@ -13,7 +13,7 @@
     "example-shared": "workspace:*"
   },
   "devDependencies": {
-    "@enitrat/tune": "workspace:*",
+    "@enitrat/morph": "workspace:*",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
