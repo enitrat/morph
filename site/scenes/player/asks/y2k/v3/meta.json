@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Graphite pocket player",
+    "description": "Make it a pocket MP3 player: a graphite body, a lime backlit screen, a speaker grille and gel keys on a rail."
+  },
+  "title": "Graphite, lime screen",
+  "summary": "Turns the player into a graphite pocket player with the cover on a lime backlit screen, a speaker grille and lime gel keys.",
+  "ms": {
+    "agent": 62000,
+    "checks": 21000,
+    "total": 110000
+  }
+}
