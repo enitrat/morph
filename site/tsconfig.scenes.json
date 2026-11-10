@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "rootDirs": [
+      "./scenes/player",
       "./scenes/receipt",
       "./scenes/receipt/asks/invoice/v1",
       "./scenes/receipt/asks/invoice/v2",

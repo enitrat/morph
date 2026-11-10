@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Two decks and a mixer",
+    "description": "Shrink the deck and add a second one beside it, with a mixer whose crossfader follows the song into the next track."
+  },
+  "title": "Side by side, crossfader",
+  "summary": "Puts two small decks side by side with Static Bloom cued on B, and a mixer whose crossfader and level meters move with the song.",
+  "ms": {
+    "agent": 52000,
+    "checks": 14000,
+    "total": 93000
+  }
+}

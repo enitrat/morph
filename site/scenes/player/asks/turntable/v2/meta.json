@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Brushed aluminium, sleeve out",
+    "description": "A silver deck with the sleeve propped above the platter and a plain orange label on the record."
+  },
+  "title": "Aluminium, sleeve out",
+  "summary": "Moves the cover to a tilted sleeve over a brushed aluminium deck, prints a plain orange label and adds a strobe light.",
+  "ms": {
+    "agent": 61000,
+    "checks": 20000,
+    "total": 108000
+  }
+}

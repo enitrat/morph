@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Matte black, cropped close",
+    "description": "Fill the card with the record: a huge platter cropped by the edge, a long tonearm, the title set big underneath."
+  },
+  "title": "Matte black, cropped close",
+  "summary": "Crops a 400 px record off the top left with the cover on its label, swings a long arm across it and sets the title at 34 px.",
+  "ms": {
+    "agent": 67000,
+    "checks": 21000,
+    "total": 115000
+  }
+}
