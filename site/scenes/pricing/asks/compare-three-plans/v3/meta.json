@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Stacked plan rows",
+    "description": "Stack the plans as wide rows with features as chips, for a narrow column of reading."
+  },
+  "title": "Stacked rows with feature chips",
+  "summary": "Lays each plan out as one row: name, price, features as chips and the button on the right. Pro gets an indigo ring and the strongest button.",
+  "ms": {
+    "agent": 124000,
+    "checks": 21000,
+    "total": 164000
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Three columns, Pro raised",
+    "description": "Set Starter, Pro and Enterprise side by side and lift Pro as the plan most teams pick."
+  },
+  "title": "Three columns with a raised Pro",
+  "summary": "Adds Starter and Enterprise beside Pro. Pro sits on a dark surface with a Most popular badge so the eye lands there first.",
+  "ms": {
+    "agent": 78000,
+    "checks": 14000,
+    "total": 111000
+  }
+}
