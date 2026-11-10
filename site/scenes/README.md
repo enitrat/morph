@@ -68,10 +68,19 @@ render every part. To make that hold:
 3. **Parts mark their anatomy with `data-role`**, so a layout or a table style can reach inside
    without knowing which variant is on the page:
 
-| Part           | Root                | Roles inside                                                                                                                               |
-| -------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ReceiptItems` | `data-part="items"` | `line` (one item), `name`, `qty`, `price`, `group` (a course heading), `photo`                                                             |
-| `ReceiptTotal` | `data-part="total"` | `row` (subtotal, tip), `label`, `tips` (the control), `tip` (a button, `aria-pressed`), `grand` (the total), `amount` (its number), `rule` |
+| Part             | Root                   | Roles inside                                                                                                                                                                                                         |
+| ---------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ReceiptItems`   | `data-part="items"`    | `line` (one item), `name`, `qty`, `price`, `group` (a course heading), `photo`                                                                                                                                       |
+| `ReceiptTotal`   | `data-part="total"`    | `row` (subtotal, tip), `label`, `tips` (the control), `tip` (a button, `aria-pressed`), `grand` (the total), `amount` (its number), `rule`                                                                           |
+| `PlayerCover`    | `data-part="cover"`    | `art` (the sleeve, an SVG that fills whatever box the layout gives it, round or square)                                                                                                                              |
+| `PlayerProgress` | `data-part="progress"` | `track` (the seekable element, `role="slider"`), `fill` (the played portion, or each played bar of a waveform), `head` (the playhead), `time` (elapsed), `remain` (time left or the length), `lyric` (the sung line) |
+| `PlayerControls` | `data-part="controls"` | `play` (play and pause, `aria-pressed`), `key` (restart, skip), `toggle` (like, loop, `aria-pressed`)                                                                                                                |
+
+The player's parts size to their box and never set their own height budget: a layout gives the
+cover its box and leaves at least 56 px for the progress and 60 px for the controls. Its playback,
+like and loop live in `player/data.ts`, so the song keeps playing through every morph. Hardware a
+layout draws around a part (an LCD, a speaker rail) sets the ink tokens locally, so a table style
+recolours the shell and the screen keeps its own ink.
 
 A total that draws its `grand` as a shape says so with `data-shape`: `stamp` for a round seal,
 `band` for a filled bar. Table styles restyle those through the attribute, never through the
@@ -114,7 +123,7 @@ plain selectors: `[data-object="receipt"] [data-role="grand"] { … }`. No `@key
 
 Each table variant must change more than colour: type, borders, density, case, alignment. Write
 it per object, in the object's own block, between the markers already in every theme file:
-`/* board */`, `/* placard */`, `/* receipt */`, `/* pass */`, `/* palette */`, `/* clock */`.
+`/* board */`, `/* placard */`, `/* receipt */`, `/* pass */`, `/* palette */`, `/* player */`.
 An object added later fills its own block in the original `theme.css` (usually empty) and in each
 of the nine variants, and nothing else. Its rules must hold over every layout and part variant of
 that object, so prefer roles and tokens over layout-specific selectors.
