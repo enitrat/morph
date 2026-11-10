@@ -111,6 +111,7 @@ function Hint({ state }: { state: State }) {
             ]
           : state.selection.kind === "element"
             ? [
+                <span key="a">{k("A")} Ask</span>,
                 <span key="p">{k("⇧↵")} parent</span>,
                 <span key="c">{k("↵")} child</span>,
                 <span key="s">{k("⇥")} sibling</span>,

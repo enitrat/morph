@@ -108,7 +108,7 @@ async function mount({ asks = true } = {}) {
     [...host.querySelectorAll("[role=toolbar] button")]
       .find((entry) => entry.textContent?.includes(name))
       ?.textContent?.replace(name, " ")
-  return { host, text, press, chip }
+  return { host, text, press, chip, send: (event: Event) => send(event), elements }
 }
 
 it("shows two sessions on the page at once, each pin and chip with its letter", async () => {
@@ -128,6 +128,21 @@ it("shows two sessions on the page at once, each pin and chip with its letter", 
     pin.getAttribute("aria-label"),
   )
   expect(pins).toEqual(["Pin 1, Hero, A", "Pin 2, Button, B"])
+})
+
+it("opens the first ask's card, so the flip keys are in view when its variants land", async () => {
+  fakeBridge((_, now) => now, page(hero({ kind: "original" }), button({ kind: "original" })))
+  const ui = await mount()
+  await vi.waitFor(() => expect(ui.chip("Hero")).toBeDefined())
+  expect(ui.host.querySelector("[role=dialog]")?.getAttribute("aria-label")).toBe("Pin 1, Hero")
+  expect(ui.text()).toContain("0–3 flip")
+})
+
+it("leads the hint for a picked element with A to ask", async () => {
+  fakeBridge((_, now) => now, page())
+  const ui = await mount({ asks: false })
+  ui.send({ kind: "selected", element: ui.elements[0] as Element })
+  await vi.waitFor(() => expect(ui.text()).toMatch(/^A Ask.*parent/))
 })
 
 it("takes the files over, names the holder while waiting, and returns when flipped back", async () => {

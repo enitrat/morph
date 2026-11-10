@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 
 import { type Event, initial, reduce, type State } from "./model"
+import { ids } from "./session-fixtures"
+import { type NewPin } from "./sessions"
 
 const run = (...events: Event[]) => events.reduce(reduce, initial)
 const open = (...events: Event[]) => run({ kind: "toggled" }, ...events)
@@ -146,6 +148,34 @@ describe("the composer", () => {
 
   it("closes when another element is selected", () => {
     expect(reduce(asking, { kind: "selected", element: button }).composer).toBeNull()
+  })
+})
+
+describe("the first ask", () => {
+  const pin = (id: NewPin["id"]): NewPin => ({
+    id,
+    n: null,
+    name: "Card",
+    words: "Calmer",
+    file: null,
+    picked: [],
+    baseline: null,
+  })
+
+  it("opens its card so the flip keys show, and later asks leave the card alone", () => {
+    const first = open({ kind: "asked", pin: pin(ids.hero) })
+    expect(first.sessions.card).toBe(ids.hero)
+    const closed = reduce(first, { kind: "escape" })
+    expect(reduce(closed, { kind: "asked", pin: pin(ids.button) }).sessions.card).toBeNull()
+  })
+
+  it("counts once per page load, not once per opening of Morph", () => {
+    const reopened = open(
+      { kind: "asked", pin: pin(ids.hero) },
+      { kind: "toggled" },
+      { kind: "toggled" },
+    )
+    expect(reduce(reopened, { kind: "asked", pin: pin(ids.button) }).sessions.card).toBeNull()
   })
 })
 

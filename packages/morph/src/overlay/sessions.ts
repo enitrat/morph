@@ -48,6 +48,8 @@ export interface Sessions {
   notice: Notice | null
   /** The highest number a pin has had, so a number is never given to a second session. */
   numbered: number
+  /** Whether this page load has asked yet. The first ask opens its card to show where variants land. */
+  asked: boolean
 }
 
 export const NO_SESSIONS: Sessions = {
@@ -56,6 +58,7 @@ export const NO_SESSIONS: Sessions = {
   card: null,
   notice: null,
   numbered: 0,
+  asked: false,
 }
 
 /** A pin as an ask or a reload makes it, before the overlay numbers it. */
@@ -128,7 +131,11 @@ export function stepSessions(state: Sessions, event: SessionEvent): Sessions {
     case "page":
       return onPage(state, event.page)
     case "asked":
-      return add(state, event.pin, false)
+      return {
+        ...add(state, event.pin, false),
+        card: state.asked ? state.card : event.pin.id,
+        asked: true,
+      }
     case "rejoined":
       // Stored numbers first, so a session with none is numbered after them.
       return event.pins
