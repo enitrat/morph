@@ -14,7 +14,7 @@ export function Player() {
         data-role="paper"
         className="flex h-full flex-col rounded-[26px] border border-white/[0.07] bg-paper p-[18px] font-body text-ink shadow-[0_30px_50px_-24px_rgb(0_0_0/0.85),0_2px_6px_rgb(0_0_0/0.4)]"
       >
-        <div className="h-[212px] shrink-0 overflow-hidden rounded-[14px] shadow-[0_10px_24px_-10px_rgb(0_0_0/0.7)]">
+        <div className="h-[204px] shrink-0 overflow-hidden rounded-[14px] shadow-[0_10px_24px_-10px_rgb(0_0_0/0.7)]">
           <PlayerCover />
         </div>
         <header className="mt-4 min-w-0">

@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Bars from the floor",
+    "description": "Replace the bar with the song's waveform: rounded bars from a baseline, filled as the song plays."
+  },
+  "title": "Waveform bars",
+  "summary": "Draws 56 rounded peaks from a baseline, fills them in the accent as the song plays and lets a drag anywhere on them seek.",
+  "ms": {
+    "agent": 26000,
+    "checks": 7000,
+    "total": 60000
+  }
+}

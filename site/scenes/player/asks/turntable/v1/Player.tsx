@@ -21,20 +21,20 @@ export function Player() {
         data-role="paper"
         className="relative flex h-full flex-col overflow-hidden rounded-[18px] bg-paper bg-[linear-gradient(180deg,rgb(255_255_255/0.1),transparent_30%,rgb(0_0_0/0.28)),repeating-linear-gradient(92deg,rgb(0_0_0/0.08)_0_2px,transparent_2px_7px,rgb(255_220_170/0.05)_7px_9px,transparent_9px_15px),linear-gradient(100deg,#6b3f22,#8a5530_30%,#6e4024_55%,#8f5a33_80%,#6a3d20)] p-4 font-body text-ink shadow-[inset_0_0_0_1px_rgb(255_255_255/0.12),inset_0_-6px_14px_rgb(0_0_0/0.35),0_30px_50px_-24px_rgb(0_0_0/0.9)]"
       >
-        <div className="relative h-[236px] shrink-0">
-          <div className="absolute top-0 left-0 size-[228px] rounded-full bg-[conic-gradient(#9a9a9a,#e8e8e8,#8d8d8d,#d9d9d9,#9a9a9a)] shadow-[0_10px_24px_rgb(0_0_0/0.45),inset_0_0_0_1px_rgb(255_255_255/0.4)]">
+        <div className="relative h-[212px] shrink-0">
+          <div className="absolute top-0 left-0 size-[214px] rounded-full bg-[conic-gradient(#9a9a9a,#e8e8e8,#8d8d8d,#d9d9d9,#9a9a9a)] shadow-[0_10px_24px_rgb(0_0_0/0.45),inset_0_0_0_1px_rgb(255_255_255/0.4)]">
             <div
               className="absolute inset-[8px] rotate-(--spin) rounded-full bg-[repeating-radial-gradient(circle,#121212_0_1.2px,#1d1d1d_1.6px_2.8px)] shadow-[inset_0_0_0_5px_#0c0c0c,inset_0_0_0_6px_#2a2a2a] motion-reduce:rotate-0"
               style={{ "--spin": `${(at * RPM) % 360}deg` } as CSSProperties}
             >
-              <div className="absolute top-1/2 left-1/2 size-[80px] -translate-1/2 overflow-hidden rounded-full">
+              <div className="absolute top-1/2 left-1/2 size-[76px] -translate-1/2 overflow-hidden rounded-full">
                 <PlayerCover />
               </div>
             </div>
             <div className="pointer-events-none absolute inset-[8px] rounded-full bg-[conic-gradient(from_25deg,transparent_0_6%,rgb(255_255_255/0.13)_11%,transparent_17%_52%,rgb(255_255_255/0.1)_58%,transparent_64%)] [mask:radial-gradient(circle,transparent_37%,#000_38%)]" />
             <div className="absolute top-1/2 left-1/2 size-2 -translate-1/2 rounded-full bg-[radial-gradient(circle_at_35%_35%,#fff,#888)]" />
           </div>
-          <Tonearm angle={25 + played * 18} />
+          <Tonearm angle={27 + played * 17} />
           <p className="absolute right-0 bottom-1 flex gap-1 font-num text-[9px] font-semibold">
             <span className="rounded-[3px] px-1.5 py-1 text-accent shadow-[inset_0_0_0_1px_currentColor]">
               33
@@ -44,13 +44,13 @@ export function Player() {
             </span>
           </p>
         </div>
-        <header className="mt-3 min-w-0">
+        <header className="mt-2 min-w-0">
           <p data-role="meta" className="font-num text-[10px] tracking-[0.14em] text-ink-2">
             SIDE A · 0{TRACK.number} · 33⅓
           </p>
           <h3
             data-role="heading"
-            className="mt-1 truncate font-display text-[24px]/[1.05] font-semibold tracking-[-0.01em]"
+            className="mt-1 truncate font-display text-[23px]/[1.05] font-semibold tracking-[-0.01em]"
           >
             {TRACK.title}
           </h3>
@@ -71,7 +71,7 @@ export function Player() {
 function Tonearm({ angle }: { angle: number }) {
   return (
     <div
-      className="absolute top-[22px] left-[250px] size-0 rotate-(--arm) transition-[rotate] duration-500 ease-out"
+      className="absolute top-[20px] left-[244px] size-0 rotate-(--arm) transition-[rotate] duration-500 ease-out"
       style={{ "--arm": `${angle}deg` } as CSSProperties}
       aria-hidden
     >

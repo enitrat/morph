@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "One wide bar",
+    "description": "A single full-width play bar that also reads out the time, with square keys at its ends."
+  },
+  "title": "One wide bar",
+  "summary": "Makes play a full-width 52 px bar that reads Play or Pause with the time, with square restart and skip keys at its ends.",
+  "ms": {
+    "agent": 23000,
+    "checks": 6000,
+    "total": 56000
+  }
+}

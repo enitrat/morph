@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "One big play",
+    "description": "A large play button in the middle with the skip keys on either side, and the like and loop toggles out of the way."
+  },
+  "title": "One big play",
+  "summary": "Sets play in a 64 px ring that fills as the song plays, puts the skips on soft discs beside it and moves like and loop to the edges.",
+  "ms": {
+    "agent": 22000,
+    "checks": 6000,
+    "total": 55000
+  }
+}

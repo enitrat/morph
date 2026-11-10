@@ -54,6 +54,15 @@ export function lyricAt(seconds: number): { line: string; next: string; progress
   }
 }
 
+/** Where each part of the song starts, in seconds. */
+export const SECTIONS: readonly { readonly at: number; readonly name: string }[] = [
+  { at: 0, name: "Intro" },
+  { at: 9, name: "Verse" },
+  { at: 53, name: "Chorus" },
+  { at: 86, name: "Bridge" },
+  { at: 150, name: "Outro" },
+]
+
 /** The waveform's peaks, 0 to 1, one per bar. Deterministic, so every variant draws the same song. */
 export const PEAKS: readonly number[] = Array.from({ length: 56 }, (_, at) => {
   const grain = Math.sin(at * 12.9898) * 43758.5453
