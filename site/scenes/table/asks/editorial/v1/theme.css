@@ -1,0 +1,233 @@
+/*
+ * Editorial, cream and oxblood. A lamp-lit table and menu-card sheets in Fraunces: centred italic
+ * headings, small capitals, leader dots to oldstyle prices, italic tips and a light italic total.
+ */
+
+/* board */
+[data-board] {
+  --color-board: #14110d;
+  --color-board-edge: #2a231b;
+  --color-dot: #1c1813;
+  background-image:
+    radial-gradient(ellipse 60% 70% at 55% 45%, #231d16, transparent 75%),
+    radial-gradient(var(--color-dot) 1px, transparent 1.4px);
+  background-size:
+    100% 100%,
+    18px 18px;
+  background-position:
+    0 0,
+    9px 9px;
+}
+
+/* placard */
+[data-object="placard"] {
+  --color-paper: #f4efe4;
+  --color-ink: #1d1a16;
+  --color-ink-2: #6b6257;
+  --color-rule: #7a1f1f;
+  --font-body: var(--font-editorial);
+  --font-display: var(--font-editorial);
+  rotate: 0deg;
+}
+[data-object="placard"] [data-role="paper"] {
+  border-radius: 2px;
+  padding: 26px 22px 22px;
+  box-shadow:
+    0 30px 60px -26px rgb(0 0 0 / 0.75),
+    0 1px 3px rgb(0 0 0 / 0.25);
+}
+[data-object="placard"] [data-role="meta"] {
+  font: 500 12px/1.4 var(--font-body);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.16em;
+  text-transform: none;
+  color: var(--color-ink-2);
+}
+[data-object="placard"] [data-role="heading"] {
+  margin-top: 10px;
+  font: italic 300 44px/1 var(--font-display);
+  letter-spacing: -0.01em;
+}
+[data-object="placard"] [data-role="rule"] {
+  width: auto;
+  height: auto;
+  margin: 10px 0 8px;
+  border: 0;
+  color: var(--color-rule);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.5em;
+  text-align: center;
+  text-indent: 0.5em;
+}
+[data-object="placard"] [data-role="rule"]::before {
+  content: "✦ ✦ ✦";
+}
+
+/* receipt */
+[data-object="receipt"] {
+  --color-paper: #f4efe4;
+  --color-ink: #1d1a16;
+  --color-ink-2: #6b6257;
+  --color-rule: #d3c8b6;
+  --color-accent: #7a1f1f;
+  --color-on-accent: #f4efe4;
+  --font-body: var(--font-editorial);
+  --font-display: var(--font-editorial);
+  --font-num: var(--font-editorial);
+  rotate: 0deg;
+  filter: none;
+}
+[data-object="receipt"] [data-role="paper"] {
+  mask: none;
+  border-radius: 2px;
+  padding: 28px 24px 22px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  box-shadow:
+    0 30px 60px -26px rgb(0 0 0 / 0.75),
+    0 1px 3px rgb(0 0 0 / 0.25);
+}
+[data-object="receipt"] [data-role="heading"] {
+  font: italic 400 30px/1 var(--font-display);
+  letter-spacing: -0.01em;
+  text-transform: none;
+  text-align: center;
+}
+[data-object="receipt"] [data-role="meta"] {
+  margin-top: 8px;
+  font: 500 11.5px/1.5 var(--font-body);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.14em;
+  text-transform: none;
+  text-align: center;
+  color: var(--color-ink-2);
+}
+[data-object="receipt"] [data-role="rule"] {
+  margin-block: 12px;
+  border: 0;
+  border-top: 1px solid var(--color-rule);
+}
+[data-object="receipt"] [data-role="rule"]:not([data-part] *) {
+  height: auto;
+  margin-block: 10px;
+  border: 0;
+  color: var(--color-accent);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.5em;
+  text-align: center;
+  text-indent: 0.5em;
+}
+[data-object="receipt"] [data-role="rule"]:not([data-part] *)::before {
+  content: "✦ ✦ ✦";
+}
+[data-object="receipt"] [data-part="items"] {
+  gap: 1px;
+}
+[data-object="receipt"] [data-role="name"] {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+[data-object="receipt"] [data-role="name"]::after {
+  content: "";
+  flex: 1;
+  min-width: 14px;
+  translate: 0 -4px;
+  border-bottom: 1px dotted color-mix(in srgb, var(--color-ink) 45%, transparent);
+}
+[data-object="receipt"] [data-role="qty"] {
+  font-style: italic;
+  color: var(--color-accent);
+}
+[data-object="receipt"] [data-role="price"] {
+  font-variant-numeric: oldstyle-nums proportional-nums;
+}
+[data-object="receipt"] [data-role="group"] {
+  margin-top: 10px;
+  font: 500 11.5px/1.4 var(--font-body);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.16em;
+  text-transform: none;
+  text-align: center;
+  color: var(--color-accent);
+}
+[data-object="receipt"] [data-role="photo"] {
+  border-radius: 2px;
+  filter: saturate(0.8) sepia(0.15);
+}
+[data-object="receipt"] [data-role="label"] {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.12em;
+  text-transform: none;
+}
+[data-object="receipt"] [data-role="tips"] {
+  justify-content: center;
+  gap: 14px;
+  margin-block: 12px 6px;
+}
+[data-object="receipt"] [data-role="tip"] {
+  flex: none;
+  padding: 0 1px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--color-ink-2);
+  font: italic 400 14px/1.3 var(--font-body);
+  font-variant-numeric: oldstyle-nums;
+}
+[data-object="receipt"] [data-role="tip"][aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: none;
+  color: var(--color-accent);
+}
+[data-object="receipt"] [data-role="grand"] {
+  flex-direction: column;
+  align-items: center;
+  justify-items: center;
+  gap: 2px;
+  text-align: center;
+}
+[data-object="receipt"] [data-role="grand"] [data-role="label"] {
+  font: 500 11.5px/1.3 var(--font-body);
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.16em;
+}
+[data-object="receipt"] [data-role="amount"] {
+  font: italic 300 42px/1 var(--font-num);
+  letter-spacing: -0.01em;
+  font-variant-numeric: oldstyle-nums proportional-nums;
+}
+/* A banded total becomes an oxblood plate; a stamped one becomes a wax-red seal. */
+[data-object="receipt"] [data-role="grand"][class*="bg-"] {
+  padding-block: 12px 14px;
+  border-radius: 2px;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+[data-object="receipt"] [data-role="grand"][class*="bg-"] [data-role="label"] {
+  padding-bottom: 0;
+}
+[data-object="receipt"] [data-role="grand"][class*="rounded-full"] [data-role="label"] {
+  font-size: 10px;
+}
+[data-object="receipt"] [data-role="grand"][class*="rounded-full"] [data-role="amount"] {
+  font-size: 30px;
+  font-weight: 400;
+}
+[data-object="receipt"] [data-role="barcode"] {
+  width: 55%;
+  height: 14px;
+  margin-inline: auto;
+  color: var(--color-ink-2);
+  opacity: 0.6;
+}
+
+/* pass */
+
+/* palette */
+
+/* clock */

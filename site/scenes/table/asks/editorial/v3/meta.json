@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Blush magazine page",
+    "description": "Set the sheets on blush stock like a magazine page, with a large light masthead, an oxblood initial and italic names."
+  },
+  "title": "Blush page, oxblood initial",
+  "summary": "Moves the sheets to blush stock with a 40 px light masthead and an oxblood italic initial, italic names and asides, and drops the barcode.",
+  "ms": {
+    "agent": 88000,
+    "checks": 14000,
+    "total": 133000
+  }
+}

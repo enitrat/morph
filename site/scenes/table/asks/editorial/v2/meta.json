@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Forest green, gold leaf",
+    "description": "Print the sheets forest green inside a fine gold frame, with a flush-left roman masthead and double gold rules."
+  },
+  "title": "Forest card, gold frame",
+  "summary": "Prints the sheets forest green in an inset gold frame, sets a flush-left roman masthead and swaps the ornaments for double gold rules.",
+  "ms": {
+    "agent": 81000,
+    "checks": 13000,
+    "total": 123000
+  }
+}

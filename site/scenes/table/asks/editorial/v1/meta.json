@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A menu card in Fraunces",
+    "description": "Set every sheet like a printed menu card: centred italic headings, small capitals, leader dots and oldstyle figures."
+  },
+  "title": "Cream menu, oxblood marks",
+  "summary": "Sets the sheets in Fraunces on cream, centres an italic masthead, runs leader dots to oldstyle prices and makes the tips italic words.",
+  "ms": {
+    "agent": 68000,
+    "checks": 12000,
+    "total": 99000
+  }
+}
