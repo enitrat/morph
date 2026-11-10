@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A man page",
+    "description": "Print the player as its own manual page: NAME, SYNOPSIS, STATUS, the art as a figure and the controls as options."
+  },
+  "title": "Man page",
+  "summary": "Lays the player out as a man page on paper, with NAME and SYNOPSIS sections, the cover as Figure 1 and the controls under OPTIONS.",
+  "ms": {
+    "agent": 41000,
+    "checks": 26000,
+    "total": 94000
+  }
+}
