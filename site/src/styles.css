@@ -114,10 +114,11 @@ body {
 }
 
 /*
- * Objects keep their designed footprint. Between 1200 and 1600 px the live board shows them a
- * little smaller, so all four sit in one row in the first screen; on a phone, so the widest fits.
+ * Objects keep their designed footprint, so the overlay measures whole pixels. From 1440 px all
+ * four fit one row at full size. Below that the live board shows them a little smaller, so they
+ * still sit in one row in the first screen; on a phone, so the widest fits.
  */
-@media (min-width: 1200px) and (max-width: 1599px) {
+@media (min-width: 1200px) and (max-width: 1439px) {
   [data-repo="live"] [data-board] > [data-object] {
     zoom: 0.84;
   }
