@@ -1,3 +1,4 @@
+import { Player } from "../player/Player"
 import { Receipt } from "../receipt/Receipt"
 
 /**
@@ -12,6 +13,7 @@ export function Table() {
     >
       <Placard />
       <Receipt />
+      <Player />
     </div>
   )
 }
