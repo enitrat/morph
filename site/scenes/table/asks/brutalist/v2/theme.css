@@ -183,19 +183,19 @@
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
 }
-[data-object="receipt"] [data-role="grand"][class*="bg-"] [data-role="label"] {
+[data-object="receipt"] [data-role="grand"][data-shape="band"] [data-role="label"] {
   white-space: nowrap;
 }
-[data-object="receipt"] [data-role="grand"][class*="bg-"] [data-role="amount"] {
+[data-object="receipt"] [data-role="grand"][data-shape="band"] [data-role="amount"] {
   font-size: 34px;
 }
 /* A round total stays a round sticker, slapped on at an angle with the same hard shadow. */
-[data-object="receipt"] [data-role="grand"][class*="rounded-full"] {
+[data-object="receipt"] [data-role="grand"][data-shape="stamp"] {
   padding: 0;
   border-radius: 50%;
   box-shadow: 6px 6px 0 var(--color-ink);
 }
-[data-object="receipt"] [data-role="grand"][class*="rounded-full"] [data-role="amount"] {
+[data-object="receipt"] [data-role="grand"][data-shape="stamp"] [data-role="amount"] {
   font-size: 30px;
 }
 [data-object="receipt"] [data-role="barcode"] {

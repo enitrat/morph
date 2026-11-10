@@ -35,7 +35,9 @@ function useShown(stage: Stage): Drawn {
       if (!current || drawn === null) return
       const next = { repo: shown, drawn }
       if (document.startViewTransition === undefined) setView(next)
-      else document.startViewTransition(() => flushSync(() => setView(next)))
+      else
+        // A morph that starts before the last one finished skips it, which rejects `ready`.
+        document.startViewTransition(() => flushSync(() => setView(next))).ready.catch(() => {})
     })
     return () => {
       current = false

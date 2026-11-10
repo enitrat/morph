@@ -173,21 +173,21 @@
   font-variant-numeric: oldstyle-nums proportional-nums;
 }
 /* A banded total becomes an oxblood plate; a stamped one a wax-red seal. */
-[data-object="receipt"] [data-role="grand"][class*="bg-"] {
+[data-object="receipt"] [data-role="grand"][data-shape="band"] {
   border-radius: 3px;
   background: var(--color-accent);
   color: var(--color-on-accent);
 }
-[data-object="receipt"] [data-role="grand"][class*="bg-"] [data-role="label"] {
+[data-object="receipt"] [data-role="grand"][data-shape="band"] [data-role="label"] {
   font-size: 12.5px;
 }
-[data-object="receipt"] [data-role="grand"][class*="bg-"] [data-role="amount"] {
+[data-object="receipt"] [data-role="grand"][data-shape="band"] [data-role="amount"] {
   font-size: 40px;
 }
-[data-object="receipt"] [data-role="grand"][class*="rounded-full"] [data-role="label"] {
+[data-object="receipt"] [data-role="grand"][data-shape="stamp"] [data-role="label"] {
   font-size: 12px;
 }
-[data-object="receipt"] [data-role="grand"][class*="rounded-full"] [data-role="amount"] {
+[data-object="receipt"] [data-role="grand"][data-shape="stamp"] [data-role="amount"] {
   font-size: 32px;
   font-style: italic;
 }

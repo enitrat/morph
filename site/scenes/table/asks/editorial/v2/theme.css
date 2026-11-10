@@ -180,18 +180,18 @@
   font-variant-numeric: oldstyle-nums proportional-nums;
 }
 /* A banded total becomes a gold plate; a stamped one a gold seal. */
-[data-object="receipt"] [data-role="grand"][class*="bg-"] {
+[data-object="receipt"] [data-role="grand"][data-shape="band"] {
   border-radius: 2px;
   background: var(--color-accent);
   color: var(--color-on-accent);
 }
-[data-object="receipt"] [data-role="grand"][class*="bg-"] [data-role="label"] {
+[data-object="receipt"] [data-role="grand"][data-shape="band"] [data-role="label"] {
   color: inherit;
 }
-[data-object="receipt"] [data-role="grand"][class*="rounded-full"] [data-role="label"] {
+[data-object="receipt"] [data-role="grand"][data-shape="stamp"] [data-role="label"] {
   font-size: 10px;
 }
-[data-object="receipt"] [data-role="grand"][class*="rounded-full"] [data-role="amount"] {
+[data-object="receipt"] [data-role="grand"][data-shape="stamp"] [data-role="amount"] {
   font-size: 30px;
   font-weight: 400;
 }

@@ -31,6 +31,7 @@ export function ReceiptTotal() {
       <div className="grid place-items-center pt-3 pb-1">
         <p
           data-role="grand"
+          data-shape="stamp"
           className="grid size-[132px] -rotate-[8deg] place-content-center rounded-full border-[3px] border-double border-accent text-center text-accent shadow-[inset_0_0_0_5px_var(--color-paper),inset_0_0_0_6px_var(--color-accent)]"
         >
           <span data-role="label" className="text-[9.5px] font-bold tracking-[0.22em]">

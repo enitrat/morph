@@ -107,17 +107,21 @@ export function Versions({ stage }: { stage: Stage }) {
             const current = version.id === at
             const kept = version.kept
             return (
-              <button
+              <div
                 key={version.id}
-                type="button"
-                aria-current={current || undefined}
-                aria-label={`Go back to version ${version.id}`}
-                onClick={() => {
-                  stage.jump(version.id)
-                }}
-                className="group absolute flex w-[118px] flex-col gap-1.5 text-left"
+                className="group absolute flex w-[118px] flex-col gap-1.5"
                 style={{ left: spot.col * COL, top: spot.row * ROW }}
               >
+                {/* A cover, not a wrapper: the thumbnail draws the board, buttons and all. */}
+                <button
+                  type="button"
+                  aria-current={current || undefined}
+                  aria-label={`Go back to version ${version.id}`}
+                  onClick={() => {
+                    stage.jump(version.id)
+                  }}
+                  className="absolute inset-0 z-10 rounded-lg"
+                />
                 <span
                   className={`block rounded-lg transition-shadow ${
                     current
@@ -136,7 +140,7 @@ export function Versions({ stage }: { stage: Stage }) {
                     {kept !== null && ` · ${LEVEL[kept.ask.base.file.level]} ${LETTER[kept.id]}`}
                   </span>
                 </span>
-              </button>
+              </div>
             )
           })}
         </div>

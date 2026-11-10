@@ -73,6 +73,10 @@ render every part. To make that hold:
 | `ReceiptItems` | `data-part="items"` | `line` (one item), `name`, `qty`, `price`, `group` (a course heading), `photo`                                                             |
 | `ReceiptTotal` | `data-part="total"` | `row` (subtotal, tip), `label`, `tips` (the control), `tip` (a button, `aria-pressed`), `grand` (the total), `amount` (its number), `rule` |
 
+A total that draws its `grand` as a shape says so with `data-shape`: `stamp` for a round seal,
+`band` for a filled bar. Table styles restyle those through the attribute, never through the
+part's classes.
+
 A layout styles that anatomy with descendant variants on its root, for example
 `[&_[data-role=label]]:uppercase` on the thermal receipt.
 

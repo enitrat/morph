@@ -167,19 +167,19 @@
   font-variant-numeric: tabular-nums;
 }
 /* A total drawn on a filled band turns into a red field; one in a round stamp keeps its ring. */
-[data-object="receipt"] [data-role="grand"][class*="bg-"] {
+[data-object="receipt"] [data-role="grand"][data-shape="band"] {
   border-radius: 0;
   background: var(--color-accent);
   color: var(--color-on-accent);
 }
-[data-object="receipt"] [data-role="grand"][class*="bg-"] [data-role="label"] {
+[data-object="receipt"] [data-role="grand"][data-shape="band"] [data-role="label"] {
   font-size: 10px;
   white-space: nowrap;
 }
-[data-object="receipt"] [data-role="grand"][class*="bg-"] [data-role="amount"] {
+[data-object="receipt"] [data-role="grand"][data-shape="band"] [data-role="amount"] {
   font-size: 46px;
 }
-[data-object="receipt"] [data-role="grand"][class*="rounded-full"] [data-role="amount"] {
+[data-object="receipt"] [data-role="grand"][data-shape="stamp"] [data-role="amount"] {
   font-size: 32px;
   letter-spacing: -0.05em;
 }

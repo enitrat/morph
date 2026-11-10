@@ -31,6 +31,7 @@ export function ReceiptTotal() {
       </div>
       <p
         data-role="grand"
+        data-shape="band"
         className="flex items-end justify-between gap-3 rounded-[6px] bg-ink px-3.5 pt-3 pb-2.5 text-paper"
       >
         <span data-role="label" className="pb-1 text-[10.5px] leading-[1.3] tracking-[0.12em]">

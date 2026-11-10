@@ -7,6 +7,7 @@ import type { Stat } from "../stage/wire"
 const LETTER = { v1: "A", v2: "B", v3: "C" } as const
 
 export const LEVEL = { part: "Part", object: "Object", table: "Table" } as const
+const ORDER = { part: 0, object: 1, table: 2 } as const
 
 interface Diff {
   readonly stat: Stat
@@ -70,7 +71,7 @@ function Line({
   const { file } = original
   const stat = diff?.stat ?? variant.stat
   return (
-    <li className="rounded-[10px] border border-line bg-[#101114]">
+    <li className="min-w-0 overflow-hidden rounded-[10px] border border-line bg-[#101114]">
       <button
         type="button"
         aria-expanded={open}
@@ -127,13 +128,15 @@ function keptAlong(versions: readonly Version[], at: number): Map<string, Varian
 export function Ledger({ stage }: { stage: Stage }) {
   const snapshot = useSyncExternalStore(stage.subscribe, stage.snapshot)
   const kept = keptAlong(snapshot.versions, snapshot.at)
-  const lines = [...snapshot.kept].flatMap(([path, revision]) => {
-    const variant = kept.get(path)
-    const file = stage.manifest.files.get(path)
-    return variant && file && revision !== file.original
-      ? [{ path, variant, original: file.original, revision }]
-      : []
-  })
+  const lines = [...snapshot.kept]
+    .flatMap(([path, revision]) => {
+      const variant = kept.get(path)
+      const file = stage.manifest.files.get(path)
+      return variant && file && revision !== file.original
+        ? [{ path, variant, original: file.original, revision }]
+        : []
+    })
+    .toSorted((a, b) => ORDER[a.variant.ask.base.file.level] - ORDER[b.variant.ask.base.file.level])
   return (
     <section data-morph aria-label="Kept" className="mt-8">
       <h2 className="flex items-baseline gap-3 text-[13px] font-medium text-text">
