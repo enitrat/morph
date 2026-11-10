@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A red field",
+    "description": "Print every sheet red with white type, black rules and the total set larger still."
+  },
+  "title": "Red field, black rules",
+  "summary": "Prints the sheets red with white Archivo, swaps hairlines for 3 to 8 px black rules, caps the small print and sets the total at 62 px.",
+  "ms": {
+    "agent": 76000,
+    "checks": 13000,
+    "total": 116000
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Paper and a red rule",
+    "description": "Set the whole table in Archivo on a strict grid, flush left, with one heavy red rule over the money."
+  },
+  "title": "Paper, red rule",
+  "summary": "Sets every sheet in Archivo, flush left on a 24 px grid, numbers the lines and puts the total at 54 px under a 5 px red rule.",
+  "ms": {
+    "agent": 64000,
+    "checks": 12000,
+    "total": 96000
+  }
+}

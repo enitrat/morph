@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Black and red at night",
+    "description": "Turn the sheets black on a column grid, with capitals, red line numbers and the money flush right."
+  },
+  "title": "Black sheets, red numbers",
+  "summary": "Turns the sheets black on a column grid, sets item names in spaced capitals with red numbers and the total flush right at 52 px.",
+  "ms": {
+    "agent": 84000,
+    "checks": 14000,
+    "total": 128000
+  }
+}
