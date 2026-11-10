@@ -3,10 +3,10 @@ import { useSyncExternalStore } from "react"
 import type { Level } from "../stage/manifest"
 import type { Stage } from "../stage/stage"
 
-const STEPS: readonly { level: Level; title: string; hint: string }[] = [
-  { level: "part", title: "Pick a part", hint: "the total or the items" },
-  { level: "object", title: "Restyle the object", hint: "the receipt itself" },
-  { level: "table", title: "Art-direct the table", hint: "the board around it" },
+const STEPS: readonly { level: Level; title: string; short: string; hint: string }[] = [
+  { level: "part", title: "Pick a part", short: "Part", hint: "the total or the items" },
+  { level: "object", title: "Restyle the object", short: "Object", hint: "the receipt itself" },
+  { level: "table", title: "Art-direct the table", short: "Table", hint: "the board around it" },
 ]
 
 /**
@@ -57,7 +57,10 @@ export function Coach({ stage, touch }: { stage: Stage; touch: boolean }) {
                 index + 1
               )}
             </span>
-            <span className="font-medium">{step.title}</span>
+            <span className="font-medium">
+              <span className="sm:hidden">{step.short}</span>
+              <span className="hidden sm:inline">{step.title}</span>
+            </span>
             {current && !touch && <span className="hidden text-muted lg:inline">{step.hint}</span>}
           </li>
         )

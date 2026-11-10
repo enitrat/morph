@@ -26,13 +26,15 @@ export function Touch({ stage }: { stage: Stage }) {
   const open = snapshot.sessions.find((session) => session.id === id)
   const view = page?.sessions.find((session) => session.id === id)
 
+  // With no overlay polling, this clock lands the open ask's variants.
+  const asking = open !== undefined
   useEffect(() => {
-    if (open === undefined) return undefined
+    if (!asking) return undefined
     const tick = () => setPage(stage.poll(performance.now()))
     tick()
     const timer = setInterval(tick, 250)
     return () => clearInterval(timer)
-  }, [open, stage])
+  }, [asking, stage])
 
   const shownOf = (): VariantId | null => {
     const place = open?.place
@@ -47,6 +49,15 @@ export function Touch({ stage }: { stage: Stage }) {
     const next = SessionId.parse(crypto.randomUUID())
     stage.ask({ id: next, path: file.path, words: node.words }, performance.now())
     setId(next)
+    // The chips sit under the board: bring the object back into view to watch it morph.
+    document
+      .querySelector(
+        file.level === "table" ? "#board" : '[data-repo="live"] [data-object="receipt"]',
+      )
+      ?.scrollIntoView({
+        block: "center",
+        behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      })
   }
 
   const groups = [...stage.manifest.files.values()].flatMap((file) => {
@@ -64,7 +75,7 @@ export function Touch({ stage }: { stage: Stage }) {
         The overlay runs on desktop. Here, tap an ask and watch what Morph writes.
       </p>
       {open !== undefined && view !== undefined && (
-        <div className="grid gap-2 rounded-[12px] bg-[#16181d] p-3">
+        <div className="fixed inset-x-3 bottom-3 z-10 grid gap-2 rounded-[14px] border border-[#2a2d34] bg-[#16181d]/95 p-3 shadow-[0_20px_50px_-10px_rgb(0_0_0/0.8)] backdrop-blur">
           <p className="text-[13px] text-text">“{open.ask.words}”</p>
           <div className="grid grid-cols-3 gap-1.5">
             {LETTERS.map(([variant, letter], index) => {

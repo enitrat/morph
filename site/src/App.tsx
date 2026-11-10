@@ -149,10 +149,12 @@ export function App({ stage, touch }: { stage: Stage; touch: boolean }) {
       >
         <Install />
         <div className="flex items-center gap-5 text-[13px] text-muted">
-          <span className="flex items-center gap-2">
-            <Keys />
-            to open
-          </span>
+          {!touch && (
+            <span className="flex items-center gap-2">
+              <Keys />
+              to open
+            </span>
+          )}
           <a href={GITHUB} className="text-text underline-offset-4 hover:underline">
             github.com/enitrat/morph
           </a>

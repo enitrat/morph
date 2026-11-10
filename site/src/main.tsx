@@ -11,7 +11,9 @@ import { App } from "./App"
 
 const stage = createStage(manifest)
 // The overlay is built around hover and the keyboard; a phone drives the stage by tap instead.
-const touch = matchMedia("(pointer: coarse)").matches
+// `?touch` shows the phone page on a desktop, for checking it.
+const touch =
+  matchMedia("(pointer: coarse)").matches || new URLSearchParams(location.search).has("touch")
 
 // Every visit starts from the original page: pins a reload brought back would point at sessions
 // this tab's stage never had.
