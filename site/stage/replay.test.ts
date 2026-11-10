@@ -183,6 +183,52 @@ describe("replay transport", () => {
     expect(refused).toEqual({ status: 409, body: { error: { kind: "conflict", files: [TOTAL] } } })
   })
 
+  it("stacks asks on three files: each shows at once, none waits on another", async () => {
+    const { page, landed, shown } = setup()
+    await landed("Make the total the hero")
+    await landed("Invoice", RECEIPT)
+    await landed("Swiss", TABLE)
+    expect((await page()).sessions.map((session) => session.place)).toEqual([
+      { kind: "shown", variant: "v1", edited: false },
+      { kind: "shown", variant: "v1", edited: false },
+      { kind: "shown", variant: "v1", edited: false },
+    ])
+    expect([shown(TOTAL), shown(RECEIPT), shown(THEME)]).toEqual([
+      "receipt/ReceiptTotal.tsx/total-hero:v1",
+      "receipt/Receipt.tsx/invoice:v1",
+      "table/theme.css/swiss:v1",
+    ])
+  })
+
+  it("keeps a part through a layout keep, then lays a table style over both", async () => {
+    const { stage, call, landed, kept } = setup()
+    const total = await landed("Make the total the hero")
+    await call("show", { id: total, variant: "v2" })
+    await call("keep", { id: total, variant: "v2" })
+    const layout = await landed("Invoice", RECEIPT)
+    await call("keep", { id: layout, variant: "v1" })
+    expect(kept(TOTAL)).toBe("receipt/ReceiptTotal.tsx/total-hero:v2")
+    const table = await landed("Swiss", TABLE)
+    await call("show", { id: table, variant: "v3" })
+    const { shown } = stage.snapshot()
+    expect([
+      shown.get(TOTAL as never)?.key,
+      shown.get(RECEIPT as never)?.key,
+      shown.get(THEME as never)?.key,
+    ]).toEqual([
+      "receipt/ReceiptTotal.tsx/total-hero:v2",
+      "receipt/Receipt.tsx/invoice:v1",
+      "table/theme.css/swiss:v3",
+    ])
+    await call("keep", { id: table, variant: "v3" })
+    expect(stage.snapshot().versions.map((version) => version.kept?.ask.words ?? null)).toEqual([
+      null,
+      "Make the total the hero",
+      "Invoice",
+      "Swiss",
+    ])
+  })
+
   it("goes back to a kept version, and resets to the original", async () => {
     const { stage, call, landed, kept } = setup()
     const id = await landed("Make the total the hero")
