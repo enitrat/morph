@@ -71,6 +71,18 @@ body {
   [data-part="total"] {
     view-transition-name: receipt-total;
   }
+  [data-object="palette"] {
+    view-transition-name: palette;
+  }
+  [data-part="search"] {
+    view-transition-name: palette-search;
+  }
+  [data-part="results"] {
+    view-transition-name: palette-results;
+  }
+  [data-part="footer"] {
+    view-transition-name: palette-footer;
+  }
 }
 
 /*

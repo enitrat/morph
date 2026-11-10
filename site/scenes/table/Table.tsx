@@ -1,3 +1,4 @@
+import { Palette } from "../palette/Palette"
 import { Receipt } from "../receipt/Receipt"
 
 /**
@@ -12,6 +13,7 @@ export function Table() {
     >
       <Placard />
       <Receipt />
+      <Palette />
     </div>
   )
 }
