@@ -34,7 +34,7 @@ const GROUPS: { title: string; rows: Row[] }[] = [
 function Value({ cell }: { cell: Cell }) {
   if (cell === true)
     return (
-      <svg viewBox="0 0 16 16" aria-label="Included" className="mx-auto size-4 text-indigo-600">
+      <svg viewBox="0 0 16 16" aria-label="Included" className="size-4 text-indigo-600">
         <path
           d="M3.5 8.5 6.5 11.5 12.5 4.5"
           fill="none"
@@ -46,7 +46,7 @@ function Value({ cell }: { cell: Cell }) {
       </svg>
     )
   if (cell === false)
-    return <span aria-label="Not included" className="mx-auto block h-px w-3 bg-zinc-300" />
+    return <span aria-label="Not included" className="block h-px w-3 bg-zinc-300" />
   return <span className="tabular-nums">{cell}</span>
 }
 
@@ -64,7 +64,14 @@ export function PlanTable() {
       </colgroup>
       <thead>
         <tr className="align-bottom">
-          <th className="pb-4 text-left text-xs font-medium text-zinc-500">Compare plans</th>
+          <th className="pb-4 text-left align-top font-normal">
+            <span className="block text-base font-semibold tracking-tight text-zinc-950">
+              Compare plans
+            </span>
+            <span className="mt-1 block text-xs text-zinc-500">
+              Prices per seat, billed yearly.
+            </span>
+          </th>
           <th className="px-4 pb-4 text-left font-normal">
             <span className="text-sm font-semibold text-zinc-950">Starter</span>
             <span className="mt-1 block text-2xl font-semibold tracking-tight tabular-nums">
@@ -114,7 +121,7 @@ export function PlanTable() {
           <tr>
             <th
               colSpan={1}
-              className="border-t border-zinc-200 pt-3 pb-1.5 text-left text-[11px] font-semibold tracking-wider text-zinc-400 uppercase"
+              className="border-t border-zinc-200 pt-2.5 pb-1 text-left text-[11px] font-semibold tracking-wider text-zinc-400 uppercase"
             >
               {group.title}
             </th>
@@ -126,11 +133,11 @@ export function PlanTable() {
             const last = at === GROUPS.length - 1 && index === group.rows.length - 1
             return (
               <tr key={row.label}>
-                <th className="py-1.5 text-left font-normal text-zinc-600">{row.label}</th>
+                <th className="py-1 text-left font-normal text-zinc-600">{row.label}</th>
                 {row.cells.map((cell, column) => (
                   <td
                     key={column}
-                    className={`px-4 py-1.5 text-center text-zinc-800 ${band(column)} ${last && column === 1 ? "rounded-b-xl pb-3" : ""}`}
+                    className={`px-4 py-1 text-left text-zinc-800 ${band(column)} ${last && column === 1 ? "rounded-b-xl pb-3" : ""}`}
                   >
                     <Value cell={cell} />
                   </td>

@@ -23,13 +23,7 @@ const PLANS: Plan[] = [
     price: "$24",
     unit: "per seat / month",
     cta: "Start free trial",
-    features: [
-      "Unlimited projects",
-      "Advanced analytics",
-      "Priority support",
-      "Custom domains",
-      "SSO",
-    ],
+    features: ["Unlimited projects", "Advanced analytics", "Priority support", "Custom domains"],
     popular: true,
   },
   {
@@ -48,7 +42,7 @@ function Row({ plan }: { plan: Plan }) {
   return (
     <li
       style={named("plan")}
-      className={`grid grid-cols-[176px_148px_1fr_148px] items-center gap-6 rounded-2xl px-6 ${
+      className={`grid grid-cols-[164px_116px_1fr_140px] items-center gap-6 rounded-2xl px-6 ${
         pro
           ? "bg-white py-6 shadow-[0_16px_40px_-16px_rgb(79_70_229/0.35)] ring-2 ring-indigo-500"
           : "bg-white/80 py-4 ring-1 ring-zinc-200"
