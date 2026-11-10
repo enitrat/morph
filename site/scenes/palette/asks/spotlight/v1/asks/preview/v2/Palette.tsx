@@ -27,9 +27,9 @@ export function Palette() {
           </div>
           <aside
             aria-label="Preview"
-            className="flex w-[172px] flex-none flex-col border-l border-rule bg-white/60 px-4 pt-5 pb-4"
+            className="flex w-[172px] flex-none flex-col border-l border-rule bg-ink/[0.025] px-4 pt-5 pb-4"
           >
-            <span className="grid size-14 place-items-center rounded-[16px] bg-[linear-gradient(#fff,#eef0f4)] text-ink shadow-[inset_0_0_0_1px_var(--color-rule),0_4px_10px_-4px_rgb(0_0_0/0.15)]">
+            <span className="grid size-14 place-items-center rounded-[16px] bg-paper text-ink shadow-[inset_0_0_0_1px_var(--color-rule),0_4px_10px_-4px_rgb(0_0_0/0.15)]">
               <svg
                 viewBox="0 0 24 24"
                 className="size-7 fill-none stroke-current stroke-[1.5] [stroke-linecap:round] [stroke-linejoin:round]"
@@ -54,7 +54,7 @@ export function Palette() {
               {selected?.command.keys.map((key) => (
                 <kbd
                   key={key}
-                  className="grid h-6 min-w-6 place-items-center rounded-[6px] bg-white px-1.5 font-body text-[12px] text-ink shadow-[0_1px_0_var(--color-rule),inset_0_0_0_1px_var(--color-rule)]"
+                  className="grid h-6 min-w-6 place-items-center rounded-[6px] bg-paper px-1.5 font-body text-[12px] text-ink shadow-[0_1px_0_var(--color-rule),inset_0_0_0_1px_var(--color-rule)]"
                 >
                   {key}
                 </kbd>

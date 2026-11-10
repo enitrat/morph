@@ -15,7 +15,7 @@ export function Palette() {
     >
       <div
         data-role="paper"
-        className="relative size-[400px] flex-none overflow-hidden rounded-full bg-paper font-body text-[11.5px]/[1.15] text-ink shadow-[0_0_0_1px_rgb(0_0_0/0.08),0_30px_70px_-20px_rgb(0_0_0/0.85)] [&_[data-part=results]_[data-role=icon]]:size-[18px] [&_[data-part=search]_[data-role=icon]]:hidden [&_[data-part=search]_[data-role=key]]:hidden [&_[data-role=detail]]:hidden [&_[data-role=empty]]:hidden [&_[data-role=ghost]]:hidden [&_[data-role=group]]:hidden [&_[data-role=input]]:text-center [&_[data-role=input]]:text-[14px] [&_[data-role=input]]:font-medium [&_[data-role=keys]]:hidden [&_[data-role=name]]:text-balance [&_[data-role=name]]:whitespace-normal [&_[data-role=row]]:absolute [&_[data-role=row]]:top-1/2 [&_[data-role=row]]:left-1/2 [&_[data-role=row]]:w-[78px] [&_[data-role=row]]:flex-col [&_[data-role=row]]:gap-1 [&_[data-role=row]]:bg-transparent [&_[data-role=row]]:p-0 [&_[data-role=row]]:text-center [&_[data-role=row]]:font-semibold [&_[data-role=row]]:tracking-[-0.005em] [&_[data-role=row]]:transition-colors [&_[data-role=row]]:[--a:calc(var(--slot)*45deg_-_90deg)] [&_[data-role=row]]:[translate:calc(-50%_+_cos(var(--a))*136px)_calc(-50%_+_sin(var(--a))*136px)] [&_[data-role=row][aria-selected=true]]:text-on-accent [&_[data-role=row][aria-selected=true]_[data-role=icon]]:text-on-accent [&_[data-role=section]]:contents [&_[data-role=recent]]:hidden [&_[data-role=scope]:not([aria-pressed=true])]:hidden [&_[data-role=scopes]]:justify-center"
+        className="relative size-[400px] flex-none overflow-hidden rounded-full bg-paper font-body text-[11.5px]/[1.15] text-ink shadow-[0_0_0_1px_rgb(0_0_0/0.08),0_30px_70px_-20px_rgb(0_0_0/0.85)] [&_[data-part=results]_[data-role=icon]]:size-[18px] [&_[data-part=search]_[data-role=icon]]:hidden [&_[data-part=search]_[data-role=key]]:hidden [&_[data-role=detail]]:hidden [&_[data-role=empty]]:hidden [&_[data-role=ghost]]:hidden [&_[data-role=group]]:hidden [&_[data-role=input]]:text-center [&_[data-role=input]]:text-[13px] [&_[data-role=input]]:font-medium [&_[data-role=keys]]:hidden [&_[data-role=name]]:text-balance [&_[data-role=name]]:whitespace-normal [&_[data-role=row]]:absolute [&_[data-role=row]]:top-1/2 [&_[data-role=row]]:left-1/2 [&_[data-role=row]]:w-[78px] [&_[data-role=row]]:flex-col [&_[data-role=row]]:gap-1 [&_[data-role=row]]:bg-transparent [&_[data-role=row]]:p-0 [&_[data-role=row]]:text-center [&_[data-role=row]]:font-semibold [&_[data-role=row]]:tracking-[-0.005em] [&_[data-role=row]]:transition-colors [&_[data-role=row]]:[--a:calc(var(--slot)*45deg_-_90deg)] [&_[data-role=row]]:[translate:calc(-50%_+_cos(var(--a))*136px)_calc(-50%_+_sin(var(--a))*136px)] [&_[data-role=row][aria-selected=true]]:text-on-accent [&_[data-role=row][aria-selected=true]_[data-role=icon]]:text-on-accent [&_[data-role=section]]:contents [&_[data-role=recent]]:hidden [&_[data-role=scopes]>button:not([aria-pressed=true])]:hidden [&_[data-role=scopes]]:justify-center [&_[data-part=search]]:flex-col [&_[data-part=search]]:gap-1.5 [&_[data-part=search]]:self-stretch [&_[data-role=scopes]]:border-0 [&_[data-role=scopes]]:pl-0"
       >
         <div
           aria-hidden
@@ -37,7 +37,7 @@ export function Palette() {
         <div data-role="list" className="absolute inset-0">
           <PaletteResults />
         </div>
-        <div className="absolute top-1/2 left-1/2 flex size-[146px] -translate-1/2 flex-col items-center justify-center gap-2 rounded-full bg-paper px-5 text-center shadow-[0_0_0_1px_var(--color-rule),0_8px_20px_-8px_rgb(0_0_0/0.25)]">
+        <div className="absolute top-1/2 left-1/2 flex size-[146px] -translate-1/2 flex-col items-center justify-center gap-2 rounded-full bg-paper px-3.5 text-center shadow-[0_0_0_1px_var(--color-rule),0_8px_20px_-8px_rgb(0_0_0/0.25)]">
           <PaletteSearch />
           <span className="h-px w-10 bg-rule" />
           <p data-role="meta" className="flex gap-[3px] text-[10.5px] text-ink-2">
@@ -45,7 +45,7 @@ export function Palette() {
               ? selected.command.keys.map((key) => (
                   <kbd
                     key={key}
-                    className="grid h-5 min-w-5 place-items-center rounded-[5px] border border-rule bg-white px-1 font-body text-ink"
+                    className="grid h-5 min-w-5 place-items-center rounded-[5px] border border-rule bg-paper px-1 font-body text-ink"
                   >
                     {key}
                   </kbd>

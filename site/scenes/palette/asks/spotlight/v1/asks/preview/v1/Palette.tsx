@@ -26,7 +26,7 @@ export function Palette() {
         >
           <PaletteResults />
         </div>
-        <div className="flex items-center gap-3.5 border-t border-rule bg-white/70 px-5 py-3.5">
+        <div className="flex items-center gap-3.5 border-t border-rule bg-ink/[0.025] px-5 py-3.5">
           <span className="grid size-11 flex-none place-items-center rounded-[12px] bg-accent text-on-accent">
             <svg
               viewBox="0 0 24 24"
