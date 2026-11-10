@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A small globe",
+    "description": "Put a wireframe globe between the two codes with the arc running over it."
+  },
+  "title": "Wireframe globe",
+  "summary": "Centres an 84 px wireframe globe between the codes, the arc and the plane crossing it.",
+  "ms": {
+    "agent": 62000,
+    "checks": 12000,
+    "total": 95000
+  }
+}

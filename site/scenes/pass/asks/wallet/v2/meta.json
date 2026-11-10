@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "In the wallet stack",
+    "description": "Show the pass on top of the wallet, the return flight peeking above it."
+  },
+  "title": "Top of the stack",
+  "summary": "Puts a teal header on a white card, two passes peeking behind, the stub on a tinted foot.",
+  "ms": {
+    "agent": 71000,
+    "checks": 12000,
+    "total": 103000
+  }
+}

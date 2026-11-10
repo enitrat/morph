@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "The whole cabin",
+    "description": "Draw the cabin from above, nose to the left, every seat a cell and the open ones lit."
+  },
+  "title": "Cabin from above",
+  "summary": "Draws twelve rows under a rounded nose, taken seats filled, the three open seats tappable.",
+  "ms": {
+    "agent": 72000,
+    "checks": 13000,
+    "total": 105000
+  }
+}

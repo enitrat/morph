@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A wallet card",
+    "description": "Turn it into a phone wallet card: navy, rounded, the barcode on a white plate below a tear."
+  },
+  "title": "Navy wallet card",
+  "summary": "Rounds the pass into a navy card, a round logo, the flight top right, the barcode on white.",
+  "ms": {
+    "agent": 64000,
+    "checks": 11000,
+    "total": 94000
+  }
+}

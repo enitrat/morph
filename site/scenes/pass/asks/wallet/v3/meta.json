@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A live activity",
+    "description": "Make it the lock-screen activity: the countdown leads, a progress bar, the route in a tile."
+  },
+  "title": "Lock-screen activity",
+  "summary": "Leads with a 34 px orange countdown over a progress bar, the route in a tile, pill seats.",
+  "ms": {
+    "agent": 76000,
+    "checks": 13000,
+    "total": 110000
+  }
+}

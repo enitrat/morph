@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Seat cards",
+    "description": "Offer the three seats as cards that each carry the seat, its kind and its boarding group."
+  },
+  "title": "Three seat cards",
+  "summary": "Turns the switch into three cards with seat, kind and group; the chosen one fills with the accent.",
+  "ms": {
+    "agent": 56000,
+    "checks": 10000,
+    "total": 87000
+  }
+}

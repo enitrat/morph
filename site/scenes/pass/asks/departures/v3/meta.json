@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A gate screen",
+    "description": "Make it the screen over the gate: the gate huge on flaps, a status bar, a bezel."
+  },
+  "title": "Gate screen",
+  "summary": "Puts the gate on 56 px flaps in a bezel, flight and city on small tiles, a yellow status bar.",
+  "ms": {
+    "agent": 79000,
+    "checks": 13000,
+    "total": 113000
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A great-circle arc",
+    "description": "Draw the route as a dashed arc with the plane at its apex and the duration under it."
+  },
+  "title": "Great-circle arc",
+  "summary": "Draws a dashed arc between two dots, the plane at the top, codes and times under each end.",
+  "ms": {
+    "agent": 58000,
+    "checks": 11000,
+    "total": 88000
+  }
+}

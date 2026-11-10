@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A vertical itinerary",
+    "description": "Stack departure over arrival like a transit app, joined by a dashed line with the plane on it."
+  },
+  "title": "Vertical itinerary",
+  "summary": "Stacks LIS over CPH on a dashed spine with ring and dot stops, times flush right, a time-zone note.",
+  "ms": {
+    "agent": 66000,
+    "checks": 12000,
+    "total": 99000
+  }
+}

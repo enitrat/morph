@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A dot-matrix map",
+    "description": "Lay the arc over an abstract dot-matrix coast, landmass dots larger than sea."
+  },
+  "title": "Dot-matrix coast",
+  "summary": "Puts the arc over a field of dots that thicken into land, haloed end points, distance in a pill.",
+  "ms": {
+    "agent": 54000,
+    "checks": 11000,
+    "total": 84000
+  }
+}

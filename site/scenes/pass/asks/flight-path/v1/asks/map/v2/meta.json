@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A plotting chart",
+    "description": "Set the arc on a hairline graticule and give each end its coordinates."
+  },
+  "title": "Graticule and coordinates",
+  "summary": "Draws a six-column graticule, diamond end marks, and swaps the cities for latitude and longitude.",
+  "ms": {
+    "agent": 57000,
+    "checks": 10000,
+    "total": 87000
+  }
+}

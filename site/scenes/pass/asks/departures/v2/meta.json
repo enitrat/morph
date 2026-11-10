@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "The station board",
+    "description": "Show the pass as one row on a departures board, our flight lit among the others."
+  },
+  "title": "Departures board row",
+  "summary": "Lists four departures on flap tiles with ours lit amber, a pulsing status line under them.",
+  "ms": {
+    "agent": 88000,
+    "checks": 14000,
+    "total": 122000
+  }
+}

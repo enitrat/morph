@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "Two rows of seats",
+    "description": "Show the two rows the passenger can sit in, the open seats lit, and the chosen seat large."
+  },
+  "title": "Two-row strip",
+  "summary": "Draws rows 6 and 14 as seat squares with an aisle, the offered seats as buttons, the seat at 26 px.",
+  "ms": {
+    "agent": 63000,
+    "checks": 12000,
+    "total": 94000
+  }
+}

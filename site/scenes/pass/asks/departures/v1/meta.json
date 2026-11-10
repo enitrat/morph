@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A split-flap pass",
+    "description": "Spell the destination, flight, gate and seat on split-flap tiles that roll into place."
+  },
+  "title": "Split-flap tiles",
+  "summary": "Rolls COPENHAGEN, the flight, gate and seat onto yellow flap tiles; a new seat flips its tiles.",
+  "ms": {
+    "agent": 82000,
+    "checks": 14000,
+    "total": 115000
+  }
+}

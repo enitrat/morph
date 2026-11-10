@@ -1,0 +1,13 @@
+{
+  "direction": {
+    "title": "A red spine",
+    "description": "Print the pass red, the codes running up a spine on the left and the details in one column."
+  },
+  "title": "Red field, vertical spine",
+  "summary": "Prints the pass red with white type, runs LIS and CPH up a 62 px spine, black rules.",
+  "ms": {
+    "agent": 78000,
+    "checks": 13000,
+    "total": 111000
+  }
+}
