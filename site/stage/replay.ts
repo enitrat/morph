@@ -1,21 +1,11 @@
 import type { Transport, WireCall, WireReply } from "@enitrat/morph/widget"
 import { z } from "zod"
-
 import type { Result, Stage } from "./stage"
 import { symbolicate } from "./symbolicate"
 import { type Operation, operations, SessionId } from "./wire"
 
 /** The overlay shows its pending states for this long on every write, as over a real bridge. */
 const WRITE_MS = 140
-
-/** `suggest` is not in this overlay's protocol yet; this is the shape it will parse. */
-const Suggestions = z.object({
-  suggestions: z
-    .array(
-      z.object({ words: z.string().trim().min(1).max(120), kind: z.enum(["house", "refine"]) }),
-    )
-    .max(6),
-})
 
 type Reply = { status: 200; body: unknown } | { status: 400 | 409; body: { error: unknown } }
 type Handler = (call: WireCall, now: number) => Reply | Promise<Reply>
@@ -125,23 +115,17 @@ export function replayTransport(
     retry: write("retry", ({ id }) => stage.retry(id), stage),
     keep: write("keep", ({ id, variant }) => stage.keep(id, variant), stage),
     discard: write("discard", ({ id }) => stage.discard(id), stage),
-  }
-
-  const suggest = ({ query }: WireCall): Reply => {
-    const session = SessionId.safeParse(query.get("session"))
-    return ok({
-      suggestions: stage.suggestions(
-        session.success ? { session: session.data } : { path: query.get("path") ?? "" },
-      ),
-    })
+    suggest: ({ query }) => {
+      const session = SessionId.safeParse(query.get("session"))
+      return ok({
+        suggestions: stage.suggestions(
+          session.success ? { session: session.data } : { path: query.get("path") ?? "" },
+        ),
+      })
+    },
   }
 
   return async (call): Promise<WireReply> => {
-    const op: string = call.op
-    if (op === "suggest") {
-      const reply = suggest(call)
-      return { status: reply.status, body: Suggestions.parse(reply.body) }
-    }
     const reply = await handlers[call.op](call, now())
     if (reply.status !== 200) return reply
     return { status: reply.status, body: operations[call.op].response.parse(reply.body) }

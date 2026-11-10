@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { manifest } from "./manifest"
 import { replayTransport } from "./replay"
 import { createStage } from "./stage"
-import { operations, type PageView, SessionId } from "./wire"
+import { type Operation, operations, type PageView, SessionId } from "./wire"
 
 const CARD = "site/scenes/pricing/PricingCard.tsx"
 
@@ -11,9 +11,8 @@ function setup() {
   const stage = createStage(manifest)
   let now = 0
   const transport = replayTransport(stage, () => now)
-  const call = async (op: string, body?: unknown, query = new URLSearchParams()) =>
-    // SAFETY: tests also call `suggest`, which this overlay's protocol does not list yet.
-    transport({ op: op as never, query, body })
+  const call = async (op: Operation, body?: unknown, query = new URLSearchParams()) =>
+    transport({ op, query, body })
   const page = async () => {
     const reply = await call("page")
     return operations.page.response.parse(reply.body)

@@ -3,3 +3,4 @@ dist
 .tour/
 .vercel
 .env*
+.claude/worktrees
