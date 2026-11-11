@@ -50,10 +50,7 @@ export type Selection =
   | { kind: "element"; element: Element }
   | { kind: "frame"; frame: Frame }
 
-/** The measuring lens: off, on while ⌥ is held, or latched on with I. */
-export type Lens = "off" | "held" | "latched"
-
-export type Tab = "specs" | "morph" | "layers"
+export type Tab = "specs" | "morph"
 export type Side = "left" | "right"
 
 /**
@@ -74,18 +71,17 @@ export interface Draft {
 
 export type Composer = null | { target: AskTarget; draft: Draft; tool: SketchTool | null }
 
-/** What is outlined under the pointer: a page hover, a Layers row, or a finding's instances. */
+/** What is outlined under the pointer: a page hover, an inspector row, or a finding's instances. */
 export type Hover =
   | null
   | { via: "page"; element: Element }
-  | { via: "layers"; element: Element }
+  | { via: "panel"; element: Element }
   | { via: "sheet"; elements: readonly Element[] }
 
 export interface State {
   open: boolean
   hover: Hover
   selection: Selection
-  lens: Lens
   sidebar: Sidebar
   composer: Composer
   /** Variant sessions: the latest page view and each pin. They outlive closing the overlay. */
@@ -99,7 +95,6 @@ export const initial: State = {
   open: false,
   hover: null,
   selection: { kind: "none" },
-  lens: "off",
   sidebar: { kind: "closed" },
   composer: null,
   sessions: NO_SESSIONS,
@@ -114,8 +109,6 @@ export type Event =
   | { kind: "framed"; frame: Frame }
   | { kind: "narrowed"; name: string | null }
   | { kind: "deselected" }
-  | { kind: "alt"; down: boolean }
-  | { kind: "latched" }
   | { kind: "inspector" }
   | { kind: "tabKey"; tab: Tab }
   | { kind: "tab"; tab: Tab }
@@ -168,7 +161,6 @@ function escape(state: State): State {
   if (composer?.tool) return { ...state, composer: { ...composer, tool: null } }
   if (composer !== null) return { ...state, composer: null }
   if (state.sessions.card !== null) return withSessions(state, { kind: "card", id: null })
-  if (state.lens === "latched") return { ...state, lens: "off" }
   if (selection.kind === "element") return { ...state, selection: { kind: "none" } }
   if (selection.kind === "frame" && selection.frame.narrow !== null)
     return { ...state, selection: { kind: "frame", frame: { ...selection.frame, narrow: null } } }
@@ -217,11 +209,6 @@ function step(state: State, event: Event): State {
         selection: { kind: "none" },
         composer: null,
       }
-    case "alt":
-      if (event.down) return state.lens === "off" ? { ...state, lens: "held" } : state
-      return state.lens === "held" ? { ...state, lens: "off" } : state
-    case "latched":
-      return { ...state, lens: state.lens === "latched" ? "off" : "latched" }
     case "inspector":
       return state.sidebar.kind === "open"
         ? { ...state, sidebar: { kind: "closed" }, hover: null }

@@ -3,7 +3,7 @@ import { type Dispatch, useEffect, useEffectEvent, useReducer, useRef, useState 
 
 import { type ThemeName } from "../core/config"
 import { isPointShortcut, isTyping } from "../inspector/pointer"
-import { isMorph, leafAt } from "../inspector/target"
+import { isMorph } from "../inspector/target"
 import { type SessionActions } from "./ask"
 import { itemsIn } from "./frame"
 import { readSessions } from "./session-store"
@@ -20,7 +20,6 @@ import { UI_CSS } from "./ui/css"
 import { Dock, Notice } from "./ui/Dock"
 import { fileOf, useSettled, useSource, useTick } from "./ui/hooks"
 import { Inspector } from "./ui/Inspector"
-import { Lens } from "./ui/Lens"
 import { frameBox, PageLayer } from "./ui/PageLayer"
 import { boxOfPin, flipOf, Pins } from "./ui/Pins"
 
@@ -28,7 +27,7 @@ import { boxOfPin, flipOf, Pins } from "./ui/Pins"
 const DRAG_PX = 5
 /** How long a page hover holds before Specs previews it, so crossing other elements does not flicker. */
 const PREVIEW_MS = 90
-const TAB_KEYS: Partial<Record<string, Tab>> = { s: "specs", t: "morph", l: "layers" }
+const TAB_KEYS: Partial<Record<string, Tab>> = { s: "specs", t: "morph" }
 
 const viewport = () => ({ width: innerWidth, height: innerHeight })
 
@@ -83,18 +82,11 @@ type Drag = { from: { x: number; y: number }; to: { x: number; y: number }; move
 /** Hover, click to select and drag to frame on the page, with the page's own clicks held back. */
 function usePagePointer(state: State, dispatch: Dispatch<Event>) {
   const [drag, setDrag] = useState<Drag | null>(null)
-  const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null)
   const dragging = useRef<Drag | null>(null)
-  const last = useRef<{ x: number; y: number } | null>(null)
   const paged = useRef<Element | null>(null)
-  const lensOn = state.lens !== "off"
-  useEffect(() => {
-    if (lensOn) setPointer(last.current)
-  }, [lensOn])
 
   const onMove = useEffectEvent((event: PointerEvent) => {
     const at = { x: event.clientX, y: event.clientY }
-    last.current = at
     const now = dragging.current
     if (now !== null) {
       const next = {
@@ -112,7 +104,6 @@ function usePagePointer(state: State, dispatch: Dispatch<Event>) {
       paged.current = null
       return
     }
-    if (lensOn) setPointer(at)
     const element = pickAt(at.x, at.y)
     if (element !== paged.current)
       dispatch({ kind: "hovered", hover: element && { via: "page", element } })
@@ -195,13 +186,12 @@ function usePagePointer(state: State, dispatch: Dispatch<Event>) {
   }, [open, sketching])
 
   const box = drag?.moved ? boxBetween(drag.from, drag.to) : null
-  return { drag: box, pointer: lensOn ? pointer : null }
+  return box
 }
 
 /**
- * Alt+Shift+R opens and closes; ⌥ holds the lens and I latches it; S, T, L and \ drive the
- * inspector; A asks, K sketches; ⇧↵ and ↵ climb, ⇥ moves to the next sibling; [ and ] step
- * through pins, 0–3 and ←/→ flip the open card's variants; Esc backs out.
+ * Alt+Shift+R opens and closes; S, T and \ drive the inspector; A asks, K sketches; ⇧↵ and ↵
+ * climb, ⇥ moves to the next sibling; [ and ] step through pins, 0–3 and ←/→ flip the open card's variants; Esc backs out.
  */
 function useKeys(state: State, dispatch: Dispatch<Event>, actions: SessionActions) {
   const onKey = useEffectEvent((event: KeyboardEvent) => {
@@ -211,10 +201,6 @@ function useKeys(state: State, dispatch: Dispatch<Event>, actions: SessionAction
       return
     }
     if (!state.open) return
-    if (event.key === "Alt") {
-      dispatch({ kind: "alt", down: true })
-      return
-    }
     if (isTyping(event) || event.metaKey || event.ctrlKey || event.altKey) return
     const handled = () => {
       event.preventDefault()
@@ -236,11 +222,6 @@ function useKeys(state: State, dispatch: Dispatch<Event>, actions: SessionAction
     if (tab !== undefined && !event.shiftKey) {
       handled()
       dispatch({ kind: "tabKey", tab })
-      return
-    }
-    if (key === "i" && !event.shiftKey) {
-      handled()
-      dispatch({ kind: "latched" })
       return
     }
     if (composer !== null) return
@@ -295,28 +276,15 @@ function useKeys(state: State, dispatch: Dispatch<Event>, actions: SessionAction
     handled()
     if (next !== null) dispatch({ kind: "selected", element: next })
   })
-  const onKeyUp = useEffectEvent((event: KeyboardEvent) => {
-    if (event.key === "Alt") dispatch({ kind: "alt", down: false })
-  })
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
       onKey(event)
     }
-    const up = (event: KeyboardEvent) => {
-      onKeyUp(event)
-    }
-    const blur = () => {
-      dispatch({ kind: "alt", down: false })
-    }
     window.addEventListener("keydown", down, true)
-    window.addEventListener("keyup", up, true)
-    window.addEventListener("blur", blur)
     return () => {
       window.removeEventListener("keydown", down, true)
-      window.removeEventListener("keyup", up, true)
-      window.removeEventListener("blur", blur)
     }
-  }, [dispatch])
+  }, [])
 }
 
 function useScales(open: boolean, theme: ThemeName | null): Scales {
@@ -334,7 +302,7 @@ function useScales(open: boolean, theme: ThemeName | null): Scales {
   return scales
 }
 
-/** Morph's development tools on the page: select, measure, frame, inspect, morph and ask. */
+/** Morph on the page: select, frame, ask, and flip between variants. */
 export function Overlay() {
   const [state, dispatch] = useReducer(reduce, initial, (state) => ({
     ...state,
@@ -342,7 +310,7 @@ export function Overlay() {
   }))
   const theme = useHostTheme(state.open)
   const scales = useScales(state.open, theme?.name ?? null)
-  const { drag, pointer } = usePagePointer(state, dispatch)
+  const drag = usePagePointer(state, dispatch)
   const actions = useSessions(state, dispatch)
   useKeys(state, dispatch, actions)
   useDocking(state, dispatch)
@@ -364,7 +332,6 @@ export function Overlay() {
   const live = drag ? itemsIn(drag, 40) : []
   const dock = sidebar.kind === "open" ? { side: sidebar.side, width: sidebar.width } : null
   const area = uncovered(dock, viewport())
-  const subject = pointer && state.lens !== "off" ? leafAt(pointer.x, pointer.y) : null
 
   return (
     <div className="ui">
@@ -382,7 +349,6 @@ export function Overlay() {
               dispatch={dispatch}
             />
             <Pins state={state} area={area} actions={actions} dispatch={dispatch} />
-            {subject && <Lens subject={subject} selected={selected} scales={scales} area={area} />}
             {composer && <Marks marks={composer.draft.marks} dispatch={dispatch} />}
             {composer?.tool && (
               <SketchLayer key={composer.tool} tool={composer.tool} dispatch={dispatch} />

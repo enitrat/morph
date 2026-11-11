@@ -84,50 +84,32 @@ export function Notice({ state, center }: { state: State; center: number }) {
 
 function Hint({ state }: { state: State }) {
   const k = (key: string) => <Kbd>{key}</Kbd>
-  const parts: ReactNode[] =
-    state.lens !== "off"
+  const parts: ReactNode[] = state.composer?.tool
+    ? [<span key="d">Drag on the page to draw</span>, <span key="e">{k("esc")} done</span>]
+    : state.sessions.card !== null
       ? [
-          <span key="m" className="flex items-center gap-1.5 text-measure">
-            <Glyph name="measure" size={13} />
-            Measuring
+          <span key="f">
+            {k("0")}–{k("3")} flip
           </span>,
-          state.lens === "held" ? (
-            <span key="r">release {k("⌥")}</span>
-          ) : (
-            <span key="r">{k("I")} to stop</span>
-          ),
+          <span key="p">
+            {k("[")}
+            {k("]")} pins
+          </span>,
         ]
-      : state.composer?.tool
-        ? [<span key="d">Drag on the page to draw</span>, <span key="e">{k("esc")} done</span>]
-        : state.sessions.card !== null
+      : state.selection.kind === "element"
+        ? [
+            <span key="a">{k("A")} Ask</span>,
+            <span key="p">{k("⇧↵")} parent</span>,
+            <span key="c">{k("↵")} child</span>,
+            <span key="s">{k("⇥")} sibling</span>,
+          ]
+        : state.selection.kind === "frame"
           ? [
-              <span key="f">
-                {k("0")}–{k("3")} flip
-              </span>,
-              <span key="p">
-                {k("[")}
-                {k("]")} pins
-              </span>,
+              <span key="l">Click a label to select</span>,
+              <span key="a">{k("A")} ask about frame</span>,
+              <span key="e">{k("esc")} clear</span>,
             ]
-          : state.selection.kind === "element"
-            ? [
-                <span key="a">{k("A")} Ask</span>,
-                <span key="p">{k("⇧↵")} parent</span>,
-                <span key="c">{k("↵")} child</span>,
-                <span key="s">{k("⇥")} sibling</span>,
-                <span key="m">hold {k("⌥")} measure</span>,
-              ]
-            : state.selection.kind === "frame"
-              ? [
-                  <span key="l">Click a label to select</span>,
-                  <span key="a">{k("A")} ask about frame</span>,
-                  <span key="e">{k("esc")} clear</span>,
-                ]
-              : [
-                  <span key="c">Click to select</span>,
-                  <span key="d">Drag to frame</span>,
-                  <span key="m">Hold {k("⌥")} to measure</span>,
-                ]
+          : [<span key="c">Click to select</span>, <span key="d">Drag to frame</span>]
   return (
     <span className="flex items-center gap-3 px-2 text-[12px] whitespace-nowrap text-ink-2">
       {parts}
@@ -228,15 +210,6 @@ export function Dock({
                 <Hint state={state} />
               )}
               <span className="h-4 w-px bg-line" />
-              <Tool
-                glyph="measure"
-                label="Measure"
-                shortcut="I"
-                on={state.lens !== "off"}
-                onClick={() => {
-                  dispatch({ kind: "latched" })
-                }}
-              />
               <Tool
                 glyph="panel"
                 label="Inspect"

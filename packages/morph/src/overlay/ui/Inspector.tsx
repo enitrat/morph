@@ -14,7 +14,6 @@ import { type ShownTheme } from "../theme"
 import { Glyph } from "./Glyph"
 import { fileOf, useSource } from "./hooks"
 import { Kbd } from "./Kbd"
-import { Layers } from "./Layers"
 import { FrameSheet } from "./FrameSheet"
 import { ElementSpecs, type Comparison } from "./Specs"
 import { ease, spring } from "./lib/motion"
@@ -23,7 +22,6 @@ import { Empty, Identity } from "./parts"
 const TABS: { id: Tab; label: string; key: string }[] = [
   { id: "specs", label: "Specs", key: "S" },
   { id: "morph", label: "Morph", key: "T" },
-  { id: "layers", label: "Layers", key: "L" },
 ]
 
 function Primary({ children, onClick }: { children: ReactNode; onClick: () => void }) {
@@ -94,7 +92,6 @@ function SpecsTab({
         {[
           ["click", "Inspect an element"],
           ["drag", "Frame a section"],
-          ["⌥", "Measure on the page"],
         ].map(([key, what]) => (
           <div key={key} className="flex items-center gap-2.5">
             <span className="w-10 text-right">
@@ -152,8 +149,7 @@ function Foot({
   const source = useSource(element)
   if (sidebar.kind !== "open") return null
   let body: ReactNode
-  if (sidebar.tab === "layers") body = <Note>Hover a row to find it · click to select</Note>
-  else if (sidebar.tab === "specs" && preview !== null && preview !== element)
+  if (sidebar.tab === "specs" && preview !== null && preview !== element)
     body = <Note>Previewing. Click on the page to inspect it.</Note>
   else if (selection.kind === "frame")
     body = (
@@ -288,7 +284,6 @@ export function Inspector({
                 theme={theme}
               />
             )}
-            {open.tab === "layers" && <Layers state={state} dispatch={dispatch} />}
           </div>
           <Foot state={state} preview={open.tab === "specs" ? preview : null} dispatch={dispatch} />
         </motion.aside>

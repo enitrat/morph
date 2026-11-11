@@ -64,30 +64,3 @@ export function pathOf(element: Element): Element[] {
     path.unshift(node)
   return path
 }
-
-export interface Layer {
-  element: Element
-  name: string
-  children: Layer[]
-}
-
-/** The page's components as a tree, by DOM nesting. */
-export function layersOf(limit = 400): Layer[] {
-  const roots: Layer[] = []
-  const open: Layer[] = []
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT)
-  let count = 0
-  for (let node = walker.nextNode(); node !== null && count < limit; node = walker.nextNode()) {
-    if (!(node instanceof Element) || isMorph(node)) continue
-    const name = componentOf(node)
-    if (name === null || !visible(node)) continue
-    count++
-    while (open.length > 0 && !open.at(-1)?.element.contains(node)) open.pop()
-    const layer: Layer = { element: node, name, children: [] }
-    const parent = open.at(-1)
-    if (parent === undefined) roots.push(layer)
-    else parent.children.push(layer)
-    open.push(layer)
-  }
-  return roots
-}

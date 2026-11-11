@@ -415,7 +415,7 @@ function Crumbs({
               type="button"
               className="ring-focus max-w-40 truncate text-ink-2 hover:text-ink hover:underline hover:underline-offset-2"
               onPointerOver={() => {
-                dispatch({ kind: "hovered", hover: { via: "layers", element: item } })
+                dispatch({ kind: "hovered", hover: { via: "panel", element: item } })
               }}
               onPointerOut={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget as Node | null))

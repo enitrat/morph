@@ -39,14 +39,13 @@ export function Outline({
   dashed = false,
 }: {
   box: Box
-  tone: "accent" | "hover" | "warn" | "measure" | "dim"
+  tone: "accent" | "hover" | "warn" | "dim"
   dashed?: boolean
 }) {
   const ring = {
     accent: "shadow-[inset_0_0_0_1.5px_var(--accent),0_0_0_1px_rgb(0_0_0/0.3)]",
     hover: "shadow-[inset_0_0_0_1px_var(--accent),0_0_0_1px_rgb(0_0_0/0.2)]",
     warn: "bg-warn-soft shadow-[inset_0_0_0_1.5px_var(--warn)]",
-    measure: "shadow-[inset_0_0_0_1px_var(--measure)]",
     dim: "shadow-[inset_0_0_0_1px_rgb(124_196_255/0.35)]",
   }[tone]
   return (
@@ -66,13 +65,11 @@ export function Outline({
 export function Tag({
   box,
   area,
-  tone = "accent",
   children,
   onClick,
 }: {
   box: Box
   area: Area
-  tone?: "accent" | "measure"
   children: ReactNode
   onClick?: () => void
 }) {
@@ -82,9 +79,7 @@ export function Tag({
   return (
     <div
       ref={ref}
-      className={`absolute flex h-[19px] items-center gap-1.5 whitespace-nowrap rounded-xs px-1.5 text-xs font-semibold shadow-[0_1px_2px_rgb(0_0_0/0.25)] ${
-        tone === "measure" ? "bg-measure text-white" : "bg-accent text-on-accent"
-      } ${onClick ? "pointer-events-auto" : ""}`}
+      className={`absolute flex h-[19px] items-center gap-1.5 whitespace-nowrap rounded-xs px-1.5 text-xs font-semibold bg-accent text-on-accent shadow-[0_1px_2px_rgb(0_0_0/0.25)] ${onClick ? "pointer-events-auto" : ""}`}
       style={{ left: spot.x, top: spot.y, visibility: size ? "visible" : "hidden" }}
     >
       {children}
@@ -345,10 +340,8 @@ export function PageLayer({
   const area = uncovered(dock, viewport())
   const selected = selection.kind === "element" ? selection.element : null
   const outlined =
-    drag === null && state.lens === "off" && !(selection.kind === "frame" && hover?.via === "page")
-      ? hover
-      : null
-  const single = outlined?.via === "page" || outlined?.via === "layers" ? outlined.element : null
+    drag === null && !(selection.kind === "frame" && hover?.via === "page") ? hover : null
+  const single = outlined?.via === "page" || outlined?.via === "panel" ? outlined.element : null
   const flagged = new Set(outlined?.via === "sheet" ? outlined.elements : [])
   return (
     <div className="pointer-events-none fixed inset-0 z-[2147483640] overflow-hidden">
@@ -398,7 +391,7 @@ export function PageLayer({
           area={area}
           state={state}
           source={source}
-          bar={composer === null && state.lens === "off"}
+          bar={composer === null}
           dispatch={dispatch}
         />
       )}

@@ -18,31 +18,13 @@ describe("opening Morph", () => {
     expect(run({ kind: "selected", element: card })).toBe(initial)
   })
 
-  it("forgets the selection, lens and inspector when it closes", () => {
+  it("forgets the selection and inspector when it closes", () => {
     const state = open(
       { kind: "selected", element: card },
-      { kind: "latched" },
       { kind: "inspector" },
       { kind: "toggled" },
     )
     expect(state).toEqual(initial)
-  })
-})
-
-describe("the measuring lens", () => {
-  it("is on only while ⌥ is held", () => {
-    expect(open({ kind: "alt", down: true }).lens).toBe("held")
-    expect(open({ kind: "alt", down: true }, { kind: "alt", down: false }).lens).toBe("off")
-  })
-
-  it("stays on after ⌥ is released once I latches it", () => {
-    const state = open(
-      { kind: "alt", down: true },
-      { kind: "latched" },
-      { kind: "alt", down: false },
-    )
-    expect(state.lens).toBe("latched")
-    expect(reduce(state, { kind: "latched" }).lens).toBe("off")
   })
 })
 
@@ -61,11 +43,11 @@ describe("the inspector", () => {
     const state = open(
       { kind: "inspector" },
       { kind: "docked", side: "left", width: 280 },
-      { kind: "tab", tab: "layers" },
+      { kind: "tab", tab: "morph" },
     )
     expect(state.sidebar).toEqual({
       kind: "open",
-      tab: "layers",
+      tab: "morph",
       side: "left",
       width: 280,
       auto: false,
@@ -79,13 +61,9 @@ describe("the inspector", () => {
   })
 
   it("stays open after the frame when the designer took it over", () => {
-    const state = open(
-      { kind: "framed", frame },
-      { kind: "tab", tab: "layers" },
-      { kind: "escape" },
-    )
+    const state = open({ kind: "framed", frame }, { kind: "tab", tab: "morph" }, { kind: "escape" })
     expect(state.selection.kind).toBe("none")
-    expect(state.sidebar).toMatchObject({ kind: "open", tab: "layers" })
+    expect(state.sidebar).toMatchObject({ kind: "open", tab: "morph" })
   })
 
   it("stays open when a component is picked from the frame", () => {
@@ -148,7 +126,6 @@ describe("the composer", () => {
     expect(reduce(asking, { kind: "selected", element: button }).composer).toBeNull()
   })
 })
-
 
 describe("Esc", () => {
   it("backs out one layer at a time", () => {
