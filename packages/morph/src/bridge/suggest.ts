@@ -7,7 +7,7 @@ import { MAX_SUGGESTIONS } from "../protocol"
 import { componentsAround } from "../syntax/source"
 import { type SourceLoc, Suggestion } from "../variant/model"
 import { absent, type Host } from "./git"
-import { openSessionFiles } from "./session"
+import { plannedSessions } from "./session"
 
 const ANY_COMPONENT = "*"
 
@@ -36,7 +36,7 @@ const house = (repo: Host, component: string): Suggestion[] =>
 export async function siteSuggestions(repo: Host, site: SourceLoc): Promise<Suggestion[]> {
   const text = await readFile(join(repo.root, site.path), "utf8").catch(absent)
   const components = text === null ? [] : componentsAround(text, site.line, site.col)
-  const recent = (await openSessionFiles(repo))
+  const recent = (await plannedSessions(repo))
     .toReversed()
     // An ask that leans on sketch marks reads as nonsense without them.
     .filter(({ ask }) => ask.marks.length === 0)

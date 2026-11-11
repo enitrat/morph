@@ -1,11 +1,4 @@
-// The detached program behind one variant job: `node --import tsx runner.ts <repo> <session> <v>`.
-// It edits a slot, checks it, captures it as a ref and writes `result.json` in its job directory.
-// oxlint-disable-next-line import/no-nodejs-modules -- a runner is a node process.
-import { writeFile } from "node:fs/promises"
-// oxlint-disable-next-line import/no-nodejs-modules -- see above.
-import { join } from "node:path"
-
-import { MorphConfig } from "../core/config"
+import { type MorphConfig } from "../core/config"
 import {
   type CommitId,
   type Direction,
@@ -21,24 +14,22 @@ import { type AgentResult, agentModel, EDIT_TOOLS, runClaude } from "./agent"
 import { checks } from "./checks"
 import { outside } from "./contain"
 import { readImportable } from "./design-system"
-import { readJson, writeJson } from "./disk"
-import { changedFiles, commitTree, git, type Host, openRepo, type Repo, updateRef } from "./git"
+import { changedFiles, commitTree, git, type Host, openRepo, type Repo } from "./git"
 import { Outcome, retryPrompt, variantPrompt } from "./prompt"
-import { jobDir, readSessionFile, variantRef, variantsOf } from "./session"
+import { AttemptId } from "./job"
+import { advanceJob, claimJob, finishJob, ownsJob } from "./jobs"
 import { acquire, release } from "./slots"
 
 const AGENT_DEADLINE_MS = 240_000
 
-/**
- * A discard sends SIGTERM to this runner's process group, which holds its checks. The agent leads
- * a group of its own, so aborting this signal stops it; the runner then exits at once, writing
- * nothing, and its slot lock, held by a dead process, is free.
- */
 const stopped = new AbortController()
 process.once("SIGTERM", () => {
   stopped.abort("discarded")
-  process.exit(143)
 })
+
+function revoke(): void {
+  stopped.abort("execution ownership revoked")
+}
 
 const failed = (reason: string, retryable: boolean): JobResult => ({
   kind: "failed",
@@ -80,7 +71,6 @@ interface Timings {
   checks: number
 }
 
-/** The agent edits the slot, then checks run; failing checks get one more agent run. */
 async function edit(
   dir: string,
   config: MorphConfig,
@@ -110,14 +100,13 @@ async function edit(
     return { ok: false, result: failed("the agent changed no file", true) }
 
   await phase("checks")
-  let checked = await timed("checks", checks(dir, await touched(dir), config))
+  let checked = await timed("checks", checks(dir, await touched(dir), config, stopped.signal))
   if (!checked.ok) {
     console.log(`checks failed, retrying:\n${checked.errors}`)
     await phase("retry")
-    // The retry's own title would name the fix, so the variant keeps the first run's.
     const fixed = await agent(retryPrompt(prompt, checked.errors))
     if (!fixed.ok) return { ok: false, result: failed(fixed.detail, true) }
-    checked = await timed("checks", checks(dir, await touched(dir), config))
+    checked = await timed("checks", checks(dir, await touched(dir), config, stopped.signal))
     if (!checked.ok) {
       console.log(`checks fail after a retry:\n${checked.errors}`)
       return {
@@ -153,7 +142,6 @@ async function generate(
     const commit = await commitTree(slot.dir, session.base, `morph ${variant}: ${title}`)
     const files = await changedFiles(repo, session.base, commit)
     if (files.length === 0) return failed("the variant equals its base after checks", true)
-    await updateRef(repo, variantRef(session.id, variant), commit)
 
     return {
       kind: "ready",
@@ -169,21 +157,41 @@ async function generate(
   }
 }
 
-const [root = "", id = "", variantArg = ""] = process.argv.slice(2)
-const opened = await openRepo(root)
-const session = await readSessionFile(opened, SessionId.parse(id))
-if (session === null) throw new Error(`morph: no session ${id}`)
-const variant = VariantId.parse(variantArg)
-const direction = variantsOf(session).find((entry) => entry.id === variant)?.direction
-if (direction === undefined) throw new Error(`morph: session ${id} has no ${variant}`)
-const dir = jobDir(opened, session.id, variant)
-const config = await readJson(join(dir, "config.json"), MorphConfig)
-if (config === null) throw new Error(`morph: ${variant} has no config.json`)
-
-const result = await generate({ ...opened, config }, session, variant, direction, (phase) =>
-  writeFile(join(dir, "phase"), phase),
-).catch((error: unknown) =>
-  failed(error instanceof Error ? (error.stack ?? error.message) : String(error), true),
+const [root = "", id = "", variantArg = "", attemptArg = ""] = process.argv.slice(2)
+const repo = await openRepo(root)
+const owner = await claimJob(
+  repo,
+  SessionId.parse(id),
+  VariantId.parse(variantArg),
+  AttemptId.parse(attemptArg),
+  process.pid,
 )
-await writeJson(join(dir, "result.json"), JobResult.parse(result))
-console.log(JSON.stringify(result))
+if (owner !== null) {
+  const monitor = setInterval(() => {
+    void ownsJob(repo, owner).then((owned) => {
+      if (!owned) revoke()
+    }, revoke)
+  }, 250)
+  try {
+    const result = await generate(
+      { ...repo, config: owner.config },
+      owner.session,
+      owner.variant,
+      owner.direction,
+      async (phase) => {
+        stopped.signal.throwIfAborted()
+        if (!(await advanceJob(repo, owner, phase))) revoke()
+        stopped.signal.throwIfAborted()
+      },
+    ).catch((error: unknown) =>
+      failed(error instanceof Error ? (error.stack ?? error.message) : String(error), true),
+    )
+    clearInterval(monitor)
+    const outcome = stopped.signal.aborted
+      ? failed(`stopped: ${String(stopped.signal.reason)}`, true)
+      : result
+    if (await finishJob(repo, owner, JobResult.parse(outcome))) console.log(JSON.stringify(outcome))
+  } finally {
+    clearInterval(monitor)
+  }
+}

@@ -2,7 +2,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { type Dispatch, type ReactNode } from "react"
 
 import { FineTune } from "../fine-tune"
-import { targetsOf } from "../live"
+import { targetElements } from "../pinned-targets"
 import { pinned, type Sessions } from "../sessions"
 import { type Event, type State, type Tab } from "../model"
 import { MARGIN } from "../place"
@@ -16,7 +16,7 @@ import { fileOf, useSource } from "./hooks"
 import { Kbd } from "./Kbd"
 import { Layers } from "./Layers"
 import { FrameSheet } from "./FrameSheet"
-import { ElementSpecs, type Shown } from "./Specs"
+import { ElementSpecs, type Comparison } from "./Specs"
 import { ease, spring } from "./lib/motion"
 import { Empty, Identity } from "./parts"
 
@@ -45,12 +45,15 @@ function Note({ children }: { children: ReactNode }) {
   )
 }
 
-/** The session whose shown variant is about `element`, with the original's measurement. */
-function shownOver(element: Element, sessions: Sessions): Shown | null {
-  for (const { pin, view } of pinned(sessions))
-    if (view?.place.kind === "shown" && targetsOf(pin).includes(element))
-      return { n: pin.n, variant: view.place.variant, baseline: pin.baseline }
-  return null
+/** Every saved target reference associated with this element, including ambiguous spatial matches. */
+function comparisonsFor(element: Element, sessions: Sessions): Comparison[] {
+  return pinned(sessions).flatMap(({ pin }) =>
+    pin.targets.flatMap((target, slot) =>
+      target.match.kind !== "missing" && target.match.element === element
+        ? [{ thread: pin.id, n: pin.n, slot, target }]
+        : [],
+    ),
+  )
 }
 
 function SpecsTab({
@@ -68,7 +71,7 @@ function SpecsTab({
   const committed = selection.kind === "element" ? selection.element : null
   const card = sessions.card === null ? undefined : sessions.pins[sessions.card]
   // With nothing selected, Specs reads the open card's target.
-  const settled = committed ?? (card && targetsOf(card)[0]) ?? null
+  const settled = committed ?? (card && targetElements(card.targets)[0]) ?? null
   const element = preview !== null && preview !== settled ? preview : settled
   if (element !== null && element.isConnected)
     return (
@@ -76,7 +79,7 @@ function SpecsTab({
         key={element === settled ? "committed" : "preview"}
         element={element}
         preview={element !== settled}
-        shown={shownOver(element, sessions)}
+        comparisons={comparisonsFor(element, sessions)}
         scales={scales}
         dispatch={dispatch}
       />

@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react"
 
 import type { Revision, VariantNode } from "../stage/manifest"
-import type { Stage, Version } from "../stage/stage"
+import type { Stage } from "../stage/stage"
 import type { Stat } from "../stage/wire"
 
 const LETTER = { v1: "A", v2: "B", v3: "C" } as const
@@ -115,29 +115,18 @@ function Line({
   )
 }
 
-/** The variants behind the board's version, newest first per file. */
-function keptAlong(versions: readonly Version[], at: number): Map<string, VariantNode> {
-  const kept = new Map<string, VariantNode>()
-  for (let version = versions[at]; version !== undefined; version = versions[version.parent ?? -1])
-    if (version.kept !== null && !kept.has(version.kept.ask.base.file.path))
-      kept.set(version.kept.ask.base.file.path, version.kept)
-  return kept
-}
-
-/** One line per file the board's version changed, with its real diff from the original. */
 /** Every scene's live state; each `data.ts` exports `reset`, which puts it back as first drawn. */
 const live = Object.values(
   import.meta.glob<{ reset: () => void }>("../scenes/*/data.ts", { eager: true }),
 )
 
+/** One line per kept file, with its current variant and diff from the original. */
 export function Ledger({ stage }: { stage: Stage }) {
   const snapshot = useSyncExternalStore(stage.subscribe, stage.snapshot)
-  const kept = keptAlong(snapshot.versions, snapshot.at)
   const lines = [...snapshot.kept]
     .flatMap(([path, revision]) => {
-      const variant = kept.get(path)
-      const file = stage.manifest.files.get(path)
-      return variant && file && revision !== file.original
+      const { from: variant, file } = revision
+      return variant !== null && revision !== file.original
         ? [{ path, variant, original: file.original, revision }]
         : []
     })

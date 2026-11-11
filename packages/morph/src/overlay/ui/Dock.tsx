@@ -17,7 +17,7 @@ function Chips({ state, dispatch }: { state: State; dispatch: Dispatch<Event> })
   return (
     <span className="flex items-center gap-0.5">
       {list.map(({ pin, view }) => {
-        const status = statusOf(view)
+        const status = statusOf(view, pin.submission)
         const on = state.sessions.card === pin.id
         return (
           <button

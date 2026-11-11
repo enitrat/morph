@@ -4,11 +4,12 @@ import { type Dispatch, type ReactNode, useEffect, useEffectEvent, useReducer, u
 import {
   type Choice,
   type SessionView,
+  type ActiveSessionView,
   type VariantId,
   type VariantView,
 } from "../../variant/model"
 import { type SessionActions } from "../ask"
-import { targetsOf } from "../live"
+import { targetElements } from "../pinned-targets"
 import { type Event, type State } from "../model"
 import { type Box, boxOf, cardSpot, PIN, pinSpots, type Point } from "../place"
 import {
@@ -23,6 +24,7 @@ import {
   progressOf,
   type Sessions,
   statusOf,
+  submissionWords,
 } from "../sessions"
 import { Glyph } from "./Glyph"
 import { useSize } from "./hooks"
@@ -35,7 +37,7 @@ const CARD_WIDTH = 340
 
 /** The box around everything a pin is about, in viewport pixels. */
 export function boxOfPin(pin: Pin): Box | null {
-  const boxes = targetsOf(pin).map((element) => boxOf(element.getBoundingClientRect()))
+  const boxes = targetElements(pin.targets).map((element) => boxOf(element.getBoundingClientRect()))
   if (boxes.length === 0) return null
   return {
     left: Math.min(...boxes.map((box) => box.left)),
@@ -57,7 +59,7 @@ const layoutKey = (boxes: readonly (Box | null)[]) =>
   ].join("|")
 
 /** The choices a card flips through with ←/→: the original, then each ready variant. */
-const choicesOf = (view: SessionView): Choice[] => [
+const choicesOf = (view: ActiveSessionView): Choice[] => [
   "original",
   ...view.variants.flatMap((variant) => (variant.state === "ready" ? [variant.id] : [])),
 ]
@@ -67,6 +69,7 @@ type Flip = { kind: "show"; choice: Choice } | { kind: "notice"; text: string }
 
 /** 0 to 3 pick a row and ←/→ step through the ready ones; a row not ready says so. */
 export function flipOf(view: SessionView, key: string): Flip | null {
+  if (view.kind !== "active") return null
   const choices = choicesOf(view)
   if (key === "arrowleft" || key === "arrowright") {
     const at = Math.max(0, choices.indexOf(currentOf(view) ?? "original"))
@@ -91,6 +94,7 @@ export function flipOf(view: SessionView, key: string): Flip | null {
 
 /** What the page shows for the session, or waits to show. */
 function currentOf(view: SessionView): Choice | null {
+  if (view.kind !== "active") return null
   const { place } = view
   if (place.kind === "shown" || place.kind === "waiting") return place.variant
   if (place.kind === "conflict") return place.showing
@@ -99,6 +103,7 @@ function currentOf(view: SessionView): Choice | null {
 
 /** The variant Keep names: the one shown, the one waited for (keep takes over), or the one a conflict left on the page. */
 function keepable(view: SessionView): VariantId | null {
+  if (view.kind !== "active") return null
   const { place } = view
   if (place.kind === "shown" || place.kind === "waiting") return place.variant
   if (place.kind === "conflict") return place.showing
@@ -151,7 +156,7 @@ export function Disc({
   view: SessionView | null
   size?: number
 }) {
-  const status = statusOf(view)
+  const status = statusOf(view, pin.submission)
   const generating = view === null || isGenerating(view)
   const tone =
     status.tone === "on"
@@ -189,8 +194,9 @@ function PinButton({
   active: boolean
   dispatch: Dispatch<Event>
 }) {
-  const status = statusOf(view)
-  const shown = view?.place.kind === "shown" ? letterOf(view.place.variant) : null
+  const status = statusOf(view, pin.submission)
+  const shown =
+    view?.kind === "active" && view.place.kind === "shown" ? letterOf(view.place.variant) : null
   return (
     <motion.button
       type="button"
@@ -257,13 +263,13 @@ function Note({ tone, children }: { tone: "warn" | "plain"; children: ReactNode 
 }
 
 /** What the card says about where the session stands, beyond its rows. */
-function PlaceNotes({ view, pins }: { view: SessionView; pins: Sessions["pins"] }) {
+function PlaceNotes({ view, sessions }: { view: ActiveSessionView; sessions: Sessions }) {
   const { place } = view
   const notes: ReactNode[] = []
   if (place.kind === "waiting")
     notes.push(
       <Note key="wait" tone="warn">
-        <b className="font-semibold">Waiting for {holdersOf(place.on, pins)}.</b>{" "}
+        <b className="font-semibold">Waiting for {holdersOf(place.on, sessions)}.</b>{" "}
         {letterOf(place.variant)} shows once those files are free. Flip a variant here to take them
         back.
       </Note>,
@@ -354,7 +360,7 @@ function VariantRow({
 }: {
   variant: VariantView
   index: number
-  view: SessionView
+  view: ActiveSessionView
   actions: SessionActions
 }) {
   const current = currentOf(view)
@@ -450,14 +456,18 @@ function ThreadCard({
     width: innerWidth,
     height: innerHeight,
   })
-  const keep = view && keepable(view)
-  const from = view?.place.kind === "shown" ? view.place.variant : null
+  const active = view?.kind === "active" && pin.submission === null ? view : null
+  const keep = active && keepable(active)
+  const from = active?.place.kind === "shown" ? active.place.variant : null
   const round = (view?.trail.length ?? 0) + 1
   const last = view?.trail.at(-1)
-  const ready = view?.variants.filter((variant) => variant.state === "ready").length ?? 0
+  const ready =
+    view?.kind === "active"
+      ? view.variants.filter((variant) => variant.state === "ready").length
+      : 0
   const field = useRef<HTMLInputElement>(null)
   const chips = useRef<HTMLDivElement>(null)
-  const { suggestions } = useSuggestions(from === null ? null : pin.id)
+  const { suggestions } = useSuggestions(from === null || active === null ? null : active.id)
   const tether =
     spot.docked && pinAt !== null && size !== null
       ? { from: { x: pinAt.x + PIN / 2, y: pinAt.y + PIN / 2 }, to: nearestOn(spot, size, pinAt) }
@@ -515,17 +525,51 @@ function ThreadCard({
             <Glyph name="x" size={12} />
           </button>
         </div>
-        <p className="text-[12.5px] leading-[18px] text-ink">“{pin.words}”</p>
+        <p className="text-[12.5px] leading-[18px] text-ink">
+          “{pin.submission === null ? (view?.words ?? pin.words) : submissionWords(pin.submission)}”
+        </p>
         {last && (
           <p className="truncate text-[11.5px] text-ink-3">
             Built on {letterOf(last.variant)} · {last.title}
           </p>
         )}
-        {view === null ? (
-          <p className="text-[12px] text-ink-2">Planning three directions…</p>
+        {pin.submission !== null ? (
+          <div className="grid gap-2 text-[12px] text-ink-2">
+            <p>
+              {pin.submission.kind === "uncertain"
+                ? pin.submission.detail
+                : pin.submission.kind === "locating"
+                  ? "Finding the target…"
+                  : "Sending request…"}
+            </p>
+            {pin.submission.kind === "uncertain" && (
+              <button
+                type="button"
+                className="ring-focus rounded-md bg-surface-2 px-2 py-1 text-ink"
+                onClick={() => actions.resume(pin)}
+              >
+                Retry request
+              </button>
+            )}
+          </div>
+        ) : view === null || view.kind === "planning" ? (
+          <p className="text-[12px] text-ink-2">
+            {view === null ? "Reconnecting…" : "Planning directions…"}
+          </p>
+        ) : view.kind === "plan-failed" ? (
+          <div className="grid gap-2 text-[12px] text-ink-2">
+            <p>{view.reason}</p>
+            <button
+              type="button"
+              className="ring-focus rounded-md bg-surface-2 px-2 py-1 text-ink"
+              onClick={() => actions.retryPlan(view.id)}
+            >
+              Retry planning
+            </button>
+          </div>
         ) : (
           <>
-            <PlaceNotes view={view} pins={sessions.pins} />
+            <PlaceNotes view={view} sessions={sessions} />
             <div className="grid gap-0.5">
               <Row
                 letter={last ? letterOf(last.variant) : "–"}
@@ -568,7 +612,7 @@ function ThreadCard({
             onKeyDown={(event) => {
               if (event.key === "Enter" && from !== null) {
                 event.preventDefault()
-                actions.refine(pin, from)
+                active !== null && actions.refine(pin, active, from)
               } else if (event.key === "ArrowDown" && pin.refine === "") {
                 if (enterChips(chips.current)) event.preventDefault()
               } else if (event.key === "Escape") {
@@ -584,7 +628,7 @@ function ThreadCard({
             ref={chips}
             suggestions={suggestions}
             onPick={(words) => {
-              actions.refine({ ...pin, refine: words }, from)
+              active !== null && actions.refine({ ...pin, refine: words }, active, from)
             }}
             onLeave={() => field.current?.focus()}
           />
@@ -593,24 +637,27 @@ function ThreadCard({
           <button
             type="button"
             onClick={() => {
-              actions.discard(pin.id)
+              if (pin.submission !== null) actions.cancel(pin)
+              else if (view !== null) actions.discard(view.id)
             }}
             className="ring-focus h-7 rounded-md px-2 text-[12.5px] font-medium text-[var(--del)] hover:bg-surface-2"
           >
-            Discard
+            {pin.submission === null ? "Discard" : "Cancel request"}
           </button>
           <span className="min-w-0 flex-1 truncate text-right text-[11px] text-ink-3">
-            {view !== null && isGenerating(view)
+            {view?.kind === "active" && isGenerating(view)
               ? `${ready} of ${view.variants.length} ready`
-              : view?.place.kind === "waiting"
+              : view?.kind === "active" && view.place.kind === "waiting"
                 ? "Keep takes the files"
-                : "←/→ flip"}
+                : view?.kind === "active"
+                  ? "←/→ flip"
+                  : ""}
           </span>
           <button
             type="button"
             disabled={keep == null}
             onClick={() => {
-              if (keep != null) actions.keep(pin, keep)
+              if (keep != null && active !== null) actions.keep(pin, active, keep)
             }}
             className="ring-focus flex h-7 items-center gap-1.5 rounded-md bg-accent px-2.5 text-[12.5px] font-semibold text-on-accent transition-transform duration-150 active:scale-[0.97] disabled:opacity-40"
           >
@@ -653,7 +700,7 @@ export function Pins({
   useEffect(() => {
     const entry = list[openAt]
     if (entry === undefined) return
-    const target = targetsOf(entry.pin)[0]
+    const target = targetElements(entry.pin.targets)[0]
     if (target === undefined) return
     const box = target.getBoundingClientRect()
     if (box.top < 60 || box.top > innerHeight - 280)

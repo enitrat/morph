@@ -1,5 +1,5 @@
 // oxlint-disable-next-line import/no-nodejs-modules -- checks run the repo's own CLIs.
-import { execFile, spawn } from "node:child_process"
+import { execFile } from "node:child_process"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
 import { existsSync, readFileSync } from "node:fs"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
@@ -9,6 +9,7 @@ import { promisify } from "node:util"
 
 import { type MorphConfig } from "../core/config"
 import { type RepoPath } from "../variant/model"
+import { runCommand } from "./command"
 import { readImportable } from "./design-system"
 import { type Host } from "./git"
 import { breachesIn, DESIGNER, resolverAt } from "./scope"
@@ -48,20 +49,16 @@ export function reasonOf(output: string): string {
 }
 
 /** Runs `bin` in `cwd`, and answers its output under `label` when it exits non-zero. */
-function failureOf(label: string, cwd: string, bin: string, args: readonly string[]) {
-  return new Promise<string | null>((resolve, reject) => {
-    const child = spawn(bin, args, { cwd, stdio: ["ignore", "pipe", "pipe"] })
-    let out = ""
-    const collect = (chunk: Buffer) => {
-      out += chunk.toString()
-    }
-    child.stdout.on("data", collect)
-    child.stderr.on("data", collect)
-    child.on("error", reject)
-    child.on("close", (code) => {
-      resolve(code === 0 ? null : `${label}:\n${out.trim()}`)
-    })
-  })
+async function failureOf(
+  label: string,
+  cwd: string,
+  bin: string,
+  args: readonly string[],
+  signal: AbortSignal,
+) {
+  const result = await runCommand(bin, args, { cwd, signal })
+  if (result.kind !== "exited") return `${label}:\n${result.kind}: ${result.detail}`
+  return result.code === 0 ? null : `${label}:\n${result.output.trim()}`
 }
 
 /** Resolves a check binary in its workspace, then the app and repository. */
@@ -127,31 +124,32 @@ export function deadLinksIn(diff: string): string[] {
   return found
 }
 
-async function addedDiff(dir: string, paths: readonly string[]): Promise<string> {
-  if (paths.length === 0) return ""
-  // Files the agent created are untracked; intent-to-add puts them in the diff against the base.
-  // The scope and dead-link checks read this diff, so a git failure fails the checks run.
-  const added = await failureOf("git add", dir, "git", ["add", "--intent-to-add", "--", ...paths])
-  if (added !== null) throw new Error(added)
-  return new Promise((resolve, reject) => {
-    const child = spawn("git", ["diff", "-U0", "HEAD", "--", ...paths], {
-      cwd: dir,
-      stdio: ["ignore", "pipe", "pipe"],
-    })
-    let out = ""
-    let err = ""
-    child.stdout.on("data", (chunk: Buffer) => {
-      out += chunk.toString()
-    })
-    child.stderr.on("data", (chunk: Buffer) => {
-      err += chunk.toString()
-    })
-    child.on("error", reject)
-    child.on("close", (code) => {
-      if (code === 0) resolve(out)
-      else reject(new Error(`git diff exited ${code}: ${err.trim()}`))
-    })
+async function addedDiff(
+  dir: string,
+  paths: readonly string[],
+): Promise<{ ok: true; diff: string } | { ok: false; errors: string; reason: string }> {
+  if (paths.length === 0) return { ok: true, diff: "" }
+  // Interrupting Git can leave index.lock behind. Finish this transaction before releasing the slot.
+  const signal = AbortSignal.any([])
+  // Intent-to-add includes newly created files in the scope and dead-link checks.
+  const added = await failureOf(
+    "git add",
+    dir,
+    "git",
+    ["add", "--intent-to-add", "--", ...paths],
+    signal,
+  )
+  if (added !== null) return { ok: false, errors: added, reason: reasonOf(added) }
+  const result = await runCommand("git", ["diff", "-U0", "HEAD", "--", ...paths], {
+    cwd: dir,
+    signal,
   })
+  if (result.kind === "exited" && result.code === 0) return { ok: true, diff: result.stdout }
+  const errors =
+    result.kind === "exited"
+      ? `git diff exited ${result.code}: ${result.output.trim()}`
+      : `git diff ${result.kind}: ${result.detail}`
+  return { ok: false, errors, reason: reasonOf(errors) }
 }
 
 /** The projects owning changed paths and their transitive workspace dependents. */
@@ -201,6 +199,7 @@ export async function checks(
   dir: string,
   files: readonly RepoPath[],
   config: MorphConfig,
+  signal: AbortSignal,
 ): Promise<Checked> {
   const present = files.filter((path) => existsSync(join(dir, path)))
   const code = present.filter((path) => CODE.test(path))
@@ -215,14 +214,23 @@ export async function checks(
   const lint =
     code.length === 0 || linter === null
       ? null
-      : await failureOf(linter.bin, cwd, bin(linter.bin), [...linter.args, ...appPaths(code)])
+      : await failureOf(
+          linter.bin,
+          cwd,
+          bin(linter.bin),
+          [...linter.args, ...appPaths(code)],
+          signal,
+        )
   const format =
     formatted.length === 0
       ? null
-      : await failureOf(formatter.bin, cwd, bin(formatter.bin), [
-          ...formatter.args,
-          ...appPaths(formatted),
-        ])
+      : await failureOf(
+          formatter.bin,
+          cwd,
+          bin(formatter.bin),
+          [...formatter.args, ...appPaths(formatted)],
+          signal,
+        )
   const projects =
     typecheck.scope === "workspace"
       ? await projectsOf(dir, files)
@@ -236,10 +244,17 @@ export async function checks(
         join(dir, project),
         bin(typecheck.bin, project),
         typecheck.args,
+        signal,
       ),
     ),
   )
-  const diff = await addedDiff(dir, code)
+  if (signal.aborted)
+    return { ok: false, errors: String(signal.reason), reason: "Checks cancelled" }
+  const added = await addedDiff(dir, code)
+  if (!added.ok) return added
+  if (signal.aborted)
+    return { ok: false, errors: String(signal.reason), reason: "Checks cancelled" }
+  const { diff } = added
   const dead = deadLinksIn(diff)
   const links = dead.length === 0 ? null : `links:\n${dead.join("\n")}`
   const importable = readImportable(dir, config).map(({ specifier }) => specifier)

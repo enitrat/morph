@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { captureTarget } from "./pinned-targets"
 import { MotionGlobalConfig } from "motion/react"
 import { createElement, type Dispatch, useReducer } from "react"
 import { createRoot, type Root } from "react-dom/client"
@@ -6,11 +7,12 @@ import { afterEach, expect, it, vi } from "vitest"
 
 import { operations } from "../protocol"
 import { type PageView, type SessionId } from "../variant/model"
-import { ask } from "./ask"
+import { actionsOf } from "./ask"
 import { connect } from "./bridge"
+import { readSessions } from "./session-store"
 import { useSessions } from "./live"
 import { type Event, initial, reduce, type State } from "./model"
-import { ids, page, path, ready, session } from "./session-fixtures"
+import { ids, threads, info, page, path, ready, session } from "./session-fixtures"
 import { Dock, Notice } from "./ui/Dock"
 import { Pins } from "./ui/Pins"
 
@@ -23,6 +25,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
   document.body.replaceChildren()
   localStorage.clear()
+  sessionStorage.clear()
 })
 
 type Request = { op: string; body: Record<string, unknown> | null }
@@ -34,7 +37,7 @@ type Request = { op: string; body: Record<string, unknown> | null }
 function fakeBridge(script: (request: Request, now: PageView) => PageView, start: PageView) {
   let now = page()
   later = () => {
-    now = start
+    now = page(...start.sessions)
   }
   const requests: Request[] = []
   connect(async ({ op, body: sent }) => {
@@ -63,7 +66,10 @@ async function mount({ asks = true } = {}) {
   const elements = [document.createElement("section"), document.createElement("button")]
   document.body.append(...elements)
   function Harness() {
-    const [state, dispatch] = useReducer(reduce, { ...initial, open: true })
+    const [state, dispatch] = useReducer(reduce, { ...initial, open: true }, (state) => ({
+      ...state,
+      sessions: readSessions(),
+    }))
     send = dispatch
     const actions = useSessions(state, dispatch)
     poll = actions.poll
@@ -89,8 +95,7 @@ async function mount({ asks = true } = {}) {
         name,
         words: `Make ${name} calmer`,
         file: `${name.toLowerCase()}.tsx`,
-        picked: [{ element, at: { x: 0, y: 0 } }],
-        baseline: null,
+        targets: [captureTarget(element)],
       },
     })
   if (asks) {
@@ -209,6 +214,7 @@ it("shows a conflict's files and offers to keep what is on the page", async () =
 it("offers the bridge's refine suggestions under an empty refine field, and refines with one", async () => {
   const refined: unknown[] = []
   const suggested: string[] = []
+  let current = page(hero({ kind: "shown", variant: "v1", edited: false }))
   connect(async ({ op, query, body }) => {
     if (op === "suggest") {
       suggested.push(query.toString())
@@ -220,8 +226,18 @@ it("offers the bridge's refine suggestions under an empty refine field, and refi
     if (op === "locate")
       return { status: 200, body: { sources: [{ path: "app/hero.tsx", line: 1, col: 1 }] } }
     if (op === "plumbing") return { status: 200, body: { plumbing: [] } }
-    if (op === "refine") refined.push(body)
-    return { status: 200, body: page(hero({ kind: "shown", variant: "v1", edited: false })) }
+    if (op === "refine") {
+      refined.push(body)
+      const request = operations.refine.request.parse(body)
+      current = page({
+        ...info(request.ask.id, threads.hero),
+        words: request.ask.words,
+        kind: "plan-failed",
+        reason: "Planner unavailable",
+        trail: [{ variant: "v1", title: "Title v1", feedback: request.ask.words }],
+      })
+    }
+    return { status: 200, body: current }
   })
   const ui = await mount({ asks: false })
   const card = ui.elements[0] as Element
@@ -240,8 +256,7 @@ it("offers the bridge's refine suggestions under an empty refine field, and refi
       name: "Hero",
       words: "Make Hero calmer",
       file: "hero.tsx",
-      picked: [{ element: card, at: { x: 0, y: 0 } }],
-      baseline: null,
+      targets: [captureTarget(card)],
     },
   })
   ui.send({ kind: "page", page: page(hero({ kind: "shown", variant: "v1", edited: false })) })
@@ -257,6 +272,45 @@ it("offers the bridge's refine suggestions under an empty refine field, and refi
       }),
     ]),
   )
+  await vi.waitFor(() => expect(ui.text()).toContain("Planner unavailable"))
+  expect(ui.text()).toContain("R2")
+  expect(ui.text()).toContain("Built on A")
+  expect(ui.text()).toContain("Retry planning")
+})
+
+it("restores planning after reload, shows its failure, and offers explicit retry and discard", async () => {
+  localStorage.setItem(
+    "morph:pins",
+    JSON.stringify({
+      [ids.hero]: { n: 1, name: "Hero", words: "Calmer", file: "hero.tsx", at: [] },
+    }),
+  )
+  const planning = { ...info(ids.hero), kind: "planning" as const }
+  const bridge = fakeBridge(({ op }) => {
+    if (op === "retryPlan") return page(planning)
+    if (op === "discard") return page()
+    throw new Error(`Unexpected ${op}`)
+  }, page(planning))
+  const ui = await mount({ asks: false })
+  await vi.waitFor(() => expect(ui.chip("Hero")).toContain("planning"))
+  ui.host.querySelector<HTMLButtonElement>('button[title="Hero · planning  [ ]"]')?.click()
+  await vi.waitFor(() => expect(ui.text()).toContain("Planning directions…"))
+  expect(ui.host.querySelector<HTMLInputElement>('input[aria-label="Refine"]')?.disabled).toBe(true)
+  expect(
+    [...ui.host.querySelectorAll("button")].find((button) => button.textContent?.trim() === "Keep")
+      ?.disabled,
+  ).toBe(true)
+  expect(ui.text()).not.toContain("Original")
+  ui.send({
+    kind: "page",
+    page: page({ ...info(ids.hero), kind: "plan-failed", reason: "Planner unavailable" }),
+  })
+  await vi.waitFor(() => expect(ui.text()).toContain("Planner unavailable"))
+  ui.press("Retry planning")
+  await vi.waitFor(() => expect(ui.text()).toContain("Planning directions…"))
+  ui.press("Discard")
+  await vi.waitFor(() => expect(ui.chip("Hero")).toBeUndefined())
+  expect(bridge.requests.map(({ op }) => op)).toEqual(["retryPlan", "discard"])
 })
 
 it("keeps a newer selection when an earlier ask finishes locating", async () => {
@@ -296,10 +350,11 @@ it("keeps a newer selection when an earlier ask finishes locating", async () => 
     words: "Calmer",
     tool: null,
   })
-  const sent = ask(
-    { target: { kind: "element", element: first }, words: "Calmer", marks: [] },
-    dispatch,
-  )
+  const sent = actionsOf(dispatch).ask({
+    target: { kind: "element", element: first },
+    words: "Calmer",
+    marks: [],
+  })
   expect(state.composer).toBeNull()
   expect(state.selection).toEqual({ kind: "none" })
   dispatch({ kind: "selected", element: second })

@@ -20,7 +20,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { EMPTY_JOURNAL, Seq, SessionId, type Target, type VariantId } from "../variant/model"
 import { type Offer, type Request } from "../variant/swap"
 import { changedFiles, commitTree, homeOf, openRepo, type Repo, snapshot } from "./git"
-import { converge, readJournal } from "./live"
+import { readJournal, withLive } from "./live"
 import { withLock } from "./lock"
 import { SPAWNING_TEST_MS } from "./test-fixtures"
 
@@ -112,7 +112,7 @@ const offer = (session: SessionId, opened: number, ...ready: Target[]): Offer =>
 
 /** Converges `request` against a fixed set of open sessions, failing the test on a refusal. */
 async function run(repo: Repo, offers: readonly Offer[], request: Request) {
-  const done = await converge(repo, async () => offers, request)
+  const done = await withLive(repo, (tree) => tree.settle(offers, request))
   if (!done.ok) throw new Error(`refused: ${JSON.stringify(done.refusal)}`)
   return Object.fromEntries(done.places)
 }
@@ -180,7 +180,9 @@ describe("converge", () => {
     await run(repo, offers, { kind: "show", session: s, choice: "v1" })
     write(root, { "src/a.tsx": edit(BASE["src/a.tsx"], 2, "mine") })
     const before = read(root, ALL)
-    expect(await converge(repo, async () => offers, { kind: "discard", session: s })).toEqual({
+    expect(
+      await withLive(repo, (tree) => tree.settle(offers, { kind: "discard", session: s })),
+    ).toEqual({
       ok: false,
       refusal: { kind: "conflict", files: ["src/a.tsx"] },
     })
@@ -241,12 +243,12 @@ describe("converge", () => {
     const file = statSync(join(root, "src/a.tsx"))
 
     await run(repo, offers, { kind: "show", session: s, choice: "v1" })
-    const journal = statSync(join(homeOf(repo), "live.json"))
+    const journal = statSync(join(homeOf(repo), "checkpoint.json"))
     await run(repo, offers, { kind: "settle" })
 
     const after = statSync(join(root, "src/a.tsx"))
     expect([after.ino, after.mtimeMs]).toEqual([file.ino, file.mtimeMs])
-    const settled = statSync(join(homeOf(repo), "live.json"))
+    const settled = statSync(join(homeOf(repo), "checkpoint.json"))
     expect([settled.ino, settled.mtimeMs]).toEqual([journal.ino, journal.mtimeMs])
 
     expect(await run(repo, [], { kind: "settle" })).toEqual({})
@@ -270,7 +272,9 @@ describe("converge", () => {
     await run(repo, offers, { kind: "show", session: s, choice: "v1" })
 
     chmodSync(join(root, "src/deep"), 0o555)
-    const crashed = converge(repo, async () => offers, { kind: "show", session: t, choice: "v1" })
+    const crashed = withLive(repo, (tree) =>
+      tree.settle(offers, { kind: "show", session: t, choice: "v1" }),
+    )
     await expect(crashed).rejects.toThrow()
     chmodSync(join(root, "src/deep"), 0o755)
     expect((await readJournal(repo)).moving).toHaveLength(4)
@@ -296,7 +300,11 @@ describe("converge", () => {
     expect(await readJournal(repo)).toMatchObject({ moving: null, stuck: [] })
 
     await run(repo, offers, { kind: "discard", session: t })
-    await run(repo, offers, { kind: "discard", session: s })
+    await run(
+      repo,
+      offers.filter((offer) => offer.session !== t),
+      { kind: "discard", session: s },
+    )
     expect(read(root, ALL)).toEqual({ ...BASE, "src/new/notice.tsx": null })
     expect(existsSync(join(root, "src/new"))).toBe(false)
   })

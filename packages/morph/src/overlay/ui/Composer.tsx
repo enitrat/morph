@@ -1,7 +1,7 @@
 import { motion } from "motion/react"
 import { type Dispatch, useEffect, useRef } from "react"
 
-import { ask } from "../ask"
+import { type SessionActions } from "../ask"
 import { type Composer as Open, type Event, type SketchTool } from "../model"
 import { anchor, type Box, boxOf } from "../place"
 import { nameOf } from "../tree"
@@ -43,10 +43,12 @@ function about(composer: NonNullable<Open>): { name: string; box: Box; element: 
 export function Composer({
   composer,
   area,
+  actions,
   dispatch,
 }: {
   composer: NonNullable<Open>
   area: Area
+  actions: SessionActions
   dispatch: Dispatch<Event>
 }) {
   const card = useRef<HTMLDivElement>(null)
@@ -82,7 +84,7 @@ export function Composer({
   }, [prefill, composer.target, draft.words, dispatch])
   const untouched = draft.words === "" || suggestions.some((entry) => entry.words === draft.words)
   const send = (words = draft.words) => {
-    void ask({ target: composer.target, words, marks: draft.marks }, dispatch)
+    void actions.ask({ target: composer.target, words, marks: draft.marks })
   }
   const marks = draft.marks.length
   return (

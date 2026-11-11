@@ -1,4 +1,4 @@
-import { referencesOf } from "../core/graph"
+import { referencesOf } from "../core/css-value"
 import { type TokenGraph, type TokenName } from "../core/design-system"
 import { alternativesOf, type RootState } from "../core/config"
 import { probe } from "./probe"

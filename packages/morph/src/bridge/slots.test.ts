@@ -2,6 +2,8 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
+  existsSync,
   realpathSync,
   rmSync,
   symlinkSync,
@@ -216,3 +218,56 @@ it("copies app-local dependencies into a slot without a root installation", asyn
   await farm(live, slot, "apps/site")
   expect(readFileSync(join(slot, "apps/site/node_modules/tool/index.js"), "utf8")).toBe("app tool")
 })
+
+it("waits for in-flight Git preparation before releasing a cancelled slot", async () => {
+  const live = temp()
+  execFileSync("git", ["init", "-q", live])
+  file(live, "page.tsx", "page")
+  execFileSync("git", ["-C", live, "add", "."])
+  execFileSync("git", [
+    "-C",
+    live,
+    "-c",
+    "user.name=Test",
+    "-c",
+    "user.email=test@example.com",
+    "commit",
+    "-qm",
+    "fixture",
+  ])
+  const repo = await openRepo(live)
+  const root = await slotsRoot(repo)
+  dirs.push(root)
+  const base = CommitId.parse(
+    execFileSync("git", ["-C", live, "rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+  )
+  const stop = new AbortController()
+  stop.abort("before preparation")
+  await expect(acquire(repo, base, "", stop.signal)).rejects.toBe("before preparation")
+  expect(existsSync(root)).toBe(false)
+
+  const entered = join(live, ".git", "entered")
+  const proceed = join(live, ".git", "proceed")
+  writeFileSync(
+    join(live, ".git", "hooks", "post-checkout"),
+    `#!/bin/sh\ntouch '${entered}'\nwhile [ ! -f '${proceed}' ]; do sleep 0.02; done\n`,
+    { mode: 0o755 },
+  )
+  const cancellation = new AbortController()
+  const running = acquire(repo, base, "", cancellation.signal)
+  const finished = running.then(
+    () => "acquired",
+    (reason: unknown) => reason,
+  )
+  try {
+    await expect.poll(() => existsSync(entered), { timeout: 10000 }).toBe(true)
+    cancellation.abort("during preparation")
+    expect(readdirSync(join(root, "slot-0.lock"))).toHaveLength(1)
+  } finally {
+    writeFileSync(proceed, "continue")
+  }
+  expect(await finished).toBe("during preparation")
+  expect(readdirSync(join(root, "slot-0.lock"))).toEqual([])
+  const slot = await acquire(repo, base)
+  await release(slot)
+}, 30000)

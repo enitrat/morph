@@ -120,6 +120,7 @@ export function replayTransport(
       stage,
     ),
     show: write("show", ({ id, variant }, at) => stage.show(id, variant, at), stage),
+    retryPlan: write("retryPlan", ({ id }) => stage.retry(id), stage),
     retry: write("retry", ({ id }) => stage.retry(id), stage),
     keep: write("keep", ({ id, variant }) => stage.keep(id, variant), stage),
     discard: write("discard", ({ id }) => stage.discard(id), stage),

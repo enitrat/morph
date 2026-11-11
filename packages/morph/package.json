@@ -10,9 +10,6 @@
     "dist"
   ],
   "type": "module",
-  "engines": {
-    "node": "^22.18.0 || >=24.11.0"
-  },
   "sideEffects": false,
   "exports": {
     "./config": {
@@ -44,6 +41,8 @@
   "dependencies": {
     "@babel/parser": "^8.1.0",
     "get-tsconfig": "^4.14.3",
+    "postcss": "8.5.32",
+    "postcss-value-parser": "4.2.0",
     "source-map-js": "^1.2.2",
     "tsx": "^4.23.15",
     "zod": "4.6.7"
@@ -76,5 +75,8 @@
     "vite": {
       "optional": true
     }
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.11.0"
   }
 }

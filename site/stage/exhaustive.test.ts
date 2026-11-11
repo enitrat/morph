@@ -31,18 +31,18 @@ function replay() {
     const id = SessionId.parse(crypto.randomUUID())
     await call("ask", { id, words: ask.words, targets: target(file) })
     now += 1499
-    await call("page")
     const early = operations.page.response.parse(await call("page"))
-    expect(early.sessions.find((entry) => entry.id === id)?.variants.map((v) => v.state)).toEqual([
-      "pending",
-      "pending",
-      "pending",
-    ])
+    expect(
+      early.sessions
+        .filter((view) => view.kind === "active")
+        .find((entry) => entry.id === id)
+        ?.variants.map((v) => v.state),
+    ).toEqual(["pending", "pending", "pending"])
     now += 3501
-    await call("page")
     const view = operations.page.response.parse(await call("page"))
     const session = view.sessions.find((entry) => entry.id === id)
-    expect(session?.variants.map((variant) => variant.state)).toEqual(["ready", "ready", "ready"])
+    if (session?.kind !== "active") throw new Error("No active session")
+    expect(session.variants.map((variant) => variant.state)).toEqual(["ready", "ready", "ready"])
     for (const variant of session?.variants ?? [])
       if (variant.state === "ready") expect(variant.title.length).toBeLessThanOrEqual(36)
     return id

@@ -1,59 +1,50 @@
 import {
   type Hold,
+  Observation,
   type PageView,
   type SessionId,
   type SessionView,
+  ThreadId,
+  threadOf,
   type VariantId,
   type VariantView,
 } from "../variant/model"
-import { type Picked } from "./repick"
-import { type Spec } from "./specs"
+import { type PinnedTarget, type TargetMatch, type ReferenceMeasurement } from "./pinned-targets"
+import { type SubmissionCommand, commandId, commandWords } from "./submission"
 
-/**
- * What the overlay keeps about one session that the page view does not say. Where the session
- * stands (shown, waiting, conflict) is never copied here: it is read off the latest `PageView`.
- */
+export type Submission =
+  | { kind: "locating"; id: SessionId; words: string; from: SessionId | null }
+  | { kind: "sending"; command: SubmissionCommand }
+  | { kind: "uncertain"; command: SubmissionCommand; detail: string }
+
+/** Browser presentation and target references belong to a thread across all its rounds. */
 export interface Pin {
-  id: SessionId
-  /** Its number on the page, kept by every refine round. */
+  id: ThreadId
   n: number
   name: string
-  /** The words of the ask this round answers. */
   words: string
-  /** The file the target is written in, as `card.tsx`. */
   file: string | null
-  /** What the ask is about, to find again after a reload or once a variant redraws it. */
-  picked: readonly Picked[]
-  /** `false` until a page view lists it, so a poll that crossed the ask does not drop it. */
-  joined: boolean
-  /** The refine field's words. */
+  targets: readonly PinnedTarget[]
   refine: string
-  /** The target as the original draws it, measured while the session showed nothing. */
-  baseline: Spec | null
+  submission: Submission | null
 }
 
 export type Tone = "info" | "warn"
-
 export interface Notice {
   key: number
   text: string
   tone: Tone
 }
-
 export interface Sessions {
   page: PageView
-  pins: Readonly<Partial<Record<SessionId, Pin>>>
-  /** The session whose thread card is open. */
-  card: SessionId | null
+  pins: Readonly<Partial<Record<ThreadId, Pin>>>
+  card: ThreadId | null
   notice: Notice | null
-  /** The highest number a pin has had, so a number is never given to a second session. */
   numbered: number
-  /** Whether this page load has asked yet. The first ask opens its card to show where variants land. */
   asked: boolean
 }
-
 export const NO_SESSIONS: Sessions = {
-  page: { sessions: [], stuck: [] },
+  page: { observation: Observation.parse(0), sessions: [], stuck: [] },
   pins: {},
   card: null,
   notice: null,
@@ -61,106 +52,169 @@ export const NO_SESSIONS: Sessions = {
   asked: false,
 }
 
-/** A pin as an ask or a reload makes it, before the overlay numbers it. */
-export type NewPin = Omit<Pin, "n" | "joined" | "refine"> & { n: number | null }
+/** Local metadata captured before the first request is located. */
+export interface NewPin {
+  id: SessionId
+  n: number | null
+  name: string
+  words: string
+  file: string | null
+  targets: readonly PinnedTarget[]
+}
 
 export type SessionEvent =
   | { kind: "page"; page: PageView }
+  | { kind: "answered"; thread: ThreadId; id: SessionId; page: PageView }
   | { kind: "asked"; pin: NewPin }
-  /** Sessions a reload found open, with what the last tab stored about them. */
-  | { kind: "rejoined"; pins: readonly NewPin[] }
-  /** A refine round replaced `from` with `id` on the same pin. */
-  | { kind: "refined"; from: SessionId; id: SessionId; words: string }
-  /** An ask the bridge refused: its pin goes. */
-  | { kind: "dropped"; id: SessionId; text: string }
-  | { kind: "card"; id: SessionId | null }
+  | { kind: "locating"; thread: ThreadId; id: SessionId; from: SessionId; words: string }
+  | { kind: "sending"; thread: ThreadId; command: SubmissionCommand }
+  | { kind: "uncertain"; thread: ThreadId; command: SubmissionCommand; detail: string }
+  | { kind: "refused"; thread: ThreadId; id: SessionId; text: string }
+  | { kind: "card"; id: ThreadId | null }
   | { kind: "cycled"; by: 1 | -1 }
-  | { kind: "refining"; id: SessionId; words: string }
-  | { kind: "measured"; id: SessionId; baseline: Spec }
-  | { kind: "retargeted"; id: SessionId; picked: readonly Picked[] }
-  | { kind: "located"; id: SessionId; file: string }
+  | { kind: "refining"; id: ThreadId; words: string }
+  | {
+      kind: "reference-saved"
+      thread: ThreadId
+      slot: number
+      element: Element
+      reference: ReferenceMeasurement
+    }
+  | { kind: "retargeted"; id: ThreadId; matches: readonly TargetMatch[] }
+  | { kind: "located"; thread: ThreadId; id: SessionId; file: string }
   | { kind: "notice"; text: string; tone: Tone }
   | { kind: "unnoticed"; key: number }
 
-function add(state: Sessions, pin: NewPin, joined: boolean): Sessions {
-  const n = pin.n ?? state.pins[pin.id]?.n ?? state.numbered + 1
-  return {
-    ...state,
-    pins: { ...state.pins, [pin.id]: { ...pin, n, joined, refine: "" } },
-    numbered: Math.max(state.numbered, n),
-  }
+export const submissionId = (submission: Submission) =>
+  submission.kind === "locating" ? submission.id : commandId(submission.command)
+export const submissionWords = (submission: Submission) =>
+  submission.kind === "locating" ? submission.words : commandWords(submission.command)
+
+/** A visible successor proves acceptance or supersession; absence never proves rejection. */
+export function observed(page: PageView, thread: ThreadId, submission: Submission): boolean {
+  const view = page.sessions.find((view) => view.thread === thread)
+  if (view === undefined) return false
+  const from =
+    submission.kind === "locating"
+      ? submission.from
+      : submission.command.op === "refine"
+        ? submission.command.request.from
+        : null
+  return from === null || view.id !== from
 }
 
-function edit(state: Sessions, id: SessionId, change: (pin: Pin) => Pin): Sessions {
+function edit(state: Sessions, id: ThreadId, change: (pin: Pin) => Pin): Sessions {
   const pin = state.pins[id]
   return pin === undefined ? state : { ...state, pins: { ...state.pins, [id]: change(pin) } }
 }
-
 function noticed(state: Sessions, text: string, tone: Tone): Sessions {
   return { ...state, notice: { key: (state.notice?.key ?? 0) + 1, text, tone } }
 }
 
-/** Pins of sessions the page no longer lists go: kept or discarded here, or in another tab. */
 function onPage(state: Sessions, page: PageView): Sessions {
-  const open = new Set(page.sessions.map((session) => session.id))
-  const pins: Partial<Record<SessionId, Pin>> = {}
-  for (const pin of Object.values(state.pins)) {
-    if (pin === undefined) continue
-    if (open.has(pin.id)) pins[pin.id] = pin.joined ? pin : { ...pin, joined: true }
-    else if (!pin.joined) pins[pin.id] = pin
+  const pins: Partial<Record<ThreadId, Pin>> = {}
+  let numbered = state.numbered
+  for (const view of page.sessions) {
+    const existing = state.pins[view.thread]
+    const target = view.targets[0]
+    const previous = state.page.sessions.find((entry) => entry.thread === view.thread)
+    const pin: Pin = existing ?? {
+      id: view.thread,
+      n: ++numbered,
+      name: target?.owner.at(-1) ?? target?.source.path.split("/").at(-1) ?? "Ask",
+      words: view.words,
+      file: target?.source.path.split("/").at(-1) ?? null,
+      targets: [],
+      refine: "",
+      submission: null,
+    }
+    const changed = previous !== undefined && previous.id !== view.id
+    pins[view.thread] = {
+      ...pin,
+      refine: changed ? "" : pin.refine,
+      submission:
+        pin.submission !== null && observed(page, view.thread, pin.submission)
+          ? null
+          : pin.submission,
+    }
   }
+  for (const pin of Object.values(state.pins))
+    if (pin !== undefined && pin.submission !== null && pins[pin.id] === undefined)
+      pins[pin.id] = pin
   const card = state.card !== null && pins[state.card] !== undefined ? state.card : null
-  return { ...state, page, pins, card }
+  return { ...state, page, pins, numbered, card }
 }
 
-/** The open sessions that have a pin, in the page's order. */
+/** Current observed threads plus unresolved local submissions, in pin-number order. */
 export function pinned(state: Sessions): { pin: Pin; view: SessionView | null }[] {
-  const views = new Map(state.page.sessions.map((view) => [view.id, view]))
-  const listed = state.page.sessions.flatMap((view) => {
-    const pin = state.pins[view.id]
-    return pin === undefined ? [] : [{ pin, view }]
-  })
-  const waiting = Object.values(state.pins).flatMap((pin) =>
-    pin === undefined || views.has(pin.id) ? [] : [{ pin, view: null }],
-  )
-  return [...listed, ...waiting].toSorted((a, b) => a.pin.n - b.pin.n)
+  const views = new Map(state.page.sessions.map((view) => [view.thread, view]))
+  return Object.values(state.pins)
+    .flatMap((pin) => (pin === undefined ? [] : [{ pin, view: views.get(pin.id) ?? null }]))
+    .toSorted((a, b) => a.pin.n - b.pin.n)
 }
 
 export function stepSessions(state: Sessions, event: SessionEvent): Sessions {
   switch (event.kind) {
     case "page":
-      return onPage(state, event.page)
-    case "asked":
-      return {
-        ...add(state, event.pin, false),
-        card: state.asked ? state.card : event.pin.id,
-        asked: true,
+      return event.page.observation <= state.page.observation ? state : onPage(state, event.page)
+    case "answered": {
+      const next = edit(state, event.thread, (pin) =>
+        pin.submission !== null && submissionId(pin.submission) === event.id
+          ? { ...pin, submission: null }
+          : pin,
+      )
+      return onPage(next, event.page.observation > state.page.observation ? event.page : state.page)
+    }
+    case "asked": {
+      const id = threadOf(event.pin.id, null)
+      const n = event.pin.n ?? state.numbered + 1
+      const pin: Pin = {
+        ...event.pin,
+        id,
+        n,
+        refine: "",
+        submission: { kind: "locating", id: event.pin.id, words: event.pin.words, from: null },
       }
-    case "rejoined":
-      // Stored numbers first, so a session with none is numbered after them.
-      return event.pins
-        .toSorted((a, b) => (a.n === null ? 1 : 0) - (b.n === null ? 1 : 0))
-        .reduce(
-          (next, pin) => (next.pins[pin.id] === undefined ? add(next, pin, true) : next),
-          state,
-        )
-    case "refined": {
-      const from = state.pins[event.from]
-      if (from === undefined) return state
-      const { [event.from]: _, ...rest } = state.pins
       return {
         ...state,
-        pins: {
-          ...rest,
-          [event.id]: { ...from, id: event.id, words: event.words, joined: false, refine: "" },
-        },
-        card: state.card === event.from ? event.id : state.card,
+        pins: { ...state.pins, [id]: pin },
+        numbered: Math.max(state.numbered, n),
+        card: state.asked ? state.card : id,
+        asked: true,
       }
     }
-    case "dropped": {
-      const { [event.id]: _, ...pins } = state.pins
+    case "locating":
+      return edit(state, event.thread, (pin) =>
+        pin.submission !== null
+          ? pin
+          : {
+              ...pin,
+              submission: { kind: "locating", id: event.id, words: event.words, from: event.from },
+            },
+      )
+    case "sending":
+      return edit(state, event.thread, (pin) =>
+        pin.submission !== null && submissionId(pin.submission) === commandId(event.command)
+          ? { ...pin, submission: { kind: "sending", command: event.command } }
+          : pin,
+      )
+    case "uncertain":
+      return edit(state, event.thread, (pin) =>
+        pin.submission !== null && submissionId(pin.submission) === commandId(event.command)
+          ? {
+              ...pin,
+              submission: { kind: "uncertain", command: event.command, detail: event.detail },
+            }
+          : pin,
+      )
+    case "refused": {
+      const pin = state.pins[event.thread]
+      if (pin?.submission == null || submissionId(pin.submission) !== event.id) return state
       return noticed(
-        { ...state, pins, card: state.card === event.id ? null : state.card },
+        onPage(
+          edit(state, event.thread, (pin) => ({ ...pin, submission: null })),
+          state.page,
+        ),
         event.text,
         "warn",
       )
@@ -181,12 +235,32 @@ export function stepSessions(state: Sessions, event: SessionEvent): Sessions {
     }
     case "refining":
       return edit(state, event.id, (pin) => ({ ...pin, refine: event.words }))
-    case "measured":
-      return edit(state, event.id, (pin) => ({ ...pin, baseline: event.baseline }))
+    case "reference-saved":
+      return edit(state, event.thread, (pin) => ({
+        ...pin,
+        targets: pin.targets.map((target, slot) =>
+          slot === event.slot &&
+          target.match.kind !== "missing" &&
+          target.match.element === event.element &&
+          event.element.isConnected
+            ? { ...target, reference: event.reference }
+            : target,
+        ),
+      }))
     case "located":
-      return edit(state, event.id, (pin) => ({ ...pin, file: event.file }))
+      return edit(state, event.thread, (pin) =>
+        pin.submission !== null && submissionId(pin.submission) === event.id
+          ? { ...pin, file: event.file }
+          : pin,
+      )
     case "retargeted":
-      return edit(state, event.id, (pin) => ({ ...pin, picked: event.picked }))
+      return edit(state, event.id, (pin) => ({
+        ...pin,
+        targets: pin.targets.map((target, slot) => ({
+          ...target,
+          match: event.matches[slot] ?? target.match,
+        })),
+      }))
     case "notice":
       return noticed(state, event.text, event.tone)
     case "unnoticed":
@@ -211,12 +285,17 @@ export const doneOf = (variant: VariantView) =>
   variant.state === "pending" ? PHASE_DONE[variant.phase] : 1
 
 export const isGenerating = (view: SessionView) =>
-  view.variants.some((variant) => variant.state === "pending")
+  view.kind === "planning" ||
+  (view.kind === "active" && view.variants.some((variant) => variant.state === "pending"))
 
 /** The mean of its variants' progress, for the pin's ring. */
 export const progressOf = (view: SessionView) =>
-  view.variants.reduce((sum, variant) => sum + doneOf(variant), 0) /
-  Math.max(1, view.variants.length)
+  view.kind !== "active"
+    ? view.kind === "planning"
+      ? 0.02
+      : 1
+    : view.variants.reduce((sum, variant) => sum + doneOf(variant), 0) /
+      Math.max(1, view.variants.length)
 
 const PHASE_LABEL = {
   queued: "Queued",
@@ -230,8 +309,23 @@ const PHASE_LABEL = {
 export const phaseLabel = (phase: keyof typeof PHASE_LABEL) => PHASE_LABEL[phase]
 
 /** What a session's chip and pin say about it, in a word or two. */
-export function statusOf(view: SessionView | null): { label: string; tone: "plain" | "on" | Tone } {
-  if (view === null) return { label: "starting", tone: "plain" }
+export function statusOf(
+  view: SessionView | null,
+  submission: Submission | null = null,
+): { label: string; tone: "plain" | "on" | Tone } {
+  if (submission !== null)
+    return {
+      label:
+        submission.kind === "uncertain"
+          ? "unconfirmed"
+          : submission.kind === "locating"
+            ? "locating"
+            : "sending",
+      tone: submission.kind === "uncertain" ? "warn" : "plain",
+    }
+  if (view === null) return { label: "reconnecting", tone: "plain" }
+  if (view.kind === "planning") return { label: "planning", tone: "plain" }
+  if (view.kind === "plan-failed") return { label: "planning failed", tone: "warn" }
   const { place } = view
   if (place.kind === "conflict") return { label: "conflict", tone: "warn" }
   if (place.kind === "waiting") return { label: `waits ${letterOf(place.variant)}`, tone: "warn" }
@@ -245,10 +339,11 @@ export function statusOf(view: SessionView | null): { label: string; tone: "plai
 const baseName = (path: string) => path.split("/").at(-1) ?? path
 
 /** `#1 Hero · hero.tsx` for each session holding what a waiting one wants. */
-export function holdersOf(on: readonly Hold[], pins: Sessions["pins"]): string {
+export function holdersOf(on: readonly Hold[], sessions: Sessions): string {
   return on
     .map((hold) => {
-      const pin = pins[hold.session]
+      const view = sessions.page.sessions.find((view) => view.id === hold.session)
+      const pin = view === undefined ? undefined : sessions.pins[view.thread]
       const who = pin === undefined ? "another ask" : `#${pin.n} ${pin.name}`
       return `${who} · ${hold.files.map(baseName).join(", ")}`
     })

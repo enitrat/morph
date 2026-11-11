@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest"
 
+import { PageView } from "../variant/model"
+import { captureTarget } from "./pinned-targets"
 import { type Event, initial, reduce, type State } from "./model"
-import { ids, page, session } from "./session-fixtures"
+import { ids, threads, page, session } from "./session-fixtures"
 import { type NewPin, pinned } from "./sessions"
 
 const pinOf = (id: (typeof ids)[keyof typeof ids], name: string): NewPin => ({
@@ -11,13 +13,36 @@ const pinOf = (id: (typeof ids)[keyof typeof ids], name: string): NewPin => ({
   name,
   words: "Make it calmer",
   file: `${name.toLowerCase()}.tsx`,
-  picked: [],
-  baseline: null,
+  targets: [],
 })
 const run = (...events: Event[]) => events.reduce(reduce, { ...initial, open: true } as State)
 const numbers = (state: State) => pinned(state.sessions).map(({ pin }) => `${pin.n} ${pin.name}`)
 
 describe("pins", () => {
+  it("acknowledges a submitted ask without restoring it over a newer closed page", () => {
+    const acknowledged = page(session(ids.hero, { kind: "original" }))
+    const closed = page()
+    const state = run(
+      { kind: "asked", pin: pinOf(ids.hero, "Hero") },
+      { kind: "page", page: closed },
+      { kind: "answered", thread: threads.hero, id: ids.hero, page: acknowledged },
+    )
+    expect(numbers(state)).toEqual([])
+    expect(state.sessions.page).toBe(closed)
+  })
+
+  it("ignores an older page that arrives after an ask was acknowledged", () => {
+    const earlier = page()
+    const acknowledged = page(session(ids.hero, { kind: "original" }))
+    const state = run(
+      { kind: "asked", pin: pinOf(ids.hero, "Hero") },
+      { kind: "page", page: acknowledged },
+      { kind: "page", page: earlier },
+    )
+    expect(numbers(state)).toEqual(["1 Hero"])
+    expect(state.sessions.page).toBe(acknowledged)
+  })
+
   it("numbers asks in order and keeps a sent ask through a poll that crossed it", () => {
     const state = run(
       { kind: "asked", pin: pinOf(ids.hero, "Hero") },
@@ -31,13 +56,26 @@ describe("pins", () => {
     const state = run(
       { kind: "asked", pin: pinOf(ids.hero, "Hero") },
       { kind: "asked", pin: pinOf(ids.button, "Button") },
-      { kind: "card", id: ids.hero },
-      { kind: "refining", id: ids.hero, words: "warmer" },
-      { kind: "refined", from: ids.hero, id: ids.card, words: "warmer" },
+      {
+        kind: "page",
+        page: page(
+          session(ids.hero, { kind: "original" }),
+          session(ids.button, { kind: "original" }),
+        ),
+      },
+      { kind: "card", id: threads.hero },
+      { kind: "refining", id: threads.hero, words: "warmer" },
+      {
+        kind: "page",
+        page: page(
+          { ...session(ids.card, { kind: "original" }), thread: threads.hero, words: "warmer" },
+          session(ids.button, { kind: "original" }),
+        ),
+      },
     )
     expect(numbers(state)).toEqual(["1 Hero", "2 Button"])
-    expect(state.sessions.card).toBe(ids.card)
-    expect(state.sessions.pins[ids.card]).toMatchObject({ refine: "", words: "warmer" })
+    expect(state.sessions.card).toBe(threads.hero)
+    expect(state.sessions.pins[threads.hero]).toMatchObject({ refine: "" })
   })
 
   it("never gives a kept session's number to the next ask", () => {
@@ -74,7 +112,7 @@ describe("pins", () => {
     const element = document.createElement("div")
     const opened = run(
       { kind: "asked", pin: pinOf(ids.hero, "Hero") },
-      { kind: "card", id: ids.hero },
+      { kind: "card", id: threads.hero },
     )
     expect(reduce(opened, { kind: "selected", element }).sessions.card).toBeNull()
     expect(reduce(opened, { kind: "escape" }).sessions.card).toBeNull()
@@ -83,9 +121,36 @@ describe("pins", () => {
   it("drops a refused ask with a notice", () => {
     const state = run(
       { kind: "asked", pin: pinOf(ids.hero, "Hero") },
-      { kind: "dropped", id: ids.hero, text: "Could not plan variants" },
+      { kind: "refused", thread: threads.hero, id: ids.hero, text: "Could not plan variants" },
     )
     expect(numbers(state)).toEqual([])
     expect(state.sessions.notice).toMatchObject({ text: "Could not plan variants", tone: "warn" })
   })
+})
+
+it("clears predecessor drafts but preserves target references when another tab advances the thread", () => {
+  const target = captureTarget(document.createElement("div"))
+  const state = run(
+    { kind: "asked", pin: { ...pinOf(ids.hero, "Hero"), targets: [target] } },
+    { kind: "page", page: page(session(ids.hero, { kind: "original" })) },
+    { kind: "card", id: threads.hero },
+    { kind: "refining", id: threads.hero, words: "Local draft" },
+    {
+      kind: "page",
+      page: page({ ...session(ids.button, { kind: "original" }), thread: threads.hero }),
+    },
+  )
+  expect(state.sessions.card).toBe(threads.hero)
+  expect(state.sessions.pins[threads.hero]).toMatchObject({ n: 1, refine: "", targets: [target] })
+})
+
+it("rejects an ambiguous page instead of hiding one of two competing rounds", () => {
+  expect(
+    PageView.safeParse(
+      page(session(ids.hero, { kind: "original" }), {
+        ...session(ids.button, { kind: "original" }),
+        thread: threads.hero,
+      }),
+    ).success,
+  ).toBe(false)
 })

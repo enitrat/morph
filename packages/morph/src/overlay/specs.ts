@@ -1,25 +1,34 @@
+import { z } from "zod"
+
 import { type Match, matchOf, type Scales } from "./scale"
 
+const Quad = z.tuple([z.number(), z.number(), z.number(), z.number()]).readonly()
 /** Top, right, bottom, left. */
-export type Quad = readonly [number, number, number, number]
+export type Quad = z.infer<typeof Quad>
 
-/** What the inspector reads off one element, in CSS pixels and computed colours. */
-export interface Spec {
-  width: number
-  height: number
-  display: string
-  padding: Quad
-  margin: Quad
-  border: Quad
-  /** `null` outside flex and grid. */
-  gap: number | null
-  radius: number
-  font: { size: number; lineHeight: string; weight: string; family: string; letterSpacing: string }
-  /** The text colour, only when the element shows text of its own. */
-  text: string | null
-  fill: string | null
-  stroke: string | null
-}
+/** Computed browser measurements, also validated when restoring a saved reference. */
+export const Spec = z.object({
+  width: z.number(),
+  height: z.number(),
+  display: z.string(),
+  padding: Quad,
+  margin: Quad,
+  border: Quad,
+  gap: z.number().nullable(),
+  radius: z.number(),
+  font: z.object({
+    size: z.number(),
+    lineHeight: z.string(),
+    weight: z.string(),
+    family: z.string(),
+    letterSpacing: z.string(),
+  }),
+  text: z.string().nullable(),
+  fill: z.string().nullable(),
+  stroke: z.string().nullable(),
+})
+/** One element's visible dimensions, spacing, colors, and typography. */
+export type Spec = z.infer<typeof Spec>
 
 const px = (value: string) => Number.parseFloat(value) || 0
 
@@ -116,7 +125,7 @@ export function quadText([top, right, bottom, left]: Quad): string {
   return [top, right, bottom, left].map(fmt).join(" ")
 }
 
-/** One value a variant changed against the original. */
+/** One measured difference between a reference and the current visible element. */
 export type Change =
   | { kind: "length"; label: string; was: number; now: number; match: Match }
   | { kind: "color"; label: string; was: string | null; now: string | null; role: string | null }
@@ -125,7 +134,7 @@ export type Change =
 const SIDES = ["top", "right", "bottom", "left"] as const
 
 /**
- * What a variant changed on an element against the original's measurement: spacing, size, radius,
+ * What differs from a saved reference measurement: spacing, size, radius,
  * type and colours, each length matched against its scale so an off-scale value shows.
  */
 export function deltaOf(was: Spec, now: Spec, scales: Scales): Change[] {

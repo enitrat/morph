@@ -8,19 +8,13 @@ import { setTimeout as sleep } from "node:timers/promises"
 import { pathToFileURL } from "node:url"
 
 import { checks } from "../src/bridge/checks"
-import { readJson } from "../src/bridge/disk"
-import { git, openRepo, snapshot } from "../src/bridge/git"
-import {
-  ask,
-  discard,
-  jobDir,
-  readSessionFile,
-  variantRef,
-  variantsOf,
-} from "../src/bridge/session"
+import { readPlan } from "../src/bridge/planner"
+import { readJobs } from "../src/bridge/jobs"
+import { git, openRepo, snapshot, variantRef } from "../src/bridge/git"
+import { ask, discard } from "../src/bridge/session"
 import { acquire, release } from "../src/bridge/slots"
 import { MorphConfig } from "../src/core/config"
-import { JobResult, RepoPath, SessionId } from "../src/variant/model"
+import { RepoPath, SessionId, variantsOf } from "../src/variant/model"
 
 const [path, line, col, words] = process.argv.slice(2).filter((arg) => !arg.startsWith("--"))
 if (path === undefined || words === undefined)
@@ -39,41 +33,43 @@ const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`
 
 const liveBefore = await tree()
 const t0 = performance.now()
-const asked = await ask(
-  repo,
-  {
-    id,
-    words,
-    targets: [
-      { source: { path: FILE, line: Number(line), col: Number(col) }, owner: [], text: "" },
-    ],
-    marks: [],
-    count: 3,
-  },
-  new AbortController().signal,
-)
+const asked = await ask(repo, {
+  id,
+  words,
+  targets: [{ source: { path: FILE, line: Number(line), col: Number(col) }, owner: [], text: "" }],
+  marks: [],
+  count: 3,
+})
 if (!asked.ok) throw new Error(`ask refused: ${JSON.stringify(asked)}`)
-console.log(`ask answered in ${seconds(performance.now() - t0)} (snapshot + planner)`)
-const session = await readSessionFile(repo, id)
-if (session === null) throw new Error("the session vanished")
+console.log(`ask answered in ${seconds(performance.now() - t0)} (accepted)`)
+let round = await readPlan(repo, id)
+while (round?.kind === "planning" && round.plan.state.kind !== "failed") {
+  await sleep(250)
+  round = await readPlan(repo, id)
+}
+if (round?.kind !== "active")
+  throw new Error(
+    round?.kind === "planning" && round.plan.state.kind === "failed"
+      ? round.plan.state.reason
+      : "The round closed before planning completed",
+  )
+const session = round.session
 for (const { id: variant, direction } of variantsOf(session))
   console.log(`  ${variant}: ${direction.title}: ${direction.description}`)
 
 /** Each variant's result, read without settling the page, so nothing is shown on the live tree. */
-const results = () =>
-  Promise.all(
-    variantsOf(session).map(async ({ id: variant }) => ({
-      id: variant,
-      job: await readJson(join(jobDir(repo, id, variant), "result.json"), JobResult),
-    })),
-  )
+const results = async () => {
+  const jobs = await readJobs(repo, id)
+  if (jobs === null) throw new Error("The round closed before generation completed")
+  return variantsOf(session).map(({ id: variant }) => ({ id: variant, job: jobs[variant]?.state }))
+}
 
 let firstReady: number | undefined
 let jobs = await results()
 for (;;) {
   if (firstReady === undefined && jobs.some(({ job }) => job?.kind === "ready"))
     firstReady = performance.now() - t0
-  if (jobs.every(({ job }) => job !== null)) break
+  if (jobs.every(({ job }) => job?.kind === "ready" || job?.kind === "failed")) break
   await sleep(1000)
   jobs = await results()
 }
@@ -94,7 +90,7 @@ for (const { id: variantId, job } of jobs) {
   try {
     await git(slot.dir, ["checkout", "--quiet", "--detach", "--force", commit])
     const start = performance.now()
-    rechecked = await checks(slot.dir, variant.files, repo.config)
+    rechecked = await checks(slot.dir, variant.files, repo.config, AbortSignal.any([]))
     rechecked = { ...rechecked, ms: performance.now() - start }
     const dirty = (await git(slot.dir, ["status", "--porcelain"])).toString()
     if (dirty !== "")

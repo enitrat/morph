@@ -1,14 +1,20 @@
+import { rewriteTokenSource, type SourceChange } from "./token-source"
 import { lightness, parseColor } from "./color"
 import { type ThemeName } from "./config"
 import {
   declarationFor,
+  declarationIn,
+  themeNamed,
+  type Declaration,
+  type BlockId,
   isUtilityAlias,
   type Scope,
   type TokenName,
   type TokenNode,
   type Tokens,
 } from "./design-system"
-import { chainOf, nodeOf, normalizeValue, referencesOf, resolve } from "./graph"
+import { buildTokens, chainOf, nodeOf, resolve } from "./graph"
+import { normalizeValue, referencesOf, expressionError } from "./css-value"
 
 export interface TokenEdit {
   token: TokenName
@@ -39,11 +45,13 @@ function splitError(tokens: Tokens, node: TokenNode, edit: TokenEdit): string | 
 }
 
 /** Why `edit` breaks a ds rule, or `undefined` when it is a legal edit. */
-export function editError(tokens: Tokens, edit: TokenEdit): string | undefined {
-  const { graph, themes } = tokens
+function policyError(tokens: Tokens, edit: TokenEdit): string | undefined {
+  const { graph } = tokens
   const node = graph.get(edit.token)
   if (!node) return `${edit.token} is not a ds token`
   if (node.tier === "primitive") return `${edit.token} is a primitive; edit the role that reads it`
+  const malformed = expressionError(edit.to)
+  if (malformed !== undefined) return malformed
   const to = normalizeValue(edit.to)
   if (to.includes("#") || LITERAL_UNITS.test(to)) return `${to} holds a literal; use a token`
   const stripped = to.replaceAll(/var\(--[\w-]+\)/g, "")
@@ -53,27 +61,103 @@ export function editError(tokens: Tokens, edit: TokenEdit): string | undefined {
   for (const ref of refs) {
     const read = graph.get(ref)
     if (!read) return `${ref} is not a ds token`
-    if (ref === edit.token) return `${edit.token} cannot read itself`
     if (node.tier === "component" && read.tier === "primitive") {
       return `${edit.token} is a component token; point it at a role, not ${ref}`
     }
   }
   const split = splitError(tokens, node, edit)
   if (split !== undefined) return split
+  if (
+    edit.scope !== "all" &&
+    declarationIn(node, themeNamed(tokens.themes, edit.scope)) === undefined
+  )
+    return `${edit.token} has no ${edit.scope} declaration`
   const foreign = foreignFile(tokens, node, edit.scope)
   if (foreign) return `${edit.token} is declared in ${foreign}, which this repo does not own`
-  const read: readonly ThemeName[] =
-    edit.scope === "all" ? themes.list.map((theme) => theme.name) : [edit.scope]
-  if (read.every((theme) => declarationFor(tokens, node, theme).value === to)) {
-    return `${edit.token} already reads ${to}`
-  }
   return undefined
 }
 
-export function assertEdits(tokens: Tokens, edits: readonly TokenEdit[]): void {
-  for (const edit of edits) {
-    const error = editError(tokens, edit)
-    if (error) throw new Error(error)
+/** A complete ordered edit result; callers publish files only after the whole batch succeeds. */
+export type TokenEdits =
+  | { readonly ok: true; readonly files: ReadonlyMap<string, string>; readonly tokens: Tokens }
+  | { readonly ok: false; readonly detail: string; readonly index: number }
+
+/** Checks exactly the same prospective source and graph that a released edit will write. */
+export function editError(tokens: Tokens, edit: TokenEdit): string | undefined {
+  const prepared = prepareTokenEdits(tokens, [edit])
+  return prepared.ok ? undefined : prepared.detail
+}
+
+/** Applies edits in order in memory, preserving inherited themes and refusing invalid dependency graphs. */
+export function prepareTokenEdits(tokens: Tokens, edits: readonly TokenEdit[]): TokenEdits {
+  let next = tokens
+  for (const [index, edit] of edits.entries()) {
+    const error = policyError(next, edit)
+    if (error !== undefined) return { ok: false, detail: error, index }
+    const node = nodeOf(next.graph, edit.token)
+    const to = normalizeValue(edit.to)
+    const changes = new Map<string, SourceChange[]>()
+    const add = (file: string, change: SourceChange) =>
+      changes.set(file, [...(changes.get(file) ?? []), change])
+    const replace = (entry: Declaration) => {
+      if (entry.value !== to)
+        add(entry.file, { kind: "replace", declaration: entry.origin.declaration, to })
+    }
+    const insert = (file: string, block: BlockId, value: string): string | undefined => {
+      const source = next.sources.get(file)
+      const target = source?.blocks.find((entry) => entry.id === block)
+      if (target === undefined) return `No writable ${block} block in ${file}`
+      add(file, { kind: "insert", block: target, token: edit.token, to: value })
+      return undefined
+    }
+    if (edit.scope === "all") for (const entry of node.declarations) replace(entry)
+    else {
+      const scope = edit.scope
+      const own = node.declarations.find((entry) => entry.block === scope)
+      const read = own ?? declarationFor(next, node, scope)
+      if (read.value === to) continue
+      const declares = (block: BlockId) => node.declarations.some((entry) => entry.block === block)
+      for (const other of next.themes.list) {
+        const at = other.reads.indexOf(scope)
+        if (other.name === scope || at === -1 || other.reads.slice(0, at).some(declares)) continue
+        const failure = insert(read.file, other.name, declarationFor(next, node, other.name).value)
+        if (failure !== undefined) return { ok: false, detail: failure, index }
+      }
+      if (own !== undefined) replace(own)
+      else {
+        const failure = insert(read.file, scope, to)
+        if (failure !== undefined) return { ok: false, detail: failure, index }
+      }
+    }
+    if (changes.size === 0) continue
+    const files = next.files.map((file) => {
+      const source = next.sources.get(file.path)
+      const edits = changes.get(file.path)
+      return source === undefined || edits === undefined
+        ? file
+        : { ...file, css: rewriteTokenSource(source, edits) }
+    })
+    const previous = next
+    next = buildTokens(files, next.themes)
+    for (const theme of next.themes.list) {
+      const after = next.values.get(theme.name)?.values.get(edit.token)
+      const before = previous.values.get(theme.name)?.values.get(edit.token)
+      if (
+        after?.kind === "invalid" &&
+        (before?.kind !== "invalid" || edit.scope === "all" || edit.scope === theme.name)
+      )
+        return { ok: false, detail: after.detail, index }
+    }
+  }
+  const original = new Map(tokens.files.map((file) => [file.path, file.css]))
+  return {
+    ok: true,
+    tokens: next,
+    files: new Map(
+      next.files.flatMap((file) =>
+        file.css === original.get(file.path) ? [] : [[file.path, file.css]],
+      ),
+    ),
   }
 }
 

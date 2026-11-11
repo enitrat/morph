@@ -35,12 +35,13 @@ export function Touch({ stage }: { stage: Stage }) {
   }
 
   const ask = (file: FileNode, node: AskNode) => {
-    const shown = shownOf()
-    if (open !== undefined)
-      if (shown !== null) stage.keep(open.id, shown)
-      else stage.discard(open.id)
     const next = SessionId.parse(crypto.randomUUID())
-    stage.ask({ id: next, path: file.path, words: node.words }, performance.now())
+    const input = { id: next, path: file.path, words: node.words }
+    const answer =
+      open === undefined
+        ? stage.ask(input, performance.now())
+        : stage.replace(open.id, input, performance.now())
+    if (!answer.ok) return
     setId(next)
     // The chips sit under the board: bring the object back into view to watch it morph.
     document
@@ -67,7 +68,7 @@ export function Touch({ stage }: { stage: Stage }) {
       <p className="text-[12.5px]/[1.45] text-muted">
         The overlay runs on desktop. Here, tap an ask and watch what Morph writes.
       </p>
-      {open !== undefined && view !== undefined && (
+      {open !== undefined && view?.kind === "active" && (
         <div className="fixed inset-x-3 bottom-3 z-10 grid gap-2 rounded-[14px] border border-[#2a2d34] bg-[#16181d]/95 p-3 shadow-[0_20px_50px_-10px_rgb(0_0_0/0.8)] backdrop-blur">
           <p className="text-[13px] text-text">“{open.ask.words}”</p>
           <div className="grid grid-cols-3 gap-1.5">

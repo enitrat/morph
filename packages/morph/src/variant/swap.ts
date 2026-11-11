@@ -327,8 +327,8 @@ const journalOf = (now: Journal, settled: Settled): Journal => ({
 
 /**
  * Moves the journal toward the wants after `request` edits them. Pure over `store`: nothing is
- * written here, and planning again on the result plans no writes. Only `keep` and `discard`
- * refuse; `show` records the want and reports where the session ended up instead.
+ * written here. After keep or discard, callers must remove that round from subsequent offers.
+ * Only keep and discard refuse; show reports the resulting placement.
  */
 export async function plan(
   store: Store,
@@ -365,19 +365,25 @@ export async function plan(
     return { ok: false, refusal: { kind: "conflict", files: place.files } }
   if (request.kind === "keep") {
     if (place?.kind === "waiting") return { ok: false, refusal: { kind: "held", on: place.on } }
-    // The kept layer becomes code: its leases go, its files stay. The session wants the original
-    // from here, so a crash before it is dropped never shows its variant again.
     const leases = new Map(
       [...first.leases].filter(([, lease]) => lease.session !== request.session),
     )
-    const want = new Map(first.want).set(request.session, {
-      choice: "original",
-      by: "designer",
-      at: edited.seq,
-    })
-    const released = journalOf(edited, { ...first, want, leases })
-    const again = await settle(overlay(store, first.contents), released, offers, null)
+    const released = journalOf(edited, { ...first, leases })
+    const again = await settle(
+      overlay(store, first.contents),
+      released,
+      offers.filter((offer) => offer.session !== request.session),
+      null,
+    )
     settled = { ...again, contents: new Map([...first.contents, ...again.contents]) }
+  }
+
+  if (request.kind === "discard") {
+    const want = new Map(settled.want)
+    want.delete(request.session)
+    const places = new Map(settled.places)
+    places.delete(request.session)
+    settled = { ...settled, want, places }
   }
 
   const writes: FileWrite[] = []

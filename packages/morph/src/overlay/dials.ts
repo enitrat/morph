@@ -7,7 +7,8 @@ import {
   type TokenGraph,
   type TokenName,
 } from "../core/design-system"
-import { dependentsOf, referencesOf } from "../core/graph"
+import { dependentsOf } from "../core/graph"
+import { referencesOf } from "../core/css-value"
 import { previewCss } from "../core/preview"
 import { type ThemeName } from "../core/config"
 import {

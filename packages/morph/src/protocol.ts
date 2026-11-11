@@ -60,6 +60,7 @@ export const operations = {
   refine: { request: Refine, response: PageView },
   show: { request: ChoiceRef, response: PageView },
   retry: { request: VariantRef, response: PageView },
+  retryPlan: { request: SessionRef, response: PageView },
   keep: { request: VariantRef, response: PageView },
   discard: { request: SessionRef, response: PageView },
 } satisfies Record<string, { request?: z.ZodType; response: z.ZodType }>

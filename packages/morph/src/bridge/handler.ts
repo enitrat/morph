@@ -11,7 +11,7 @@ import { designSystemOf, tagClasses } from "./dial"
 import { configAt, type Host, openRepo } from "./git"
 import { guard } from "./guard"
 import { componentUses, propControls, tagAttributes } from "./props"
-import { ask, discard, type Done, keep, page, refine, retry, show } from "./session"
+import { ask, discard, type Done, keep, page, refine, retry, retryPlan, show } from "./session"
 import { refineSuggestions, siteSuggestions } from "./suggest"
 import { type Bundler, type Frame } from "./symbolicate"
 import { writeReleased, type WriteFailure } from "./write"
@@ -42,7 +42,6 @@ const STATUS: Record<Refusal["kind"], number> = {
   "not-shown": 409,
   "not-ready": 409,
   conflict: 409,
-  "planner-failed": 502,
   invalid: 422,
 }
 
@@ -138,13 +137,11 @@ const OPS = {
   },
   ask: {
     method: "POST",
-    run: async (request, repo) =>
-      ask(repo, await body(request, operations.ask.request), request.signal),
+    run: async (request, repo) => ask(repo, await body(request, operations.ask.request)),
   },
   refine: {
     method: "POST",
-    run: async (request, repo) =>
-      refine(repo, await body(request, operations.refine.request), request.signal),
+    run: async (request, repo) => refine(repo, await body(request, operations.refine.request)),
   },
   show: {
     method: "POST",
@@ -159,6 +156,11 @@ const OPS = {
       const { id, variant } = await body(request, operations.retry.request)
       return retry(repo, id, variant)
     },
+  },
+  retryPlan: {
+    method: "POST",
+    run: async (request, repo) =>
+      retryPlan(repo, (await body(request, operations.retryPlan.request)).id),
   },
   keep: {
     method: "POST",

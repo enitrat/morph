@@ -107,6 +107,7 @@ export const bridge = {
       typeof about === "string" ? new URLSearchParams({ session: about }) : siteQuery(about),
     ),
   show: (id: SessionId, variant: Choice) => post("show", { id, variant }),
+  retryPlan: (id: SessionId) => post("retryPlan", { id }),
   retry: (id: SessionId, variant: VariantId) => post("retry", { id, variant }),
   keep: (id: SessionId, variant: VariantId) => post("keep", { id, variant }),
   discard: (id: SessionId) => post("discard", { id }),
@@ -130,8 +131,6 @@ export function explain(error: BridgeError): string {
   if (error.kind === "not-ready") return `${error.variant} is not ready yet.`
   if (error.kind === "conflict")
     return `Your own edits overlap this variant in ${error.files.join(", ")}. Save or undo them, then try again.`
-  if (error.kind === "planner-failed")
-    return `Could not plan variants: ${error.detail.split("\n")[0] ?? ""}`
   if (error.kind === "bad-request")
     return `The bridge refused the request: ${error.issues.join("; ")}`
   if (error.kind === "crashed")

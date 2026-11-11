@@ -1,9 +1,9 @@
 // oxlint-disable-next-line import/no-nodejs-modules -- the bridge runs the claude CLI.
-import { spawn } from "node:child_process"
-// oxlint-disable-next-line import/no-nodejs-modules -- see above.
 import { tmpdir } from "node:os"
 
 import { z } from "zod"
+
+import { runCommand } from "./command"
 
 export const agentModel = () => process.env.MORPH_MODEL ?? "sonnet"
 
@@ -127,11 +127,8 @@ function outputOf<T>(
   return { ok: true, value: parsed.data, writes }
 }
 
-/**
- * The run leads its own process group, so stopping it at `signal` or after `deadlineMs` stops
- * every process it started.
- */
-export function runClaude<T>(
+/** Runs Claude with structured output and an owned, cancellable process group. */
+export async function runClaude<T>(
   prompt: string,
   output: z.ZodType<T>,
   signal: AbortSignal,
@@ -143,38 +140,15 @@ export function runClaude<T>(
     tools.length === 0
       ? ["--tools", ""]
       : ["--tools", tools.join(","), "--permission-mode", "acceptEdits"]
-  if (bounded.aborted) return Promise.resolve(failed(`stopped: ${String(bounded.reason)}`))
-  return new Promise((resolve) => {
-    const format = ["--output-format", "stream-json", "--verbose", "--json-schema", schema]
-    const args = ["-p", ...format, "--model", model]
-    const child = spawn("claude", [...args, ...access, ...AGENT_FLAGS], { cwd, detached: true })
-    const kill = () => {
-      try {
-        if (child.pid !== undefined) process.kill(-child.pid, "SIGTERM")
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error
-      }
-    }
-    bounded.addEventListener("abort", kill, { once: true })
-    let stdout = ""
-    let stderr = ""
-    child.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString()
-    })
-    child.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString()
-    })
-    child.on("error", (error) => {
-      resolve(failed(`claude did not start: ${error.message}`))
-    })
-    child.on("close", (code) => {
-      bounded.removeEventListener("abort", kill)
-      resolve(
-        bounded.aborted
-          ? failed(`stopped: ${String(bounded.reason)}`)
-          : outputOf(output, code, stdout, stderr),
-      )
-    })
-    child.stdin.end(prompt)
-  })
+  const format = ["--output-format", "stream-json", "--verbose", "--json-schema", schema]
+  const args = ["-p", ...format, "--model", model, ...access, ...AGENT_FLAGS]
+  const result = await runCommand("claude", args, { cwd, signal: bounded, input: prompt })
+  switch (result.kind) {
+    case "stopped":
+      return failed(`stopped: ${result.detail}`)
+    case "failed":
+      return failed(`claude command failed: ${result.detail}`)
+    case "exited":
+      return outputOf(output, result.code, result.stdout, result.stderr)
+  }
 }

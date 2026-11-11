@@ -1,22 +1,27 @@
 import { type Dispatch } from "react"
 
 import {
+  type ActiveSessionView,
+  type ThreadId,
+  threadOf,
   type Anchor,
   type Ask,
   type Choice,
   type Mark,
   type PageView,
+  Observation,
   SessionId,
   type VariantId,
 } from "../variant/model"
 import { type Answer, bridge, explain } from "./bridge"
 import { invalidateCatalog } from "./catalog"
 import { type AskTarget, type Event, type Sketch } from "./model"
-import { pickedOf, repicked } from "./repick"
-import { letterOf, type Pin } from "./sessions"
+import { captureTarget, resolveTargets, targetElements } from "./pinned-targets"
+import { letterOf, submissionId, type Pin } from "./sessions"
 import { invalidateSources, locate } from "./source"
-import { specOf } from "./specs"
 import { nameOf } from "./tree"
+import { commandId, type SubmissionCommand } from "./submission"
+import { rememberSubmission, forgetSubmission } from "./session-store"
 
 /** What the composer sends: what it is about, the words, and the sketch marks on the page. */
 export interface AskDraft {
@@ -80,59 +85,116 @@ const markOf =
 
 const newId = () => SessionId.parse(crypto.randomUUID())
 
-/**
- * The one door from the composer to variant sessions: pins the target at once, so the designer
- * can go on to the next component, then starts three variants. The pin records what it needs to
- * find the target again after a reload.
- */
-export async function ask(draft: AskDraft, dispatch: Dispatch<Event>): Promise<void> {
-  const subjects = subjectsOf(draft.target)
-  const id = newId()
-  // Before any await, so it closes this composer and not one the designer opened meanwhile.
-  dispatch({
-    kind: "asked",
-    pin: {
+async function sendSubmission(
+  pin: Pick<Pin, "id" | "name" | "words" | "file" | "targets"> & { n: number | null },
+  command: SubmissionCommand,
+  dispatch: Dispatch<Event>,
+): Promise<void> {
+  if (!rememberSubmission(pin, command))
+    dispatch({
+      kind: "notice",
+      tone: "warn",
+      text: "This browser could not save request recovery. Keep this tab open until the request finishes.",
+    })
+  dispatch({ kind: "sending", thread: pin.id, command })
+  const answer =
+    command.op === "ask" ? await bridge.ask(command.request) : await bridge.refine(command.request)
+  if (answer.ok) {
+    forgetSubmission(commandId(command))
+    invalidateCatalog()
+    invalidateSources()
+    dispatch({ kind: "answered", thread: pin.id, id: commandId(command), page: answer.value })
+  } else if (
+    answer.error.kind === "offline" ||
+    answer.error.kind === "crashed" ||
+    answer.error.kind === "unbuilt"
+  ) {
+    dispatch({ kind: "uncertain", thread: pin.id, command, detail: explain(answer.error) })
+  } else {
+    forgetSubmission(commandId(command))
+    dispatch({
+      kind: "refused",
+      thread: pin.id,
+      id: commandId(command),
+      text: explain(answer.error),
+    })
+  }
+}
+
+/** What a thread card and its keys can do to a session. */
+export interface SessionActions {
+  ask: (draft: AskDraft) => Promise<void>
+  /** Revokes unfinished lookups when their overlay unmounts. Sent commands remain recoverable. */
+  dispose: () => void
+  show: (id: SessionId, choice: Choice) => void
+  retryPlan: (id: SessionId) => void
+  retry: (id: SessionId, variant: VariantId) => void
+  keep: (pin: Pin, view: ActiveSessionView, variant: VariantId) => void
+  discard: (id: SessionId) => void
+  /** Keeps `variant` and asks again on top of it, on the same pin. */
+  refine: (pin: Pin, view: ActiveSessionView, variant: VariantId) => void
+  resume: (pin: Pin) => void
+  cancel: (pin: Pin) => void
+  poll: () => void
+}
+
+/** Owns requests from locating through acknowledgement, including cancellation and supersession. */
+export function actionsOf(publish: Dispatch<Event>): SessionActions {
+  const running = new Map<ThreadId, { id: SessionId; from: SessionId | null }>()
+  let observation = Observation.parse(0)
+  const release = (thread: ThreadId, id: SessionId) => {
+    if (running.get(thread)?.id === id) running.delete(thread)
+  }
+  const dispatch: Dispatch<Event> = (event) => {
+    if (
+      (event.kind === "page" || event.kind === "answered") &&
+      event.page.observation > observation
+    ) {
+      observation = event.page.observation
+      for (const view of event.page.sessions) {
+        const pending = running.get(view.thread)
+        if (pending !== undefined && view.id !== pending.from) release(view.thread, pending.id)
+      }
+    }
+    publish(event)
+  }
+  async function ask(draft: AskDraft): Promise<void> {
+    const subjects = subjectsOf(draft.target)
+    const id = newId()
+    const thread = threadOf(id, null)
+    const pin = {
       id,
       n: null,
       name: titleOf(draft.target, subjects),
       words: draft.words.trim() || "Apply the sketch marks.",
       file: null,
-      picked: subjects.map(pickedOf),
-      baseline: draft.target.kind === "element" ? specOf(draft.target.element) : null,
-    },
-  })
-  const anchors = await anchorsOf(subjects, draft.marks)
-  if (typeof anchors === "string") {
-    dispatch({ kind: "dropped", id, text: anchors })
-    return
+      targets: subjects.map(captureTarget),
+    }
+    running.set(thread, { id, from: null })
+    dispatch({ kind: "asked", pin })
+    try {
+      const anchors = await anchorsOf(subjects, draft.marks)
+      if (running.get(thread)?.id !== id) return
+      if (typeof anchors === "string") {
+        dispatch({ kind: "refused", thread, id, text: anchors })
+        return
+      }
+      const first = subjects[0]
+      const file = first === undefined ? null : baseName(anchors.at(first).source.path)
+      if (file !== null) dispatch({ kind: "located", thread, id, file })
+      const request: Ask = {
+        id,
+        words: pin.words,
+        targets: subjects.map(anchors.at),
+        marks: draft.marks.map(markOf(anchors.at)),
+        count: 3,
+      }
+      await sendSubmission({ ...pin, id: thread, file }, { op: "ask", request }, dispatch)
+    } finally {
+      release(thread, id)
+    }
   }
-  const first = subjects[0]
-  if (first !== undefined)
-    dispatch({ kind: "located", id, file: baseName(anchors.at(first).source.path) })
-  const request: Ask = {
-    id,
-    words: draft.words.trim() || "Apply the sketch marks.",
-    targets: subjects.map(anchors.at),
-    marks: draft.marks.map(markOf(anchors.at)),
-    count: 3,
-  }
-  const answer = await bridge.ask(request)
-  if (answer.ok) dispatch({ kind: "page", page: answer.value })
-  else dispatch({ kind: "dropped", id, text: explain(answer.error) })
-}
 
-/** What a thread card and its keys can do to a session. */
-export interface SessionActions {
-  show: (id: SessionId, choice: Choice) => void
-  retry: (id: SessionId, variant: VariantId) => void
-  keep: (pin: Pin, variant: VariantId) => void
-  discard: (id: SessionId) => void
-  /** Keeps `variant` and asks again on top of it, on the same pin. */
-  refine: (pin: Pin, variant: VariantId) => void
-  poll: () => void
-}
-
-export function actionsOf(dispatch: Dispatch<Event>): SessionActions {
   const settle = async (answer: Promise<Answer<PageView>>, done?: () => void) => {
     const result = await answer
     if (result.ok) {
@@ -145,10 +207,13 @@ export function actionsOf(dispatch: Dispatch<Event>): SessionActions {
     invalidateSources()
   }
   return {
+    ask,
+    dispose: () => running.clear(),
     show: (id, choice) => void settle(bridge.show(id, choice)),
+    retryPlan: (id) => void settle(bridge.retryPlan(id)),
     retry: (id, variant) => void settle(bridge.retry(id, variant)),
-    keep: (pin, variant) =>
-      void settle(bridge.keep(pin.id, variant), () => {
+    keep: (pin, view, variant) =>
+      void settle(bridge.keep(view.id, variant), () => {
         changedCode()
         dispatch({
           kind: "notice",
@@ -157,36 +222,65 @@ export function actionsOf(dispatch: Dispatch<Event>): SessionActions {
         })
       }),
     discard: (id) => void settle(bridge.discard(id), changedCode),
-    refine: (pin, variant) =>
+    resume: (pin) => {
+      if (pin.submission?.kind !== "uncertain") return
+      const command = pin.submission.command
+      const id = commandId(command)
+      if (running.get(pin.id)?.id === id) return
+      running.set(pin.id, { id, from: command.op === "refine" ? command.request.from : null })
+      void sendSubmission(pin, command, dispatch).finally(() => {
+        release(pin.id, id)
+      })
+    },
+    cancel: (pin) => {
+      if (pin.submission === null) return
+      const id = submissionId(pin.submission)
       void (async () => {
-        const words = pin.refine.trim()
-        if (words === "") return
-        const targets = repicked(pin.picked)
+        const answer = await bridge.discard(id)
+        if (answer.ok) {
+          release(pin.id, id)
+          forgetSubmission(id)
+          dispatch({ kind: "answered", thread: pin.id, id, page: answer.value })
+        } else dispatch({ kind: "notice", text: explain(answer.error), tone: "warn" })
+      })()
+    },
+    refine: (pin, view, variant) => {
+      const words = pin.refine.trim()
+      if (words === "" || pin.submission !== null || running.get(pin.id)?.from === view.id) return
+      const id = newId()
+      running.set(pin.id, { id, from: view.id })
+      dispatch({ kind: "locating", thread: pin.id, id, from: view.id, words })
+      void (async () => {
+        const resolved = resolveTargets(pin.targets)
+        const targets = targetElements(resolved)
+        dispatch({ kind: "retargeted", id: pin.id, matches: resolved.map(({ match }) => match) })
         const anchors = await anchorsOf(targets, [])
+        if (running.get(pin.id)?.id !== id) return
         if (typeof anchors === "string" || targets.length === 0) {
           dispatch({
-            kind: "notice",
+            kind: "refused",
+            thread: pin.id,
+            id,
             text: typeof anchors === "string" ? anchors : `Morph lost ${pin.name} on the page.`,
-            tone: "warn",
           })
           return
         }
-        const id = newId()
-        dispatch({ kind: "refined", from: pin.id, id, words })
-        dispatch({ kind: "retargeted", id, picked: targets.map(pickedOf) })
-        const answer = await bridge.refine({
-          from: pin.id,
-          variant,
-          ask: { id, words, targets: targets.map(anchors.at), marks: [], count: 3 },
-        })
-        if (answer.ok) {
-          changedCode()
-          dispatch({ kind: "page", page: answer.value })
-          return
-        }
-        dispatch({ kind: "refined", from: id, id: pin.id, words: pin.words })
-        dispatch({ kind: "notice", text: explain(answer.error), tone: "warn" })
-      })(),
+        await sendSubmission(
+          { ...pin, targets: resolved },
+          {
+            op: "refine",
+            request: {
+              from: view.id,
+              variant,
+              ask: { id, words, targets: targets.map(anchors.at), marks: [], count: 3 },
+            },
+          },
+          dispatch,
+        )
+      })().finally(() => {
+        release(pin.id, id)
+      })
+    },
     poll: () =>
       void (async () => {
         const answer = await bridge.page()

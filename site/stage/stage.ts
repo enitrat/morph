@@ -1,15 +1,18 @@
 import type { AskNode, Level, Manifest, Repo, Revision, VariantNode } from "./manifest"
 import { type Matched, matchAsk } from "./match"
-import type {
-  Choice,
-  PageView,
-  Refusal,
-  RepoPath,
-  SessionId,
-  SessionView,
-  Step,
-  VariantId,
-  VariantView,
+import {
+  Observation,
+  type Choice,
+  type PageView,
+  type Refusal,
+  type RepoPath,
+  type SessionId,
+  type ThreadId,
+  threadOf,
+  type ActiveSessionView,
+  type Step,
+  type VariantId,
+  type VariantView,
 } from "./wire"
 
 /** Recorded job times play this many times faster, so a first variant lands in about 3 s. */
@@ -27,30 +30,18 @@ interface Want {
 /** One ask on the playground. Only facts are stored: place and phases are derived on read. */
 interface StageSession {
   readonly id: SessionId
+  readonly thread: ThreadId
+  readonly words: string
   readonly ask: AskNode
   /** The revision of the ask's file the repo kept when it was asked: its variants rewrite it. */
   readonly base: Revision
   /** The visitor's words matched a recorded ask's phrasing exactly, or only came closest. */
   readonly matched: Matched["kind"]
   readonly askedAt: number
-  /**
-   * Page polls answered so far. A variant counts as ready only after one, so the overlay has seen
-   * the session show the original for a whole poll and measured it before anything changes.
-   */
-  readonly polls: number
   readonly want: Want | null
   /** The first ready variant, which a page poll picks while the designer has chosen nothing. */
   readonly auto: VariantId | null
   readonly trail: readonly Step[]
-}
-
-/** A kept state of the whole repo. Each keep adds one under the version it was made on. */
-export interface Version {
-  readonly id: number
-  readonly parent: number | null
-  readonly repo: Repo
-  /** The variant whose keep made this version; null for the original. */
-  readonly kept: VariantNode | null
 }
 
 /** What happened on the stage, oldest first: the coach reads it. */
@@ -63,10 +54,8 @@ export type LogEntry = {
 interface StageState {
   /** Oldest ask first, as the page view lists them. */
   readonly sessions: readonly StageSession[]
-  /** Never empty: the original is version 0. */
-  readonly versions: readonly Version[]
-  /** The version the board stands on; its repo is the kept code. */
-  readonly at: number
+  readonly kept: Repo
+  readonly closed: ReadonlySet<SessionId>
   readonly log: readonly LogEntry[]
   readonly seq: number
 }
@@ -76,8 +65,6 @@ export interface Snapshot {
   /** The kept repo with every shown variant written over it. */
   readonly shown: Repo
   readonly kept: Repo
-  readonly versions: readonly Version[]
-  readonly at: number
   readonly log: readonly LogEntry[]
   /** Every open session's ask and place, oldest first, for chrome that drives the stage itself. */
   readonly sessions: readonly {
@@ -98,7 +85,7 @@ const variantOf = (session: StageSession, id: VariantId): VariantNode =>
 const fileOf = (session: StageSession) => session.ask.base.file.path
 
 const isReady = (session: StageSession, variant: VariantNode, now: number) =>
-  session.polls >= 1 && (now - session.askedAt) * REPLAY_SPEED >= variant.meta.ms.total
+  (now - session.askedAt) * REPLAY_SPEED >= variant.meta.ms.total
 
 function viewOfVariant(session: StageSession, variant: VariantNode, now: number): VariantView {
   const { id, meta } = variant
@@ -129,7 +116,7 @@ function viewOfVariant(session: StageSession, variant: VariantNode, now: number)
   return { id, direction: meta.direction, state: "pending", phase }
 }
 
-type Place = SessionView["place"]
+type Place = ActiveSessionView["place"]
 
 const choiceOf = (session: StageSession): Choice =>
   session.want?.choice ?? session.auto ?? "original"
@@ -186,12 +173,10 @@ export interface Stage {
   subscribe(listener: () => void): () => void
   snapshot(): Snapshot
   /** Free text snaps to the closest recorded ask, or refuses as a planner would. Idempotent on `id`. */
-  ask(input: AskInput, now: number): Result<Matched>
+  ask(input: AskInput, now: number): Result
   /** Keeps `variant` of `from`, then asks again on top of it. */
-  refine(
-    input: { from: SessionId; variant: VariantId; ask: AskInput },
-    now: number,
-  ): Result<Matched>
+  refine(input: { from: SessionId; variant: VariantId; ask: AskInput }, now: number): Result
+  replace(from: SessionId, ask: AskInput, now: number): Result
   show(id: SessionId, choice: Choice, now: number): Result
   keep(id: SessionId, variant: VariantId): Result
   discard(id: SessionId): Result
@@ -207,12 +192,13 @@ export interface Stage {
 export function createStage(manifest: Manifest): Stage {
   const initial: StageState = {
     sessions: [],
-    versions: [{ id: 0, parent: null, repo: manifest.original, kept: null }],
-    at: 0,
+    closed: new Set(),
+    kept: manifest.original,
     log: [],
     seq: 0,
   }
   let state = initial
+  let observation = Observation.parse(0)
   let drawn: { from: StageState; snapshot: Snapshot } | null = null
   const listeners = new Set<() => void>()
 
@@ -221,9 +207,7 @@ export function createStage(manifest: Manifest): Stage {
     state = next
     for (const listener of listeners) listener()
   }
-  // SAFETY: `at` always names a version in the list.
-  const keptRepo = () => (state.versions[state.at] as Version).repo
-  const places = () => placesOf(state.sessions, keptRepo())
+  const places = () => placesOf(state.sessions, state.kept)
   const find = (id: SessionId) => state.sessions.find((session) => session.id === id)
   const without = (id: SessionId) => state.sessions.filter((session) => session.id !== id)
   const logged = (op: LogEntry["op"], session: StageSession): LogEntry[] => [
@@ -233,7 +217,7 @@ export function createStage(manifest: Manifest): Stage {
 
   const snapshot = (): Snapshot => {
     if (drawn?.from === state) return drawn.snapshot
-    const kept = keptRepo()
+    const { kept } = state
     const placed = places()
     const shown = new Map(kept)
     const sessions = state.sessions.map((session) => {
@@ -245,16 +229,28 @@ export function createStage(manifest: Manifest): Stage {
     })
     drawn = {
       from: state,
-      snapshot: { shown, kept, versions: state.versions, at: state.at, log: state.log, sessions },
+      snapshot: { shown, kept, log: state.log, sessions },
     }
     return drawn.snapshot
   }
 
   const page = (now: number): PageView => {
     const placed = places()
+    observation = Observation.parse(observation + 1)
     return {
+      observation,
       sessions: state.sessions.map((session) => ({
+        kind: "active",
         id: session.id,
+        thread: session.thread,
+        words: session.words,
+        targets: [
+          {
+            source: { path: session.ask.base.file.path, line: 1, col: 1 },
+            owner: [session.ask.base.file.name],
+            text: "",
+          },
+        ],
         // SAFETY: placesOf places every session it is given.
         place: placed.get(session.id) as Place,
         variants: session.ask.variants.map((variant) => viewOfVariant(session, variant, now)),
@@ -265,18 +261,18 @@ export function createStage(manifest: Manifest): Stage {
     }
   }
 
-  const plan = (input: AskInput): Result<Matched & { ask: AskNode }> => {
+  const plan = (input: AskInput, kept: Repo = state.kept): Result<Matched & { ask: AskNode }> => {
     const file = manifest.fileAt(input.path)
     if (file === undefined)
       return refuse({
-        kind: "planner-failed",
+        kind: "invalid",
         detail: `no model runs on this page, and ${input.path} has no recorded asks. Pick an object on the board.`,
       })
-    const asks = manifest.offeredAt(file, keptRepo())
+    const asks = manifest.offeredAt(file, kept)
     const matched = matchAsk(asks, input.words)
     if (matched.kind === "none")
       return refuse({
-        kind: "planner-failed",
+        kind: "invalid",
         detail:
           asks.length === 0
             ? `no model runs on this page, and ${file.name} has no recorded asks from here. Pick another part.`
@@ -290,24 +286,31 @@ export function createStage(manifest: Manifest): Stage {
     matched: Matched & { ask: AskNode },
     now: number,
     trail: readonly Step[],
+    from: StageState = state,
+    thread: ThreadId = threadOf(input.id, null),
   ) => {
     const file = matched.ask.base.file
     const session: StageSession = {
       id: input.id,
+      thread,
+      words: input.words,
       ask: matched.ask,
-      base: keptRepo().get(file.path) ?? file.original,
+      base: from.kept.get(file.path) ?? file.original,
       matched: matched.kind,
       askedAt: now,
-      polls: 0,
       want: null,
       auto: null,
       trail,
     }
-    set({ ...state, sessions: [...state.sessions, session], log: logged("ask", session) })
-    return done<Matched>(matched)
+    set({
+      ...from,
+      sessions: [...from.sessions, session],
+      log: [...from.log, { op: "ask", level: file.level, path: file.path }],
+    })
+    return done(undefined)
   }
 
-  const keep = (id: SessionId, variant: VariantId): Result => {
+  const keptState = (id: SessionId, variant: VariantId): Result<StageState> => {
     const session = find(id)
     if (session === undefined) return refuse({ kind: "not-found" })
     const place = places().get(id)
@@ -316,16 +319,13 @@ export function createStage(manifest: Manifest): Stage {
       (place?.kind === "shown" || place?.kind === "waiting") && place.variant === variant
     if (!holds) return refuse({ kind: "not-shown", variant })
     const kept = variantOf(session, variant)
-    const repo = new Map(keptRepo()).set(fileOf(session), kept.revision)
-    const version: Version = { id: state.versions.length, parent: state.at, repo, kept }
-    set({
+    return done({
       ...state,
       sessions: without(id),
-      versions: [...state.versions, version],
-      at: version.id,
+      closed: new Set(state.closed).add(id),
+      kept: new Map(state.kept).set(fileOf(session), kept.revision),
       log: logged("keep", session),
     })
-    return done(undefined)
   }
 
   return {
@@ -336,12 +336,16 @@ export function createStage(manifest: Manifest): Stage {
     },
     snapshot,
     ask(input, now) {
+      if (state.closed.has(input.id)) return done(undefined)
       const existing = find(input.id)
-      if (existing !== undefined) return done<Matched>({ kind: "exact", ask: existing.ask })
+      if (existing !== undefined) return done(undefined)
       const planned = plan(input)
       return planned.ok ? open(input, planned.value, now, []) : planned
     },
     refine({ from, variant, ask }, now) {
+      if (state.closed.has(ask.id)) return done(undefined)
+      const existing = find(ask.id)
+      if (existing !== undefined) return done(undefined)
       const parent = find(from)
       if (parent === undefined) return refuse({ kind: "not-found" })
       const step: Step = {
@@ -349,10 +353,31 @@ export function createStage(manifest: Manifest): Stage {
         title: variantOf(parent, variant).meta.title,
         feedback: ask.words,
       }
-      const kept = keep(from, variant)
+      const planned = plan(
+        ask,
+        new Map(state.kept).set(fileOf(parent), variantOf(parent, variant).revision),
+      )
+      if (!planned.ok) return planned
+      const kept = keptState(from, variant)
       if (!kept.ok) return kept
+      return open(ask, planned.value, now, [...parent.trail, step], kept.value, parent.thread)
+    },
+    replace(from, ask, now) {
+      if (state.closed.has(ask.id)) return done(undefined)
+      const existing = find(ask.id)
+      if (existing !== undefined) return done(undefined)
+      const parent = find(from)
+      if (parent === undefined) return refuse({ kind: "not-found" })
+      const place = places().get(from)
+      if (place?.kind === "shown") return this.refine({ from, variant: place.variant, ask }, now)
       const planned = plan(ask)
-      return planned.ok ? open(ask, planned.value, now, [...parent.trail, step]) : planned
+      if (!planned.ok) return planned
+      return open(ask, planned.value, now, [], {
+        ...state,
+        sessions: without(from),
+        closed: new Set(state.closed).add(from),
+        log: logged("discard", parent),
+      })
     },
     show(id, choice, now) {
       const session = find(id)
@@ -370,18 +395,30 @@ export function createStage(manifest: Manifest): Stage {
       })
       return done(undefined)
     },
-    keep,
+    keep(id, variant) {
+      const kept = keptState(id, variant)
+      if (!kept.ok) return kept
+      set(kept.value)
+      return done(undefined)
+    },
     discard(id) {
       const session = find(id)
-      if (session === undefined) return refuse({ kind: "not-found" })
-      set({ ...state, sessions: without(id), log: logged("discard", session) })
+      set({
+        ...state,
+        sessions: without(id),
+        closed: new Set(state.closed).add(id),
+        log: session === undefined ? state.log : logged("discard", session),
+      })
       return done(undefined)
     },
     retry(id) {
       return find(id) === undefined ? refuse({ kind: "not-found" }) : done(undefined)
     },
     reset() {
-      set(initial)
+      set({
+        ...initial,
+        closed: new Set([...state.closed, ...state.sessions.map((session) => session.id)]),
+      })
     },
     poll(now) {
       set({
@@ -391,7 +428,7 @@ export function createStage(manifest: Manifest): Stage {
             session.want === null && session.auto === null
               ? session.ask.variants.find((variant) => isReady(session, variant, now))
               : undefined
-          return { ...session, polls: session.polls + 1, auto: first?.id ?? session.auto }
+          return first === undefined ? session : { ...session, auto: first.id }
         }),
       })
       return page(now)
@@ -403,7 +440,7 @@ export function createStage(manifest: Manifest): Stage {
         return file === undefined
           ? []
           : manifest
-              .offeredAt(file, keptRepo())
+              .offeredAt(file, state.kept)
               .map((ask) => ({ words: ask.words, kind: "house" as const }))
       }
       const session = find(at.session)

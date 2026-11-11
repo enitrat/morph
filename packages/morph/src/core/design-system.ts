@@ -13,6 +13,8 @@ import {
   Tier,
   MorphConfig,
 } from "./config"
+import { type SourceDeclaration, type TokenBlock, type TokenSource } from "./token-source"
+import { type ThemeValues } from "./token-values"
 import { buildTokens } from "./graph"
 
 export type TokenName = `--${string}`
@@ -24,6 +26,7 @@ export interface Declaration {
   file: string
   block: BlockId
   value: string
+  origin: { readonly block: TokenBlock; readonly declaration: SourceDeclaration }
   /**
    * Declared inside `@theme`, where Tailwind compiles a utility from it. `default` is Tailwind's
    * own `@theme default`: any app declaration of the token replaces it.
@@ -70,6 +73,8 @@ export interface Tokens {
   graph: TokenGraph
   themes: ThemeModel
   files: readonly TokenFile[]
+  sources: ReadonlyMap<string, TokenSource>
+  values: ReadonlyMap<ThemeName, ThemeValues>
 }
 
 /** What an edit writes: every theme's value, or one theme's. */
@@ -250,11 +255,18 @@ export const isUtilityAlias = (node: TokenNode): boolean =>
 export const isThemeToken = (node: TokenNode): boolean =>
   node.declarations.some((entry) => entry.theme !== "none")
 
-/** The declaration `theme` reads: its own, then each fallback's, then the shared one. */
-export function declarationFor(tokens: Tokens, node: TokenNode, theme: ThemeName): Declaration {
-  for (const block of [...themeNamed(tokens.themes, theme).reads, "shared"]) {
+/** Selects a declaration in theme fallback order, then the shared block. */
+export function declarationIn(node: TokenNode, theme: Theme): Declaration | undefined {
+  for (const block of [...theme.reads, "shared"]) {
     const found = node.declarations.find((entry) => entry.block === block)
     if (found) return found
   }
-  throw new Error(`${node.name} has no ${theme} declaration`)
+  return undefined
+}
+
+/** Requires the effective declaration for an operation on an available token. */
+export function declarationFor(tokens: Tokens, node: TokenNode, theme: ThemeName): Declaration {
+  const declaration = declarationIn(node, themeNamed(tokens.themes, theme))
+  if (declaration === undefined) throw new Error(`${node.name} has no ${theme} declaration`)
+  return declaration
 }

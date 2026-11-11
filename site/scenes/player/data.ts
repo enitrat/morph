@@ -228,20 +228,27 @@ const sound = (() => {
 
 /* Playback: a clock that runs while the song plays, read the same way by every design. */
 
-interface Live {
-  readonly playing: boolean
-  /** The position, in seconds, at `since`. */
-  readonly at: number
-  /** `performance.now()` when `at` was set. */
-  readonly since: number
+type Transport =
+  | { readonly kind: "paused"; readonly position: number }
+  | {
+      readonly kind: "playing"
+      readonly origin: number
+      readonly startedAt: number
+      readonly sampledAt: number
+    }
+
+interface PlayerState {
+  readonly transport: Transport
   readonly loop: boolean
   readonly liked: boolean
 }
 
-const START: Live = { playing: false, at: 41, since: 0, loop: true, liked: false }
-let live: Live = START
-/** The position the last frame read, so a snapshot stays the same between frames. */
-let position = START.at
+type PlaybackEvent =
+  | { readonly kind: "toggle" | "restart" | "skip" | "loop" | "like" | "tick" | "reset" }
+  | { readonly kind: "seek"; readonly position: number }
+
+const START: PlayerState = { transport: { kind: "paused", position: 41 }, loop: true, liked: false }
+let live: PlayerState = START
 
 const listeners = new Set<() => void>()
 const notify = () => {
@@ -252,46 +259,87 @@ const subscribe = (listener: () => void) => {
   return () => listeners.delete(listener)
 }
 
-const positionAt = (now: number) => {
-  if (!live.playing) return live.at
-  const t = live.at + (now - live.since) / 1000
-  return live.loop ? t % TRACK.duration : Math.min(t, TRACK.duration)
-}
-
-let frame = 0
-const tick = (now: number) => {
-  position = positionAt(now)
-  if (live.playing && !live.loop && position >= TRACK.duration) {
-    set({ playing: false, at: 0 })
-    return
-  }
-  notify()
-  frame = live.playing ? requestAnimationFrame(tick) : 0
-}
-
-function set(next: Partial<Live>) {
-  const now = performance.now()
-  const wasPlaying = live.playing
-  live = { ...live, at: positionAt(now), since: now, ...next }
-  position = live.at
-  if (live.playing && !wasPlaying) {
-    sound.start()
-    frame ||= requestAnimationFrame(tick)
-  }
-  if (!live.playing && wasPlaying) {
-    sound.stop()
-    cancelAnimationFrame(frame)
-    frame = 0
-  }
-  notify()
+const positionAt = (state: PlayerState, now: number) => {
+  const { transport } = state
+  if (transport.kind === "paused") return transport.position
+  const t = transport.origin + (now - transport.startedAt) / 1000
+  return state.loop ? t % TRACK.duration : Math.min(t, TRACK.duration)
 }
 
 const seconds = (value: number) => Math.max(0, Math.min(TRACK.duration - 0.5, value))
 
+function stepPlayback(state: PlayerState, event: PlaybackEvent, now: number): PlayerState {
+  const position = positionAt(state, now)
+  const at = (position: number): Transport =>
+    state.transport.kind === "paused"
+      ? { kind: "paused", position }
+      : { kind: "playing", origin: position, startedAt: now, sampledAt: now }
+  const transport = at(position)
+  switch (event.kind) {
+    case "toggle":
+      return {
+        ...state,
+        transport:
+          transport.kind === "paused"
+            ? { kind: "playing", origin: position, startedAt: now, sampledAt: now }
+            : { kind: "paused", position },
+      }
+    case "seek":
+      return { ...state, transport: at(seconds(event.position)) }
+    case "restart":
+      return { ...state, transport: at(0) }
+    case "skip":
+      return { ...state, transport: at(seconds(position + SKIP)) }
+    case "loop":
+      return { ...state, transport, loop: !state.loop }
+    case "like":
+      return { ...state, transport, liked: !state.liked }
+    case "tick":
+      return {
+        ...state,
+        transport:
+          !state.loop && position >= TRACK.duration
+            ? { kind: "paused", position: 0 }
+            : state.transport.kind === "playing"
+              ? { ...state.transport, sampledAt: now }
+              : state.transport,
+      }
+    case "reset":
+      return START
+  }
+}
+
+let frame: number | null = null
+const tick = (now: number) => {
+  update({ kind: "tick" }, now)
+  if (live.transport.kind === "playing") frame = requestAnimationFrame(tick)
+}
+
+function update(event: PlaybackEvent, now = performance.now()) {
+  const next = stepPlayback(live, event, now)
+  if (live.transport.kind !== next.transport.kind) {
+    if (next.transport.kind === "playing") {
+      sound.start()
+      frame = requestAnimationFrame(tick)
+    } else {
+      sound.stop()
+      if (frame !== null) cancelAnimationFrame(frame)
+      frame = null
+    }
+  }
+  live = next
+  notify()
+}
+
+/** Shared transport controls and preferences, retained when a design replaces its components. */
 export interface Playback {
+  /** Whether the track's clock is advancing. */
   readonly playing: boolean
+  /** Whether reaching the end wraps to the beginning. */
   readonly loop: boolean
+  /** Whether the visitor has liked the track. */
   readonly liked: boolean
+  /** Starts or pauses at the current position. */
   toggle(): void
   /** Jumps to `value` seconds. */
   seek(value: number): void
@@ -299,28 +347,31 @@ export interface Playback {
   restart(): void
   /** Ahead by `SKIP` seconds. */
   skip(): void
+  /** Enables or disables wrapping at the end of the track. */
   toggleLoop(): void
+  /** Toggles the visitor's preference for this track. */
   toggleLike(): void
 }
 
+/** Seconds advanced by the skip control. */
 export const SKIP = 15
 
-const playback = (state: Live): Playback => ({
-  playing: state.playing,
+const playback = (state: PlayerState): Playback => ({
+  playing: state.transport.kind === "playing",
   loop: state.loop,
   liked: state.liked,
-  toggle: () => set({ playing: !live.playing }),
-  seek: (value) => set({ at: seconds(value) }),
-  restart: () => set({ at: 0 }),
-  skip: () => set({ at: seconds(positionAt(performance.now()) + SKIP) }),
-  toggleLoop: () => set({ loop: !live.loop }),
-  toggleLike: () => set({ liked: !live.liked }),
+  toggle: () => update({ kind: "toggle" }),
+  seek: (position) => update({ kind: "seek", position }),
+  restart: () => update({ kind: "restart" }),
+  skip: () => update({ kind: "skip" }),
+  toggleLoop: () => update({ kind: "loop" }),
+  toggleLike: () => update({ kind: "like" }),
 })
 
 let snapshot: Playback = playback(live)
 const getPlayback = () => {
   if (
-    snapshot.playing !== live.playing ||
+    snapshot.playing !== (live.transport.kind === "playing") ||
     snapshot.loop !== live.loop ||
     snapshot.liked !== live.liked
   )
@@ -335,7 +386,11 @@ export function usePlayback(): Playback {
 
 /** Where the song is, in seconds. Re-renders every frame while it plays. */
 export function usePosition(): number {
-  return useSyncExternalStore(subscribe, () => position)
+  return useSyncExternalStore(subscribe, () =>
+    live.transport.kind === "paused"
+      ? live.transport.position
+      : positionAt(live, live.transport.sampledAt),
+  )
 }
 
 /**
@@ -376,4 +431,4 @@ export function useSeek(label = "Seek") {
 }
 
 /** Puts the song back where a fresh visit finds it, paused. */
-export const reset = () => set(START)
+export const reset = () => update({ kind: "reset" })

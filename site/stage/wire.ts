@@ -2,12 +2,16 @@
 // and a replay must answer with exactly what the overlay parses.
 export { operations, type Operation } from "../../packages/morph/src/protocol"
 export {
+  Observation,
   type Choice,
   type PageView,
   type Refusal,
   RepoPath,
   SessionId,
+  ThreadId,
+  threadOf,
   type SessionView,
+  type ActiveSessionView,
   type SourceLoc,
   type Stat,
   type Step,

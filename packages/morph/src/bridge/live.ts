@@ -1,15 +1,16 @@
 // oxlint-disable-next-line import/no-nodejs-modules -- the bridge writes the working tree.
 import { randomUUID } from "node:crypto"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
-import { chmod, mkdir, readFile, rename, rm, rmdir, stat, writeFile } from "node:fs/promises"
+import { chmod, mkdir, rename, rm, rmdir, stat, writeFile } from "node:fs/promises"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
 import { dirname, join } from "node:path"
 
 import {
   type CommitId,
-  EMPTY_JOURNAL,
   type FileWrite,
-  Journal,
+  type Journal,
+  Observation,
+  type PageView,
   type Refusal,
   type RepoPath,
   Seq,
@@ -24,9 +25,7 @@ import {
   type Store,
 } from "../variant/swap"
 import { absent, gitStore, homeOf as home, readBlob, type Repo, snapshot } from "./git"
-import { withLock } from "./lock"
-
-const journalPath = (repo: Repo) => join(home(repo), "live.json")
+import { type Checkpoint, readCheckpoint, withCheckpoint } from "./checkpoint"
 
 async function replace(file: string, bytes: Buffer | string, scratch: string): Promise<void> {
   const tmp = join(scratch, `tmp-${randomUUID()}`)
@@ -38,26 +37,9 @@ async function replace(file: string, bytes: Buffer | string, scratch: string): P
   await rename(tmp, file)
 }
 
-/**
- * What the single-session engine left when nothing was on the page. A repo that used it keeps the
- * file, so reading it as an empty journal lets that repo start sessions again.
- */
-const LEGACY_IDLE = JSON.stringify({ kind: "steady", applied: null })
-
-/** The journal as it is on disk, read without the lock: a move may be under way. */
+/** The journal as published on disk, without recovering an interrupted move. */
 export async function readJournal(repo: Repo): Promise<Journal> {
-  const text = await readFile(journalPath(repo), "utf8").catch(absent)
-  if (text === null || text.trim() === LEGACY_IDLE) return EMPTY_JOURNAL
-  const raw: unknown = JSON.parse(text)
-  if (typeof raw === "object" && raw !== null && "applied" in raw)
-    throw new Error(
-      `morph: ${journalPath(repo)} is from an older Morph that still shows a variant; restore its files with git, then delete it`,
-    )
-  return Journal.parse(raw)
-}
-
-async function writeJournal(repo: Repo, journal: Journal): Promise<void> {
-  await replace(journalPath(repo), JSON.stringify(journal), home(repo))
+  return (await readCheckpoint(repo)).value.journal
 }
 
 /** Removes the parents a deleted file leaves empty, as a variant that added them would expect. */
@@ -95,59 +77,81 @@ async function recover(repo: Repo, store: Store, now: Journal): Promise<Journal>
     if (live === write.expect) await put(repo, write)
     else stuck.push(write.path)
   }
-  const settled = { ...now, stuck: [...new Set([...now.stuck, ...stuck])], moving: null }
-  await writeJournal(repo, settled)
-  return settled
+  return { ...now, stuck: [...new Set([...now.stuck, ...stuck])], moving: null }
 }
 
-function locked<T>(repo: Repo, body: (store: Store, now: Journal) => Promise<T>): Promise<T> {
-  return withLock(join(home(repo), "lock"), async () => {
-    const store = gitStore(repo)
-    return body(store, await recover(repo, store, await readJournal(repo)))
-  })
-}
-
+/** A settled placement or a refusal that left the working tree unchanged. */
 export type Converged =
   | { ok: true; journal: Journal; places: ReadonlyMap<SessionId, Placed> }
   | { ok: false; refusal: Refusal }
 
-/**
- * The only writer of the working tree. Under the live lock it finishes a crashed move, reads the
- * open sessions, plans `request`, writes the journal, then the files, then the journal again
- * without `moving`. A plan that changes nothing writes nothing, so a poll leaves the disk alone.
- */
-export function converge(
-  repo: Repo,
-  offers: () => Promise<readonly Offer[]>,
-  request: Request,
-): Promise<Converged> {
-  return locked(repo, async (store, now) => {
-    const planned = await plan(store, now, await offers(), request)
-    if (!planned.ok) return planned
-    if (planned.writes.length > 0) {
-      await writeJournal(repo, planned.journal)
-      for (const write of planned.writes) await put(repo, write)
-    }
-    const journal = { ...planned.journal, moving: null }
-    if (planned.writes.length > 0 || JSON.stringify(journal) !== JSON.stringify(now))
-      await writeJournal(repo, journal)
-    return { ok: true, journal, places: planned.places }
-  })
+/** Operations available only while one checkout's live-tree lock is held. */
+export interface LiveTree {
+  /** The recovered journal, including changes made in this acquisition. */
+  readonly journal: Journal
+  /** Round states from the same checkpoint as the journal. */
+  readonly rounds: Checkpoint["rounds"]
+  /** Publishes round transitions that do not change the working tree. */
+  publish(rounds: Checkpoint["rounds"]): Promise<void>
+  /** Applies a placement decision through the write-ahead journal. */
+  settle(
+    offers: readonly Offer[],
+    request: Request,
+    rounds?: Checkpoint["rounds"],
+  ): Promise<Converged>
+  /** Captures the designer's code with shown variants removed, and reserves its open order. */
+  base(): Promise<{ base: CommitId; opened: Seq }>
+  /** Numbers a page captured in this acquisition. The counter survives server restarts. */
+  observe(page: Omit<PageView, "observation">): Promise<PageView>
 }
 
-/**
- * The commit a new session stands on, and its place in the open order: the working tree with
- * every shown variant taken out, so no session's base holds another's undecided change.
- */
-export function baseOf(repo: Repo): Promise<{ base: CommitId; opened: Seq }> {
-  return locked(repo, async (store, now) => {
-    const opened = Seq.parse(now.seq + 1)
-    await writeJournal(repo, { ...now, seq: opened })
-    return { base: await snapshot(repo, await designerTree(store, now.leases)), opened }
+/** Recovers interrupted writes and owns the lock through mutation and observation of the tree. */
+export function withLive<T>(repo: Repo, body: (tree: LiveTree) => Promise<T>): Promise<T> {
+  return withCheckpoint(repo, async (checkpoint) => {
+    const store = gitStore(repo)
+    const recovered = await recover(repo, store, checkpoint.value.journal)
+    if (recovered !== checkpoint.value.journal)
+      await checkpoint.save({ ...checkpoint.value, journal: recovered })
+    return body({
+      get journal() {
+        return checkpoint.value.journal
+      },
+      get rounds() {
+        return checkpoint.value.rounds
+      },
+      async publish(rounds) {
+        await checkpoint.save({ ...checkpoint.value, rounds })
+      },
+      async settle(offers, request, rounds = checkpoint.value.rounds) {
+        const planned = await plan(store, checkpoint.value.journal, offers, request)
+        if (!planned.ok) return planned
+        const next = { ...checkpoint.value, rounds, journal: planned.journal }
+        if (JSON.stringify(next) !== JSON.stringify(checkpoint.value)) await checkpoint.save(next)
+        for (const write of planned.writes) await put(repo, write)
+        if (planned.writes.length > 0)
+          await checkpoint.save({
+            ...checkpoint.value,
+            journal: { ...checkpoint.value.journal, moving: null },
+          })
+        return { ok: true, journal: checkpoint.value.journal, places: planned.places }
+      },
+      async base() {
+        const opened = Seq.parse(checkpoint.value.journal.seq + 1)
+        const base = await snapshot(
+          repo,
+          await designerTree(store, checkpoint.value.journal.leases),
+        )
+        await checkpoint.save({
+          ...checkpoint.value,
+          journal: { ...checkpoint.value.journal, seq: opened },
+        })
+        return { base, opened }
+      },
+      async observe(page) {
+        const observation = Observation.parse(checkpoint.value.observation + 1)
+        await checkpoint.save({ ...checkpoint.value, observation })
+        return { ...page, observation }
+      },
+    })
   })
-}
-
-/** Runs `body` under the live-tree lock, after finishing an interrupted move. */
-export function withLive<T>(repo: Repo, body: (now: Journal) => Promise<T>): Promise<T> {
-  return locked(repo, async (_, now) => body(now))
 }

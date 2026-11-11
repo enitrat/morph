@@ -1,4 +1,5 @@
-import { chainOf, normalizeValue } from "../core/graph"
+import { chainOf } from "../core/graph"
+import { normalizeValue } from "../core/css-value"
 import {
   type Component,
   isUtilityAlias,

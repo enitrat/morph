@@ -33,7 +33,14 @@ async function main() {
     if (!answer.ok) throw new Error(`morph: the page did not settle: ${JSON.stringify(answer)}`)
     const { sessions, stuck } = answer.value
     if (stuck.length > 0) console.log(`stuck on: ${stuck.join(", ")}`)
-    for (const { id, place, variants } of sessions) {
+    for (const view of sessions) {
+      if (view.kind !== "active") {
+        console.log(
+          `session ${view.id}: ${view.kind === "planning" ? "planning" : `planning failed: ${view.reason}`}`,
+        )
+        continue
+      }
+      const { id, place, variants } = view
       const where =
         place.kind === "shown"
           ? `shows ${place.variant}${place.edited ? " (edited)" : ""}`

@@ -9,6 +9,7 @@ import { invalidateCatalog } from "./catalog"
 import { initial, reduce } from "./model"
 import { page } from "./session-fixtures"
 import { invalidateSources } from "./source"
+import { actionsOf } from "./ask"
 import { Composer } from "./ui/Composer"
 
 MotionGlobalConfig.skipAnimations = true
@@ -66,6 +67,7 @@ function mountComposer(answerSuggest: (call: WireCall) => { status: number; body
       state.composer &&
       createElement(Composer, {
         composer: state.composer,
+        actions: actionsOf(dispatch),
         area: { left: 0, right: innerWidth },
         dispatch,
       })

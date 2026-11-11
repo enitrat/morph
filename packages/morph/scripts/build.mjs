@@ -26,6 +26,7 @@ await Promise.all([
       next: "src/next/index.ts",
       vite: "src/vite/index.js",
       runner: "src/bridge/runner.ts",
+      "planner-runner": "src/bridge/planner-runner.ts",
       morph: "src/bin/morph.ts",
     },
   }),

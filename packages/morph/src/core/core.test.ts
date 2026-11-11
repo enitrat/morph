@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { applyEdits } from "./write"
+import { prepareTokenEdits } from "./edit"
 import { buildTokens, chainOf, resolveToken } from "./graph"
 import { editError, stepsFor, type TokenEdit } from "./edit"
 import { impactOf } from "./impact"
@@ -15,7 +15,9 @@ const { graph } = tokens
 const files = new Map(tokens.files.map((file) => [file.path, file.css]))
 
 function rebuilt(edits: readonly TokenEdit[]) {
-  const written = applyEdits(tokens, edits)
+  const result = prepareTokenEdits(tokens, edits)
+  if (!result.ok) throw new Error(result.detail)
+  const written = result.files
   const next = tokens.files.map((file) => ({
     ...file,
     css: written.get(file.path) ?? file.css,
@@ -84,7 +86,6 @@ describe("design-system rules", () => {
       /point it at a role/,
     ],
     [{ token: "--secondary", scope: DARK, to: "#333333" }, /literal/],
-    [{ token: "--secondary", scope: DARK, to: "var(--neutral-800)" }, /already reads/],
     [{ token: "--nope", scope: "all", to: "var(--secondary)" }, /not a ds token/],
   ] as const)("rejects %o", (edit, message) => {
     expect(editError(tokens, edit)).toMatch(message)

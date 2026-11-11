@@ -26,6 +26,10 @@ export type RepoPath = z.infer<typeof RepoPath>
 export const SessionId = z.uuid().brand<"SessionId">()
 export type SessionId = z.infer<typeof SessionId>
 
+/** Stable presentation identity, derived from the first round in a conversation. */
+export const ThreadId = z.uuid().brand<"ThreadId">()
+export type ThreadId = z.infer<typeof ThreadId>
+
 export const VariantId = z.enum(["v1", "v2", "v3"])
 export type VariantId = z.infer<typeof VariantId>
 
@@ -179,11 +183,18 @@ export const Parent: z.ZodType<Parent> = z.object({
   parent: z.lazy(() => Parent).nullable(),
 })
 
+/** Every refinement inherits the identity of its oldest parent round. */
+export function threadOf(id: SessionId, parent: Parent | null): ThreadId {
+  let root = id
+  for (let ancestor = parent; ancestor !== null; ancestor = ancestor.parent) root = ancestor.session
+  return ThreadId.parse(root)
+}
+
 /** Keeps `variant` of the open session `from`, then asks again on top of it. */
 export const Refine = z.object({ from: SessionId, variant: VariantId, ask: Ask })
 export type Refine = z.infer<typeof Refine>
 
-/** Written once per ask; variant `v<n>` follows `directions[n - 1]`. */
+/** An immutable generated plan; variant `v<n>` follows `directions[n - 1]`. */
 export const Session = z.object({
   id: SessionId,
   base: CommitId,
@@ -195,6 +206,13 @@ export const Session = z.object({
   parent: Parent.nullable().default(null),
 })
 export type Session = z.infer<typeof Session>
+
+/** Assigns stable variant ids in the plan's direction order. */
+export const variantsOf = (session: Session) =>
+  session.directions.map((direction, index) => ({
+    id: VariantId.parse(`v${index + 1}`),
+    direction,
+  }))
 
 /** One kept variant on the way to a round, and the feedback the next round asked of it. */
 export const Step = z.object({ variant: VariantId, title: z.string(), feedback: z.string() })
@@ -216,7 +234,7 @@ export type Phase = z.infer<typeof Phase>
 export const Stat = z.object({ add: z.int(), del: z.int() })
 export type Stat = z.infer<typeof Stat>
 
-/** What a finished job leaves in its directory; a job without one is pending or interrupted. */
+/** A terminal variant outcome, published in the checkout checkpoint by its current owner. */
 export const JobResult = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("ready"),
@@ -286,20 +304,43 @@ export const Place = z.discriminatedUnion("kind", [
 export type Place = z.infer<typeof Place>
 
 /** One open session as the overlay renders it. */
-export const SessionView = z.object({
+const RoundView = z.object({
   id: SessionId,
+  thread: ThreadId,
+  words: z.string(),
+  targets: z.array(Anchor).min(1).readonly(),
+  trail: steps,
+})
+export const ActiveSessionView = RoundView.extend({
+  kind: z.literal("active"),
   place: Place,
   variants: variantViews,
-  /** Empty in a first round. */
-  trail: steps,
   /** Files its variants touch that changed since it was asked; showing merges onto them. */
   drift: repoPaths,
 })
+export type ActiveSessionView = z.infer<typeof ActiveSessionView>
+export const SessionView = z.discriminatedUnion("kind", [
+  ActiveSessionView,
+  RoundView.extend({ kind: z.literal("planning") }),
+  RoundView.extend({ kind: z.literal("plan-failed"), reason: z.string() }),
+])
 export type SessionView = z.infer<typeof SessionView>
+
+/** Orders complete page observations within one checkout, independently of job progress. */
+export const Observation = z.int().nonnegative().brand<"Observation">()
+/** A persisted sequence number assigned while the page observation holds the checkout lock. */
+export type Observation = z.infer<typeof Observation>
 
 /** Every open session, oldest ask first, from one settled state: what every operation answers. */
 export const PageView = z.object({
-  sessions: z.array(SessionView).readonly(),
+  observation: Observation,
+  sessions: z
+    .array(SessionView)
+    .readonly()
+    .refine(
+      (sessions) => new Set(sessions.map((session) => session.thread)).size === sessions.length,
+      "A thread cannot have multiple open rounds",
+    ),
   /** Files a crashed write left neither as expected nor as written. */
   stuck: repoPaths,
 })
@@ -317,7 +358,6 @@ export const Refusal = z.discriminatedUnion("kind", [
     kind: z.literal("conflict"),
     files: repoPaths,
   }),
-  z.object({ kind: z.literal("planner-failed"), detail: z.string() }),
   z.object({ kind: z.literal("invalid"), detail: z.string() }),
 ])
 /** Application failures the bridge can return to the overlay. */

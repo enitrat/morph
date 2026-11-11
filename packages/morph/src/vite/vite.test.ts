@@ -18,7 +18,7 @@ import { afterEach, expect, it, vi } from "vitest"
 import { openRepo } from "../bridge/git"
 import { slotsRoot } from "../bridge/slots"
 import config from "../bridge/fixtures/acme/morph.config"
-import { MODULES, REPO, SPAWNING_TEST_MS } from "../bridge/test-fixtures"
+import { closeFixtureWorkers, MODULES, REPO, SPAWNING_TEST_MS } from "../bridge/test-fixtures"
 import { bridge, connect } from "../overlay/bridge"
 import { Ask, SessionId, SourceLoc } from "../variant/model"
 import { morph } from "./index.js"
@@ -34,6 +34,7 @@ afterEach(async () => {
   await server?.close()
   server = undefined
   if (root) {
+    await closeFixtureWorkers(await openRepo(root))
     rmSync(await slotsRoot(await openRepo(root)), { recursive: true, force: true })
     rmSync(root, { recursive: true, force: true })
   }
@@ -127,7 +128,10 @@ it(
     const html = await (await fetch(origin)).text()
     expect(html).toContain("<h1>My app</h1>")
     expect(html).not.toContain("virtual:morph")
-    expect(await bridge.page()).toEqual({ ok: true, value: { sessions: [], stuck: [] } })
+    expect(await bridge.page()).toEqual({
+      ok: true,
+      value: { observation: expect.any(Number), sessions: [], stuck: [] },
+    })
   },
   SPAWNING_TEST_MS,
 )
@@ -191,7 +195,10 @@ if (schema.properties.directions) {
           expect(answer.ok).toBe(true)
           if (!answer.ok) return
           const view = answer.value.sessions.find((entry) => entry.id === id)
-          expect(view?.variants, JSON.stringify(view)).toMatchObject([
+          expect(
+            view?.kind === "active" ? view.variants : undefined,
+            JSON.stringify(view),
+          ).toMatchObject([
             { state: "ready", files: ["card.tsx"] },
             { state: "ready", files: ["card.tsx"] },
             { state: "ready", files: ["card.tsx"] },
@@ -204,13 +211,19 @@ if (schema.properties.directions) {
     const first = await explore("Give this card more room")
     expect((await bridge.show(first, "v2")).ok).toBe(true)
     expect(readFileSync(join(root, "card.tsx"), "utf8")).toContain('className="p-7"')
-    expect(await bridge.keep(first, "v2")).toEqual({ ok: true, value: { sessions: [], stuck: [] } })
+    expect(await bridge.keep(first, "v2")).toEqual({
+      ok: true,
+      value: { observation: expect.any(Number), sessions: [], stuck: [] },
+    })
     const kept = readFileSync(join(root, "card.tsx"), "utf8")
 
     const second = await explore("Make it roomier again")
     expect((await bridge.show(second, "v1")).ok).toBe(true)
     expect(readFileSync(join(root, "card.tsx"), "utf8")).toContain('className="p-9"')
-    expect(await bridge.discard(second)).toEqual({ ok: true, value: { sessions: [], stuck: [] } })
+    expect(await bridge.discard(second)).toEqual({
+      ok: true,
+      value: { observation: expect.any(Number), sessions: [], stuck: [] },
+    })
     expect(readFileSync(join(root, "card.tsx"), "utf8")).toBe(kept)
   },
   SPAWNING_TEST_MS,

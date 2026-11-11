@@ -119,11 +119,14 @@ export async function acquire(
   const root = await slotsRoot(repo)
   for (;;) {
     for (const id of SLOT_IDS) {
+      signal?.throwIfAborted()
       const dir = join(root, `slot-${id}`)
       const lock = await tryLock(`${dir}.lock`)
       if (!lock) continue
       try {
+        signal?.throwIfAborted()
         await prepare(repo, dir, base, appRoot)
+        signal?.throwIfAborted()
         return { id, dir, lock }
       } catch (error) {
         await unlock(lock)

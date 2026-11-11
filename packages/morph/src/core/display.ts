@@ -2,7 +2,8 @@ import { parseHex } from "./color"
 import { type ThemeName } from "./config"
 import { type TokenName, type Tokens } from "./design-system"
 import { currentValue, SIZES } from "./edit"
-import { chainOf, referencesOf, normalizeValue, resolve } from "./graph"
+import { chainOf, resolve } from "./graph"
+import { referencesOf, normalizeValue } from "./css-value"
 
 export type Display =
   /** Painted as a swatch; the browser resolves a `color-mix()`. */

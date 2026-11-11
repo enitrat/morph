@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process"
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -98,10 +99,15 @@ it.each(["root", "workspace"] as const)(
         { cwd: root },
       )
       unlinkSync(join(root, project, "src/deleted.ts"))
-      const result = await checks(root, [RepoPath.parse(`${project}src/deleted.ts`)], {
-        ...CONFIG,
-        checks: { ...CONFIG.checks, typecheck: { bin: "tsc", args: ["--noEmit"], scope } },
-      })
+      const result = await checks(
+        root,
+        [RepoPath.parse(`${project}src/deleted.ts`)],
+        {
+          ...CONFIG,
+          checks: { ...CONFIG.checks, typecheck: { bin: "tsc", args: ["--noEmit"], scope } },
+        },
+        AbortSignal.any([]),
+      )
       expect(result.ok).toBe(false)
       if (!result.ok) expect(result.errors).toContain("deleted")
     } finally {
@@ -142,13 +148,18 @@ it("checks transitive dependents using dependency fields", async () => {
       { cwd: root },
     )
     unlinkSync(join(root, "packages/a/src/deleted.ts"))
-    const result = await checks(root, [RepoPath.parse("packages/a/src/deleted.ts")], {
-      ...CONFIG,
-      checks: {
-        ...CONFIG.checks,
-        typecheck: { bin: "check-project", args: [], scope: "workspace" },
+    const result = await checks(
+      root,
+      [RepoPath.parse("packages/a/src/deleted.ts")],
+      {
+        ...CONFIG,
+        checks: {
+          ...CONFIG.checks,
+          typecheck: { bin: "check-project", args: [], scope: "workspace" },
+        },
       },
-    })
+      AbortSignal.any([]),
+    )
     expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.errors).toContain("checked a")
@@ -208,6 +219,7 @@ it("uses app-local commands and paths in the checkout being checked", async () =
       root,
       [RepoPath.parse(`${app}/src/page.tsx`), RepoPath.parse("shared/button.tsx")],
       config,
+      AbortSignal.any([]),
     )
     expect(result).toEqual({ ok: true })
     expect(
@@ -220,3 +232,42 @@ it("uses app-local commands and paths in the checkout being checked", async () =
     rmSync(parent, { recursive: true, force: true })
   }
 })
+
+it("finishes an in-flight Git index update before returning cancellation", async () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "morph-check-cancel-")))
+  const sh = (...args: string[]) => execFileSync("git", args, { cwd: root })
+  let monitor: ReturnType<typeof setInterval> | undefined
+  try {
+    sh("init", "-q")
+    writeFileSync(join(root, "base"), "base")
+    sh("add", ".")
+    sh("-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-qm", "fixture")
+    const paths = Array.from({ length: 6000 }, (_, i) => RepoPath.parse(`file${i}.tsx`))
+    for (const path of paths) writeFileSync(join(root, path), "export const value = 1\n")
+    mkdirSync(join(root, "node_modules", ".bin"), { recursive: true })
+    writeFileSync(join(root, "node_modules", ".bin", "format"), "#!/bin/sh\nexit 0\n", {
+      mode: 0o755,
+    })
+    const config = MorphConfig.parse({
+      ...CONFIG,
+      checks: {
+        lint: null,
+        format: { bin: "format", args: [] },
+        typecheck: { bin: "unused", args: [], scope: "workspace" },
+      },
+    })
+    const stop = new AbortController()
+    const lock = join(root, ".git", "index.lock")
+    monitor = setInterval(() => {
+      if (existsSync(lock)) stop.abort("during git add")
+    }, 1)
+    const result = await checks(root, paths, config, stop.signal)
+    expect(stop.signal.aborted).toBe(true)
+    expect(result).toMatchObject({ ok: false, reason: "Checks cancelled" })
+    expect(existsSync(lock)).toBe(false)
+    sh("checkout", "--quiet", "--detach", "--force", "HEAD")
+  } finally {
+    clearInterval(monitor)
+    rmSync(root, { recursive: true, force: true })
+  }
+}, 30_000)

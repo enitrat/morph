@@ -5,10 +5,7 @@ import { readFile, writeFile } from "node:fs/promises"
 // oxlint-disable-next-line import/no-nodejs-modules -- see above.
 import { join } from "node:path"
 
-import { declarationFor } from "../core/design-system"
-import { editError, type TokenEdit } from "../core/edit"
-import { normalizeValue } from "../core/graph"
-import { applyEdits } from "../core/write"
+import { prepareTokenEdits, type TokenEdit } from "../core/edit"
 import { movedTag, setAttribute, swapClass } from "../dial/jsx"
 import type { Dialed, DialWrite } from "../dial/model"
 import type { PropWrite, PropWritten } from "../dial/props"
@@ -53,21 +50,14 @@ function writeToken(repo: Host, now: Journal, edit: TokenEdit): WriteResult<Dial
   const found = tokensOf(repo)
   if (!found.ok) return found
   const { tokens } = found
-  const themes = tokens.themes.list.map((theme) => theme.name)
-  if (edit.scope !== "all" && !themes.includes(edit.scope))
-    return refuse({ kind: "invalid", detail: `${edit.scope} is not a theme` })
-  const node = tokens.graph.get(edit.token)
-  const file = node?.declarations[0]?.file ?? ""
-  if (
-    node &&
-    (edit.scope === "all" ? themes : [edit.scope]).every(
-      (theme) => declarationFor(tokens, node, theme).value === normalizeValue(edit.to),
-    )
-  )
-    return { ok: true, value: { changed: false, file } }
-  const error = editError(tokens, edit)
-  if (error !== undefined) return refuse({ kind: "invalid", detail: error })
-  const written = applyEdits(tokens, [edit])
+  const prepared = prepareTokenEdits(tokens, [edit])
+  if (!prepared.ok) return refuse({ kind: "invalid", detail: prepared.detail })
+  const written = prepared.files
+  if (written.size === 0)
+    return {
+      ok: true,
+      value: { changed: false, file: tokens.graph.get(edit.token)?.declarations[0]?.file ?? "" },
+    }
   const on = holdersOf(
     now.leases,
     [...written.keys()].map((path) => RepoPath.parse(path)),
@@ -184,7 +174,9 @@ export function writeReleased(
   repo: Host,
   command: Command,
 ): Promise<WriteResult<Dialed | PropWritten>> {
-  return withLive(repo, async (now) =>
-    command.kind === "token" ? writeToken(repo, now, command) : writeJsx(repo, now, command),
+  return withLive(repo, async ({ journal }) =>
+    command.kind === "token"
+      ? writeToken(repo, journal, command)
+      : writeJsx(repo, journal, command),
   )
 }

@@ -3,8 +3,8 @@ import { type Dispatch, type ReactNode } from "react"
 import { instanceName, isComponentName, propsOf, rootedAt } from "../../inspector/fiber"
 import { type Event } from "../model"
 import { matchOf, type Scales } from "../scale"
-import { type VariantId } from "../../variant/model"
-import { letterOf } from "../sessions"
+import { type ThreadId } from "../../variant/model"
+import { captureReference, type PinnedTarget } from "../pinned-targets"
 import { type Change, deltaOf, fmt, hexOf, quadText, specOf, type Spec, usesOf } from "../specs"
 import { childrenOf, nameOf, pathOf } from "../tree"
 import { useSource } from "./hooks"
@@ -65,11 +65,12 @@ function BoxModel({ spec }: { spec: Spec }) {
   )
 }
 
-/** A variant on the page over this element, and the original as Morph last measured it. */
-export interface Shown {
+/** A stable target slot whose saved reference can be compared with the selected DOM element. */
+export interface Comparison {
+  thread: ThreadId
   n: number
-  variant: VariantId
-  baseline: Spec | null
+  slot: number
+  target: PinnedTarget
 }
 
 function ChangeRow({ change }: { change: Change }) {
@@ -119,18 +120,33 @@ function ChangeRow({ change }: { change: Change }) {
   )
 }
 
-/** What the variant on the page changed here, against the original's measurement. */
-function Delta({ shown, spec, scales }: { shown: Shown; spec: Spec; scales: Scales }) {
-  const changes = shown.baseline === null ? null : deltaOf(shown.baseline, spec, scales)
+/** Compares visible measurements without attributing either snapshot to a source revision. */
+function Delta({
+  comparison,
+  element,
+  spec,
+  scales,
+  dispatch,
+}: {
+  comparison: Comparison
+  element: Element
+  spec: Spec
+  scales: Scales
+  dispatch: Dispatch<Event>
+}) {
+  const { reference, match } = comparison.target
+  const changes = reference === null ? null : deltaOf(reference.spec, spec, scales)
   const off = changes?.filter((change) => change.kind === "length" && change.match.kind === "off")
   return (
-    <section className="m-2.5 mb-0 rounded-lg bg-accent-soft px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--ring)]">
+    <section
+      aria-label={`Reference comparison for pin ${comparison.n}, target ${comparison.slot + 1}`}
+      className="m-2.5 mb-0 rounded-lg bg-accent-soft px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--ring)]"
+    >
       <h3 className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-accent">
         <span className="grid size-4 place-items-center rounded-full bg-accent text-[10px] text-on-accent">
-          {shown.n}
+          {comparison.n}
         </span>
-        Variant {letterOf(shown.variant)}
-        <span className="font-normal text-ink-2">vs original</span>
+        Current element <span className="font-normal text-ink-2">vs reference</span>
         <span className="flex-1" />
         {changes && (
           <span className="font-mono text-[10.5px] font-normal text-ink-2">
@@ -139,16 +155,46 @@ function Delta({ shown, spec, scales }: { shown: Shown; spec: Spec; scales: Scal
           </span>
         )}
       </h3>
+      <p className="mb-2 text-[11px] leading-[16px] text-ink-2">
+        Target {comparison.slot + 1}
+        {reference &&
+          ` · ${reference.name} · ${reference.capture === "before-first-ask" ? "Before first ask" : "Saved by you"}`}
+        {match.kind === "position" && (
+          <span className="block">Comparing the element at the saved target position.</span>
+        )}
+        {reference !== null &&
+          (reference.viewport.width !== innerWidth ||
+            reference.viewport.height !== innerHeight) && (
+            <span className="block">
+              Reference viewport {reference.viewport.width} × {reference.viewport.height}; current{" "}
+              {innerWidth} × {innerHeight}.
+            </span>
+          )}
+      </p>
       {changes === null ? (
         <p className="text-[12px] leading-[17px] text-ink-2">
-          No baseline yet. Morph measures the original while it is on the page: flip to <Kbd>0</Kbd>{" "}
-          once to measure it.
+          No saved reference for this target. Save its current appearance to compare later.
         </p>
       ) : changes.length === 0 ? (
-        <p className="text-[12px] text-ink-2">Nothing measurable changed on this element.</p>
+        <p className="text-[12px] text-ink-2">No measured differences from this reference.</p>
       ) : (
         changes.map((change) => <ChangeRow key={change.label} change={change} />)
       )}
+      <button
+        type="button"
+        className="ring-focus mt-2 rounded-md bg-surface-2 px-2 py-1 text-[11px] text-ink hover:bg-surface-3"
+        onClick={() =>
+          dispatch({
+            kind: "reference-saved",
+            thread: comparison.thread,
+            slot: comparison.slot,
+            element,
+            reference: captureReference(element),
+          })
+        }
+      >
+        Save current as reference
+      </button>
     </section>
   )
 }
@@ -157,13 +203,13 @@ function Delta({ shown, spec, scales }: { shown: Shown; spec: Spec; scales: Scal
 export function ElementSpecs({
   element,
   preview,
-  shown = null,
+  comparisons = [],
   scales,
   dispatch,
 }: {
   element: Element
   preview: boolean
-  shown?: Shown | null
+  comparisons?: readonly Comparison[]
   scales: Scales
   dispatch: Dispatch<Event>
 }) {
@@ -228,7 +274,16 @@ export function ElementSpecs({
           )}
         </div>
       )}
-      {shown && <Delta shown={shown} spec={spec} scales={scales} />}
+      {comparisons.map((comparison) => (
+        <Delta
+          key={`${comparison.thread}:${comparison.slot}`}
+          comparison={comparison}
+          element={element}
+          spec={spec}
+          scales={scales}
+          dispatch={dispatch}
+        />
+      ))}
       <Section title="Layout">
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md bg-line shadow-[0_0_0_1px_var(--line)]">
           <Cell label="Width" value={fmt(spec.width)} />

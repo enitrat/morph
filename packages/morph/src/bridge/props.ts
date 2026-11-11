@@ -16,7 +16,7 @@ import { componentUseCount } from "../syntax/source"
 import type { SourceLoc } from "../variant/model"
 import { componentFor, readDesignSystem } from "./design-system"
 import { absent, grep, type Host, type Repo } from "./git"
-import { packageDir } from "./session"
+import { packageDir } from "./package"
 
 const run = promisify(execFile)
 

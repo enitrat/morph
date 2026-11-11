@@ -8,7 +8,14 @@ import { copyFile, lstat, mkdir, rm } from "node:fs/promises"
 import { isAbsolute, join, relative, resolve, sep } from "node:path"
 
 import { MorphConfig, MorphConfigInputSchema, type MorphConfigInput } from "../core/config"
-import { BlobId, CommitId, type Content, RepoPath } from "../variant/model"
+import {
+  BlobId,
+  CommitId,
+  type Content,
+  RepoPath,
+  type SessionId,
+  type VariantId,
+} from "../variant/model"
 import { type Store } from "../variant/swap"
 
 /** A checkout: `root` is its working tree, `dir` its own git dir (not the one worktrees share). */
@@ -59,6 +66,9 @@ export const homeOf = (repo: Repo) => join(repo.dir, "morph")
 
 /** Per-worktree refs: another checkout of the same repo neither sees nor collects them. */
 export const REFS = "refs/worktree/morph"
+
+/** Git ref anchoring a round's base or generated variant commit. */
+export const variantRef = (id: SessionId, variant: VariantId | "base") => `${REFS}/${id}/${variant}`
 
 interface Run {
   code: number

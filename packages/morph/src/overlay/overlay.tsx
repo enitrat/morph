@@ -6,6 +6,7 @@ import { isPointShortcut, isTyping } from "../inspector/pointer"
 import { isMorph, leafAt } from "../inspector/target"
 import { type SessionActions } from "./ask"
 import { itemsIn } from "./frame"
+import { readSessions } from "./session-store"
 import { useSessions } from "./live"
 import { type Event, initial, reduce, type State, type Tab } from "./model"
 import { type Box, boxOf, dockFor, uncovered } from "./place"
@@ -249,8 +250,11 @@ function useKeys(state: State, dispatch: Dispatch<Event>, actions: SessionAction
       return
     }
     const card = state.sessions.card
-    const view = state.sessions.page.sessions.find((session) => session.id === card)
-    const flip = view === undefined ? null : flipOf(view, key)
+    const view = state.sessions.page.sessions.find((session) => session.thread === card)
+    const flip =
+      view === undefined || (card !== null && state.sessions.pins[card]?.submission !== null)
+        ? null
+        : flipOf(view, key)
     if (view !== undefined && flip !== null) {
       handled()
       if (flip.kind === "show") actions.show(view.id, flip.choice)
@@ -332,7 +336,10 @@ function useScales(open: boolean, theme: ThemeName | null): Scales {
 
 /** Morph's development tools on the page: select, measure, frame, inspect, morph and ask. */
 export function Overlay() {
-  const [state, dispatch] = useReducer(reduce, initial)
+  const [state, dispatch] = useReducer(reduce, initial, (state) => ({
+    ...state,
+    sessions: readSessions(),
+  }))
   const theme = useHostTheme(state.open)
   const scales = useScales(state.open, theme?.name ?? null)
   const { drag, pointer } = usePagePointer(state, dispatch)
@@ -380,7 +387,9 @@ export function Overlay() {
             {composer?.tool && (
               <SketchLayer key={composer.tool} tool={composer.tool} dispatch={dispatch} />
             )}
-            {composer && <Composer composer={composer} area={area} dispatch={dispatch} />}
+            {composer && (
+              <Composer composer={composer} area={area} actions={actions} dispatch={dispatch} />
+            )}
           </>
         )}
         <Inspector

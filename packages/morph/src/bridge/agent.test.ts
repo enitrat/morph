@@ -7,6 +7,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs"
+import { setTimeout as delay } from "node:timers/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -94,7 +95,7 @@ it("fails a run whose edit tool names no file, since where it wrote is unknown",
   expect(answer.ok).toBe(false)
 })
 
-it("stops every process the run started when it is stopped", async () => {
+it("stops a child in the agent process group on cancellation", async () => {
   const pidFile = join(bin, "child.pid")
   writeFileSync(join(bin, "claude"), `#!/bin/sh\nsleep 30 &\necho $! > ${pidFile}\nwait\n`)
   const stop = new AbortController()
@@ -108,4 +109,52 @@ it("stops every process the run started when it is stopped", async () => {
 
   expect(await running).toEqual({ ok: false, detail: "stopped: cancelled" })
   await expect.poll(() => alive(child)).toBe(false)
+})
+
+it("cancels an agent and inherited child that both ignore SIGTERM", async () => {
+  const parentFile = join(bin, "parent.pid")
+  const childFile = join(bin, "resistant-child.pid")
+  const code = `process.on("SIGTERM", () => {}); require("node:fs").writeFileSync(${JSON.stringify(childFile)}, String(process.pid)); setInterval(() => {}, 1000)`
+  writeFileSync(
+    join(bin, "claude"),
+    `#!/usr/bin/env node
+const fs = require("node:fs")
+process.on("SIGTERM", () => {})
+fs.writeFileSync(${JSON.stringify(parentFile)}, String(process.pid))
+require("node:child_process").spawn(process.execPath, ["-e", ${JSON.stringify(code)}], { stdio: "inherit" })
+setInterval(() => {}, 1000)
+`,
+  )
+  const stop = new AbortController()
+  const running = runClaude("plan", z.object({}), stop.signal, {
+    model: "sonnet",
+    deadlineMs: 10_000,
+  })
+  try {
+    await expect.poll(() => existsSync(childFile)).toBe(true)
+    stop.abort("cancelled")
+    const answer = await Promise.race([running, delay(1500).then(() => "still running")])
+    expect(answer).toEqual({ ok: false, detail: "stopped: cancelled" })
+    await expect.poll(() => alive(Number(readFileSync(childFile, "utf8")))).toBe(false)
+  } finally {
+    if (existsSync(parentFile)) {
+      try {
+        process.kill(-Number(readFileSync(parentFile, "utf8")), "SIGKILL")
+      } catch (error) {
+        if (!(error instanceof Error && "code" in error && error.code === "ESRCH")) throw error
+      }
+    }
+    await running
+  }
+})
+
+it("does not launch an agent for an already cancelled command", async () => {
+  const started = join(bin, "started")
+  writeFileSync(join(bin, "claude"), `#!/bin/sh\ntouch '${started}'\n`)
+  const stop = new AbortController()
+  stop.abort("cancelled before start")
+  expect(
+    await runClaude("plan", z.object({}), stop.signal, { model: "sonnet", deadlineMs: 10_000 }),
+  ).toEqual({ ok: false, detail: "stopped: cancelled before start" })
+  expect(existsSync(started)).toBe(false)
 })
