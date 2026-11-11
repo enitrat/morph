@@ -89,7 +89,7 @@ export interface Manifest {
    * The asks a designer who picks code in `file` can make on `repo`. On each file: the refines
    * recorded on its current revision, then the asks recorded on its original, but for the one
    * that wrote the current revision. At a scene's entry, also those of the scene's stylesheets,
-   * which have no JSX to pick.
+   * which have no JSX to pick. A part with none offers its object's.
    */
   offeredAt(file: FileNode, repo: Repo): readonly AskNode[]
 }
@@ -194,11 +194,15 @@ export function manifestOf(list: readonly RawScene[]): Manifest {
         const house = node.original.asks.filter((ask) => ask !== current.from?.ask)
         return [...own, ...house]
       }
-      const styles =
-        file.path === file.scene.entry
-          ? file.scene.files.filter((node) => node.kind === "style").flatMap(at)
-          : []
-      return [...at(file), ...styles]
+      const entry = file.path === file.scene.entry
+      const styles = entry
+        ? file.scene.files.filter((node) => node.kind === "style").flatMap(at)
+        : []
+      const own = [...at(file), ...styles]
+      // A part with no asks of its own offers its object's, so every pick has something to ask.
+      if (own.length > 0 || entry) return own
+      const object = files.get(file.scene.entry)
+      return object === undefined ? own : this.offeredAt(object, repo)
     },
   }
 }

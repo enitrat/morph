@@ -145,6 +145,20 @@ describe("replay transport", () => {
     })
   })
 
+  it("offers a part with no asks its object's, and writes the object when asked there", async () => {
+    const { call, ask, at } = setup()
+    const STUB = "site/scenes/pass/PassStub.tsx"
+    const reply = await call("suggest", undefined, new URLSearchParams({ path: STUB }))
+    expect(reply.body).toMatchObject({
+      suggestions: expect.arrayContaining([{ words: "Departure board", kind: "house" }]),
+    })
+    expect((await ask("Departure board", STUB)).status).toBe(200)
+    at(10_000)
+    const view = operations.page.response.parse((await call("page")).body)
+    const [session] = view.sessions
+    expect(session?.variants[0]?.state === "ready" && session.variants[0].files).toEqual([PASS])
+  })
+
   it("answers an ask re-posted with the same id with the session it started", async () => {
     const { page, ask } = setup()
     const id = SessionId.parse(crypto.randomUUID())
