@@ -6,7 +6,7 @@ import type { Stat } from "../stage/wire"
 
 const LETTER = { v1: "A", v2: "B", v3: "C" } as const
 
-export const LEVEL = { part: "Part", object: "Object", table: "Table" } as const
+export const LEVEL = { part: "Part", object: "Card", table: "Board" } as const
 const ORDER = { part: 0, object: 1, table: 2 } as const
 
 interface Diff {
@@ -131,40 +131,35 @@ export function Ledger({ stage }: { stage: Stage }) {
         : []
     })
     .toSorted((a, b) => ORDER[a.variant.ask.base.file.level] - ORDER[b.variant.ask.base.file.level])
+  if (lines.length === 0) return null
   return (
-    <section data-morph aria-label="Kept" className="mt-8">
+    <section data-morph aria-label="Your diff" className="mt-8">
       <h2 className="flex items-baseline gap-3 text-[13px] font-medium text-text">
-        Kept
+        Your diff
         <span className="font-normal text-faint">
-          {lines.length === 0
-            ? "Keep a variant and its diff lands here."
-            : `${lines.length} ${lines.length === 1 ? "file" : "files"} changed`}
+          {lines.length} {lines.length === 1 ? "file" : "files"} changed
         </span>
-        {lines.length > 0 && (
-          <button
-            type="button"
-            className="ml-auto text-[12px] font-normal text-faint hover:text-text"
-            onClick={() => {
-              stage.reset()
-              for (const scene of live) scene.reset()
-            }}
-          >
-            Reset the table
-          </button>
-        )}
+        <button
+          type="button"
+          className="ml-auto text-[12px] font-normal text-faint hover:text-text"
+          onClick={() => {
+            stage.reset()
+            for (const scene of live) scene.reset()
+          }}
+        >
+          Reset the board
+        </button>
       </h2>
-      {lines.length > 0 && (
-        <ul className="mt-3 grid gap-2">
-          {lines.map((line) => (
-            <Line
-              key={line.path}
-              variant={line.variant}
-              original={line.original}
-              kept={line.revision}
-            />
-          ))}
-        </ul>
-      )}
+      <ul className="mt-3 grid gap-2">
+        {lines.map((line) => (
+          <Line
+            key={line.path}
+            variant={line.variant}
+            original={line.original}
+            kept={line.revision}
+          />
+        ))}
+      </ul>
     </section>
   )
 }

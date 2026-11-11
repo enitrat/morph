@@ -61,9 +61,9 @@ function Shortcut({ touch }: { touch: boolean }) {
           pressShortcut()
         }, 140)
       }}
-      className="group relative inline-flex items-center gap-3 rounded-xl border border-[#2c2f36] bg-[#16181c] py-[9px] pr-3 pl-4 text-[14px] font-medium text-text transition-colors hover:border-[#3a3e47] hover:bg-[#1a1c21]"
+      className="group relative inline-flex flex-none items-center gap-3 rounded-[10px] border border-[#2c2f36] py-[9px] pr-3 pl-4 text-[14px] font-medium text-text transition-colors hover:border-[#3a3e47] hover:bg-[#16181c]"
     >
-      <span>Try it on the table</span>
+      <span>Try it</span>
       {!touch && <Keys down={down} />}
       {size !== null && (
         <>
@@ -80,7 +80,7 @@ function Shortcut({ touch }: { touch: boolean }) {
 function Install() {
   const [copied, setCopied] = useState(false)
   return (
-    <div className="flex min-w-0 items-center gap-2.5 rounded-[10px] border border-line bg-[#121317] py-2.5 pr-2.5 pl-3.5 font-mono text-[13px]/[1.3] text-[#d9dbe0]">
+    <div className="flex max-w-full min-w-0 items-center gap-2.5 rounded-[10px] border border-[#2c2f36] bg-[#121317] py-[7px] pr-[7px] pl-3.5 text-left font-mono text-[13px]/[1.3] text-[#d9dbe0]">
       <code className="min-w-0 truncate">{INSTALL}</code>
       <button
         type="button"
@@ -90,7 +90,7 @@ function Install() {
             setTimeout(() => setCopied(false), 1400)
           })
         }}
-        className="flex-none rounded-[7px] border border-[#2c2f36] bg-[#1a1c21] px-2.5 py-[5px] font-sans text-[12px]/none font-medium text-text hover:border-[#3a3e47]"
+        className="flex-none rounded-[6px] bg-text px-3 py-[7px] font-sans text-[12.5px]/none font-semibold text-page transition-colors hover:bg-white"
       >
         {copied ? "Copied" : "Copy"}
       </button>
@@ -111,53 +111,28 @@ export function App({ stage, touch }: { stage: Stage; touch: boolean }) {
         </a>
       </header>
 
-      <section data-morph className="py-10 text-center sm:pt-10 sm:pb-8">
+      <section data-morph className="flex flex-col items-center py-10 text-center sm:pt-12">
         <h1 className="font-serif text-[clamp(40px,5vw,64px)]/none tracking-[-0.01em] text-balance">
-          Point at anything. <em className="text-[#cfd6e4]">Get three better ones.</em>
+          Point at it. <em className="text-[#cfd6e4]">Ask for changes.</em>
         </h1>
-        <p className="mx-auto mt-3.5 mb-6 max-w-[520px] text-[15px]/[1.5] text-balance text-muted">
-          Morph is a dev overlay for React. Pick an element, say what you want, flip between three
-          versions live, keep one. It writes the code.
+        <p className="mt-4 max-w-[560px] text-[15px]/[1.5] text-pretty text-muted">
+          A dev overlay for React. Press ⌥⇧R, click an element, say what you want, and flip between
+          three versions on your live page. Keep one, and it’s in your code.
         </p>
-        <Shortcut touch={touch} />
+        <div className="mt-7 flex max-w-full flex-col items-center gap-3">
+          <Install />
+          {!touch && <Shortcut touch={touch} />}
+        </div>
       </section>
 
       <section id="board">
         <div className="relative">
           <LiveBoard stage={stage} />
-          <span
-            data-morph
-            className="absolute top-3.5 left-3.5 rounded-[7px] bg-[#25272c] px-[9px] py-1.5 text-[12px]/none font-medium text-[#d6d6d1]"
-          >
-            Try it
-          </span>
           <Coach stage={stage} touch={touch} />
         </div>
         {touch && <Touch stage={stage} />}
-        <p data-morph className="mt-4 text-[13px]/[1.45] text-faint">
-          <b className="font-medium text-muted">The asks here are hand-designed and replayed.</b> In
-          your app, you type anything.
-        </p>
         <Ledger stage={stage} />
       </section>
-
-      <footer
-        data-morph
-        className="mt-20 grid items-center gap-5 border-t border-line pt-7 sm:grid-cols-[minmax(0,1fr)_auto]"
-      >
-        <Install />
-        <div className="flex items-center gap-5 text-[13px] text-muted">
-          {!touch && (
-            <span className="flex items-center gap-2">
-              <Keys />
-              to open
-            </span>
-          )}
-          <a href={GITHUB} className="text-text underline-offset-4 hover:underline">
-            github.com/enitrat/morph
-          </a>
-        </div>
-      </footer>
     </div>
   )
 }

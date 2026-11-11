@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.5 0.5 18 18" fill="none">
+  <style>
+    path, rect { color: #15171c; }
+    @media (prefers-color-scheme: dark) { path, rect { color: #ecebe6; } }
+  </style>
+  <rect x="1.5" y="1.5" width="11" height="11" rx="3" stroke="currentColor" stroke-width="2" />
+  <rect x="7.5" y="7.5" width="11" height="11" rx="5.5" fill="currentColor" />
+</svg>

@@ -66,7 +66,7 @@ export function Touch({ stage }: { stage: Stage }) {
       className="mt-3 grid gap-3 rounded-[16px] border border-line bg-[#0f1013] p-4"
     >
       <p className="text-[12.5px]/[1.45] text-muted">
-        The overlay runs on desktop. Here, tap an ask and watch what Morph writes.
+        Morph runs on desktop. Here, tap a request and watch the board change.
       </p>
       {open !== undefined && view?.kind === "active" && (
         <div className="fixed inset-x-3 bottom-3 z-10 grid gap-2 rounded-[14px] border border-[#2a2d34] bg-[#16181d]/95 p-3 shadow-[0_20px_50px_-10px_rgb(0_0_0/0.8)] backdrop-blur">

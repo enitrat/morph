@@ -4,9 +4,9 @@ import type { Level } from "../stage/manifest"
 import type { Stage } from "../stage/stage"
 
 const STEPS: readonly { level: Level; title: string; short: string; hint: string }[] = [
-  { level: "part", title: "Pick a part", short: "Part", hint: "one piece inside an object" },
-  { level: "object", title: "Restyle the object", short: "Object", hint: "a whole object" },
-  { level: "table", title: "Art-direct the table", short: "Table", hint: "the board around them" },
+  { level: "part", title: "Change a part", short: "Part", hint: "one piece inside a card" },
+  { level: "object", title: "Change a card", short: "Card", hint: "the whole card" },
+  { level: "table", title: "Change the board", short: "Board", hint: "everything on it" },
 ]
 
 /**
@@ -21,7 +21,7 @@ export function Coach({ stage, touch }: { stage: Stage; touch: boolean }) {
     <ol
       data-morph
       aria-label="Try the three levels"
-      className="pointer-events-none absolute top-3.5 right-3.5 left-[76px] flex flex-wrap justify-end gap-x-1 gap-y-1.5 text-[12px]/none"
+      className="pointer-events-none absolute top-3.5 right-3.5 left-3.5 flex flex-wrap justify-end gap-x-1 gap-y-1.5 text-[12px]/none"
     >
       {STEPS.map((step, index) => {
         const done = asked.has(step.level)
