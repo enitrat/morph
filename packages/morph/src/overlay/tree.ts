@@ -49,14 +49,6 @@ export function childrenOf(element: Element, limit = 64): Element[] {
 
 export const firstChildOf = (element: Element): Element | null => childrenOf(element, 1)[0] ?? null
 
-/** The next meaningful element beside this one, wrapping; `dir` -1 goes back. */
-export function siblingOf(element: Element, dir: 1 | -1): Element | null {
-  const list = childrenOf(parentOf(element) ?? document.body)
-  const at = list.indexOf(element)
-  if (at < 0 || list.length < 2) return null
-  return list[(at + dir + list.length) % list.length] ?? null
-}
-
 /** The meaningful ancestors, outermost first. */
 export function pathOf(element: Element): Element[] {
   const path: Element[] = []

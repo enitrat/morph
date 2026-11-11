@@ -29,47 +29,48 @@ describe("opening Morph", () => {
 })
 
 describe("the inspector", () => {
-  it("opens on a tab with its key and closes when the key is pressed again", () => {
-    const specs = open({ kind: "tabKey", tab: "specs" })
-    expect(specs.sidebar).toMatchObject({ kind: "open", tab: "specs" })
-    expect(reduce(specs, { kind: "tabKey", tab: "morph" }).sidebar).toMatchObject({
+  const advanced = (...events: Event[]) =>
+    open({ kind: "tools", tools: ["specs", "tune"] }, ...events)
+
+  it("stays shut until an advanced tab is turned on", () => {
+    expect(open({ kind: "inspector" }).sidebar.kind).toBe("closed")
+    expect(open({ kind: "tabKey", tab: "specs" }).sidebar.kind).toBe("closed")
+    expect(open({ kind: "tools", tools: ["tune"] }, { kind: "inspector" }).sidebar).toMatchObject({
       kind: "open",
-      tab: "morph",
+      tab: "tune",
+    })
+  })
+
+  it("closes, or leaves a tab, when that tab is turned off", () => {
+    const tuning = advanced({ kind: "tabKey", tab: "tune" })
+    expect(reduce(tuning, { kind: "tools", tools: ["specs"] }).sidebar).toMatchObject({
+      kind: "open",
+      tab: "specs",
+    })
+    expect(reduce(tuning, { kind: "tools", tools: [] }).sidebar.kind).toBe("closed")
+  })
+
+  it("keeps the tools turned on across closing Morph", () => {
+    expect(advanced({ kind: "toggled" }).tools).toEqual(["specs", "tune"])
+  })
+
+  it("opens on a tab with its key and closes when the key is pressed again", () => {
+    const specs = advanced({ kind: "tabKey", tab: "specs" })
+    expect(specs.sidebar).toMatchObject({ kind: "open", tab: "specs" })
+    expect(reduce(specs, { kind: "tabKey", tab: "tune" }).sidebar).toMatchObject({
+      kind: "open",
+      tab: "tune",
     })
     expect(reduce(specs, { kind: "tabKey", tab: "specs" }).sidebar.kind).toBe("closed")
   })
 
   it("keeps the side and width it docked at across tab changes", () => {
-    const state = open(
+    const state = advanced(
       { kind: "inspector" },
       { kind: "docked", side: "left", width: 280 },
-      { kind: "tab", tab: "morph" },
+      { kind: "tab", tab: "tune" },
     )
-    expect(state.sidebar).toEqual({
-      kind: "open",
-      tab: "morph",
-      side: "left",
-      width: 280,
-      auto: false,
-    })
-  })
-
-  it("opens on Specs for a frame and closes with it", () => {
-    const framed = open({ kind: "framed", frame })
-    expect(framed.sidebar).toMatchObject({ kind: "open", tab: "specs", auto: true })
-    expect(reduce(framed, { kind: "escape" }).sidebar.kind).toBe("closed")
-  })
-
-  it("stays open after the frame when the designer took it over", () => {
-    const state = open({ kind: "framed", frame }, { kind: "tab", tab: "morph" }, { kind: "escape" })
-    expect(state.selection.kind).toBe("none")
-    expect(state.sidebar).toMatchObject({ kind: "open", tab: "morph" })
-  })
-
-  it("stays open when a component is picked from the frame", () => {
-    const state = open({ kind: "framed", frame }, { kind: "selected", element: card })
-    expect(state.selection).toEqual({ kind: "element", element: card })
-    expect(state.sidebar).toMatchObject({ kind: "open", auto: false })
+    expect(state.sidebar).toEqual({ kind: "open", tab: "tune", side: "left", width: 280 })
   })
 })
 
@@ -88,21 +89,38 @@ describe("hover", () => {
   })
 })
 
-describe("frames", () => {
-  it("narrows to one kind of component and widens again on a second click", () => {
+describe("picking", () => {
+  it("opens the composer on the element", () => {
+    expect(open({ kind: "selected", element: card }).composer).toEqual({
+      target: { kind: "element", element: card },
+      draft: { words: "", marks: [] },
+      tool: null,
+    })
+  })
+
+  it("starts a fresh draft on the next element", () => {
+    const state = open(
+      { kind: "selected", element: card },
+      { kind: "typed", words: "More air" },
+      { kind: "selected", element: button },
+    )
+    expect(state.composer).toMatchObject({
+      target: { element: button },
+      draft: { words: "" },
+    })
+  })
+
+  it("narrows a frame to one kind of component and widens again on a second click", () => {
     const narrowed = open({ kind: "framed", frame }, { kind: "narrowed", name: "Card" })
-    expect(narrowed.selection).toMatchObject({ kind: "frame", frame: { narrow: "Card" } })
-    expect(reduce(narrowed, { kind: "narrowed", name: "Card" }).selection).toMatchObject({
+    expect(narrowed.composer?.target).toMatchObject({ kind: "frame", frame: { narrow: "Card" } })
+    expect(reduce(narrowed, { kind: "narrowed", name: "Card" }).composer?.target).toMatchObject({
       frame: { narrow: null },
     })
   })
 })
 
 describe("the composer", () => {
-  const asking = open(
-    { kind: "selected", element: card },
-    { kind: "ask", target: { kind: "element", element: card }, words: "", tool: null },
-  )
+  const asking = open({ kind: "selected", element: card })
 
   it("holds the words and marks of the draft", () => {
     const mark = {
@@ -121,38 +139,26 @@ describe("the composer", () => {
     expect(state.composer?.draft).toEqual({ words: "More air", marks: [{ ...mark, text: "here" }] })
     expect(reduce(state, { kind: "unmarked", key: 1 }).composer?.draft.marks).toEqual([])
   })
-
-  it("closes when another element is selected", () => {
-    expect(reduce(asking, { kind: "selected", element: button }).composer).toBeNull()
-  })
 })
 
 describe("Esc", () => {
   it("backs out one layer at a time", () => {
     let state = open(
+      { kind: "tools", tools: ["specs"] },
       { kind: "inspector" },
       { kind: "selected", element: card },
-      { kind: "ask", target: { kind: "element", element: card }, words: "", tool: "box" },
+      { kind: "tool", tool: "box" },
     )
     const layers: string[] = []
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 4; i++) {
       state = reduce(state, { kind: "escape" })
       layers.push(
-        [
-          state.composer?.tool ?? "-",
-          state.composer ? "composer" : "-",
-          state.selection.kind,
-          state.sidebar.kind,
-        ].join(" "),
+        [state.composer?.tool ?? "-", state.composer ? "composer" : "-", state.sidebar.kind].join(
+          " ",
+        ),
       )
     }
-    expect(layers).toEqual([
-      "- composer element open",
-      "- - element open",
-      "- - none open",
-      "- - none closed",
-      "- - none closed",
-    ])
+    expect(layers).toEqual(["- composer open", "- - open", "- - closed", "- - closed"])
   })
 
   it("widens a narrowed frame before clearing it", () => {
@@ -161,6 +167,6 @@ describe("Esc", () => {
       { kind: "narrowed", name: "Card" },
       { kind: "escape" },
     )
-    expect(state.selection).toMatchObject({ kind: "frame", frame: { narrow: null } })
+    expect(state.composer?.target).toMatchObject({ kind: "frame", frame: { narrow: null } })
   })
 })

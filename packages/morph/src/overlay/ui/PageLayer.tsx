@@ -1,24 +1,10 @@
-import { motion } from "motion/react"
 import { type Dispatch, type ReactNode, useRef } from "react"
 
-import { labelNow } from "../catalog"
-import { type Event, type Frame, type State } from "../model"
-import {
-  anchor,
-  type Box,
-  boxOf,
-  labelSpots,
-  panelSpan,
-  tagSpot,
-  uncovered,
-  type Viewport,
-} from "../place"
+import { type Event, type Frame, selectedOf, type State } from "../model"
+import { type Box, boxOf, labelSpots, panelSpan, tagSpot, uncovered, type Viewport } from "../place"
 import { fmt } from "../specs"
-import { firstChildOf, nameOf, pathOf } from "../tree"
-import { Glyph, type GlyphName } from "./Glyph"
+import { nameOf, pathOf } from "../tree"
 import { useSize } from "./hooks"
-import { Kbd } from "./Kbd"
-import { appear } from "./lib/motion"
 
 export type Area = { left: number; right: number }
 
@@ -107,134 +93,6 @@ function Handles({ box }: { box: Box }) {
   ))
 }
 
-function BarButton({
-  glyph,
-  label,
-  shortcut,
-  on = false,
-  title,
-  onClick,
-}: {
-  glyph: GlyphName
-  label?: string
-  shortcut?: string
-  on?: boolean
-  title?: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      aria-label={label ?? title}
-      aria-pressed={on}
-      onClick={onClick}
-      className={`ring-focus flex h-7 items-center gap-1.5 rounded-md text-[12.5px] font-medium transition-colors duration-150 ${
-        label ? "px-2" : "w-7 justify-center"
-      } ${on ? "bg-surface-2 text-accent shadow-[inset_0_0_0_1px_var(--ring)]" : "text-ink-2 hover:bg-surface-2 hover:text-ink"}`}
-    >
-      <Glyph name={glyph} />
-      {label}
-      {shortcut && <Kbd>{shortcut}</Kbd>}
-    </button>
-  )
-}
-
-const Sep = () => <span className="mx-0.5 h-4 w-px flex-none bg-line" />
-
-/** The verbs on a selection: Ask, Morph, Specs, Sketch, and the climb. */
-function ActionBar({
-  element,
-  box,
-  area,
-  state,
-  source,
-  dispatch,
-}: {
-  element: Element
-  box: Box
-  area: Area
-  state: State
-  source: string | null
-  dispatch: Dispatch<Event>
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  const size = useSize(ref)
-  const { sidebar } = state
-  const tab = sidebar.kind === "open" ? sidebar.tab : null
-  const spot = size ? anchor(box, size, area, viewport()) : { x: box.left, y: box.bottom + 10 }
-  return (
-    <motion.div
-      ref={ref}
-      key={labelNow(element)}
-      {...appear}
-      role="toolbar"
-      aria-label="Selection"
-      className="glass pointer-events-auto absolute flex items-center gap-0.5 rounded-lg p-1"
-      style={{
-        left: spot.x,
-        top: spot.y,
-        visibility: size ? "visible" : "hidden",
-        transformOrigin: "top left",
-      }}
-    >
-      {source && <span className="px-2 font-mono text-[11px] text-ink-2">{source}</span>}
-      {source && <Sep />}
-      <BarButton
-        glyph="ask"
-        label="Ask"
-        shortcut="A"
-        onClick={() => {
-          dispatch({ kind: "ask", target: { kind: "element", element }, words: "", tool: null })
-        }}
-      />
-      <BarButton
-        glyph="morph"
-        label="Morph"
-        shortcut="T"
-        on={tab === "morph"}
-        onClick={() => {
-          dispatch({ kind: "tabKey", tab: "morph" })
-        }}
-      />
-      <BarButton
-        glyph="specs"
-        label="Specs"
-        shortcut="S"
-        on={tab === "specs"}
-        onClick={() => {
-          dispatch({ kind: "tabKey", tab: "specs" })
-        }}
-      />
-      <BarButton
-        glyph="sketch"
-        label="Sketch"
-        shortcut="K"
-        onClick={() => {
-          dispatch({ kind: "ask", target: { kind: "element", element }, words: "", tool: "box" })
-        }}
-      />
-      <Sep />
-      <BarButton
-        glyph="up"
-        title="Select parent  ⇧↵"
-        onClick={() => {
-          const [parent] = pathOf(element).slice(-1)
-          if (parent) dispatch({ kind: "selected", element: parent })
-        }}
-      />
-      <BarButton
-        glyph="down"
-        title="Select first child  ↵"
-        onClick={() => {
-          const child = firstChildOf(element)
-          if (child) dispatch({ kind: "selected", element: child })
-        }}
-      />
-    </motion.div>
-  )
-}
-
 /** How much of a selection runs under the inspector, marked on the inspector's edge. */
 function UnderPanel({
   box,
@@ -319,12 +177,11 @@ function FrameLabels({
   })
 }
 
-/** Everything Morph draws on the page itself: hover, selection, frame and their verbs. */
+/** Everything Morph draws on the page itself: hover, selection and frame. */
 export function PageLayer({
   state,
   drag,
   live,
-  source,
   dispatch,
 }: {
   state: State
@@ -332,28 +189,27 @@ export function PageLayer({
   drag: Box | null
   /** The components inside the marquee being dragged. */
   live: readonly Element[]
-  source: string | null
   dispatch: Dispatch<Event>
 }) {
-  const { sidebar, selection, hover, composer } = state
+  const { sidebar, hover, composer } = state
   const dock = sidebar.kind === "open" ? { side: sidebar.side, width: sidebar.width } : null
   const area = uncovered(dock, viewport())
-  const selected = selection.kind === "element" ? selection.element : null
-  const outlined =
-    drag === null && !(selection.kind === "frame" && hover?.via === "page") ? hover : null
+  const selected = selectedOf(state)
+  const frame = composer?.target.kind === "frame" ? composer.target.frame : null
+  const outlined = drag === null && !(frame !== null && hover?.via === "page") ? hover : null
   const single = outlined?.via === "page" || outlined?.via === "panel" ? outlined.element : null
   const flagged = new Set(outlined?.via === "sheet" ? outlined.elements : [])
   return (
     <div className="pointer-events-none fixed inset-0 z-[2147483640] overflow-hidden">
-      {selection.kind === "frame" && (
+      {frame && (
         <>
           <div
             className="absolute rounded-xs outline-1 outline-dashed outline-accent"
-            style={boxStyle(frameBox(selection.frame))}
+            style={boxStyle(frameBox(frame))}
           />
           <FrameLabels
-            items={selection.frame.items}
-            narrow={selection.frame.narrow}
+            items={frame.items}
+            narrow={frame.narrow}
             flagged={flagged}
             dispatch={dispatch}
           />
@@ -374,7 +230,7 @@ export function PageLayer({
           </div>
         </>
       )}
-      {selection.kind !== "frame" &&
+      {frame === null &&
         [...flagged].map((element, i) => (
           <Outline key={i} box={boxOf(element.getBoundingClientRect())} tone="warn" />
         ))}
@@ -385,16 +241,7 @@ export function PageLayer({
           preview={sidebar.kind === "open" && sidebar.tab === "specs" && outlined?.via === "page"}
         />
       )}
-      {selected && (
-        <Selected
-          element={selected}
-          area={area}
-          state={state}
-          source={source}
-          bar={composer === null}
-          dispatch={dispatch}
-        />
-      )}
+      {selected && <Selected element={selected} area={area} state={state} dispatch={dispatch} />}
     </div>
   )
 }
@@ -424,15 +271,11 @@ function Selected({
   element,
   area,
   state,
-  source,
-  bar,
   dispatch,
 }: {
   element: Element
   area: Area
   state: State
-  source: string | null
-  bar: boolean
   dispatch: Dispatch<Event>
 }) {
   if (!element.isConnected) return null
@@ -461,16 +304,6 @@ function Selected({
         <Dim>{dims(box)}</Dim>
       </Tag>
       {state.sidebar.kind === "open" && <UnderPanel box={box} sidebar={state.sidebar} />}
-      {bar && (
-        <ActionBar
-          element={element}
-          box={box}
-          area={area}
-          state={state}
-          source={source}
-          dispatch={dispatch}
-        />
-      )}
     </>
   )
 }

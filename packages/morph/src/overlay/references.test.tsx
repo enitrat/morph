@@ -38,7 +38,11 @@ function element(padding: number) {
 async function mount(elements: HTMLElement[]) {
   const [first] = elements
   if (first === undefined) throw new Error("No targets")
-  const selection: State["selection"] = { kind: "element", element: first }
+  const composer: State["composer"] = {
+    target: { kind: "element", element: first },
+    draft: { words: "", marks: [] },
+    tool: null,
+  }
   let view = session(ids.hero, { kind: "original" })
   connect(async ({ op }) =>
     op === "page" ? { status: 200, body: page(view) } : { status: 503, body: null },
@@ -65,8 +69,9 @@ async function mount(elements: HTMLElement[]) {
   function Harness() {
     const [state, dispatch] = useReducer(reduce, {
       ...seed,
-      selection,
-      sidebar: { kind: "open", tab: "specs", side: "right", width: 340, auto: false },
+      composer,
+      tools: ["specs"],
+      sidebar: { kind: "open", tab: "specs", side: "right", width: 340 },
     })
     latest = state
     send = dispatch

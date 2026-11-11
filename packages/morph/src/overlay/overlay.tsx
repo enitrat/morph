@@ -7,18 +7,19 @@ import { isMorph } from "../inspector/target"
 import { type SessionActions } from "./ask"
 import { itemsIn } from "./frame"
 import { readSessions } from "./session-store"
+import { readTools, writeTools } from "./tools-store"
 import { useSessions } from "./live"
-import { type Event, initial, reduce, type State, type Tab } from "./model"
+import { type Event, initial, reduce, selectedOf, type State, type Tab } from "./model"
 import { type Box, boxOf, dockFor, uncovered } from "./place"
 import { loadScales, NO_SCALES, type Scales } from "./scale"
 import { Marks, SketchLayer } from "./sketch"
 import { OVERLAY_CSS } from "./styles"
 import { useHostTheme } from "./theme"
-import { firstChildOf, parentOf, pickAt, siblingOf } from "./tree"
+import { firstChildOf, parentOf, pickAt } from "./tree"
 import { Composer } from "./ui/Composer"
 import { UI_CSS } from "./ui/css"
 import { Dock, Notice } from "./ui/Dock"
-import { fileOf, useSettled, useSource, useTick } from "./ui/hooks"
+import { useSettled, useTick } from "./ui/hooks"
 import { Inspector } from "./ui/Inspector"
 import { frameBox, PageLayer } from "./ui/PageLayer"
 import { boxOfPin, flipOf, Pins } from "./ui/Pins"
@@ -27,7 +28,7 @@ import { boxOfPin, flipOf, Pins } from "./ui/Pins"
 const DRAG_PX = 5
 /** How long a page hover holds before Specs previews it, so crossing other elements does not flicker. */
 const PREVIEW_MS = 90
-const TAB_KEYS: Partial<Record<string, Tab>> = { s: "specs", t: "morph" }
+const TAB_KEYS: Partial<Record<string, Tab>> = { s: "specs", t: "tune" }
 
 const viewport = () => ({ width: innerWidth, height: innerHeight })
 
@@ -38,17 +39,14 @@ const boxBetween = (a: { x: number; y: number }, b: { x: number; y: number }): B
   bottom: Math.max(a.y, b.y),
 })
 
-/**
- * What the inspector keeps clear: the selection, else the frame, else what the composer or the
- * open thread card is about.
- */
+/** What the inspector keeps clear: what the composer or the open thread card is about. */
 function focusBox(state: State): Box | null {
-  const { selection, composer, sessions } = state
-  if (selection.kind === "element")
-    return selection.element.isConnected ? boxOf(selection.element.getBoundingClientRect()) : null
-  if (selection.kind === "frame") return frameBox(selection.frame)
+  const { composer, sessions } = state
   if (composer?.target.kind === "element")
-    return boxOf(composer.target.element.getBoundingClientRect())
+    return composer.target.element.isConnected
+      ? boxOf(composer.target.element.getBoundingClientRect())
+      : null
+  if (composer?.target.kind === "frame") return frameBox(composer.target.frame)
   const pin = sessions.card === null ? undefined : sessions.pins[sessions.card]
   return pin === undefined ? null : boxOfPin(pin)
 }
@@ -190,8 +188,9 @@ function usePagePointer(state: State, dispatch: Dispatch<Event>) {
 }
 
 /**
- * Alt+Shift+R opens and closes; S, T and \ drive the inspector; A asks, K sketches; ⇧↵ and ↵
- * climb, ⇥ moves to the next sibling; [ and ] step through pins, 0–3 and ←/→ flip the open card's variants; Esc backs out.
+ * Alt+Shift+R opens and closes; ⌥↑ and ⌥↓ climb, even while typing; S, T and \ drive the
+ * inspector when it is turned on; [ and ] step through pins, 0–3 and ←/→ flip the open card's
+ * variants; Esc backs out.
  */
 function useKeys(state: State, dispatch: Dispatch<Event>, actions: SessionActions) {
   const onKey = useEffectEvent((event: KeyboardEvent) => {
@@ -201,13 +200,27 @@ function useKeys(state: State, dispatch: Dispatch<Event>, actions: SessionAction
       return
     }
     if (!state.open) return
+    const selected = selectedOf(state)
+    if (
+      selected !== null &&
+      event.altKey &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      (event.key === "ArrowUp" || event.key === "ArrowDown")
+    ) {
+      event.preventDefault()
+      event.stopPropagation()
+      const next = event.key === "ArrowUp" ? parentOf(selected) : firstChildOf(selected)
+      if (next !== null) dispatch({ kind: "selected", element: next })
+      return
+    }
     if (isTyping(event) || event.metaKey || event.ctrlKey || event.altKey) return
     const handled = () => {
       event.preventDefault()
       event.stopPropagation()
     }
     const key = event.key.toLowerCase()
-    const { selection, composer } = state
+    const { composer } = state
     if (event.key === "Escape") {
       handled()
       dispatch({ kind: "escape" })
@@ -240,41 +253,7 @@ function useKeys(state: State, dispatch: Dispatch<Event>, actions: SessionAction
       handled()
       if (flip.kind === "show") actions.show(view.id, flip.choice)
       else dispatch({ kind: "notice", text: flip.text, tone: "info" })
-      return
     }
-    if (selection.kind === "frame" && key === "a") {
-      handled()
-      dispatch({
-        kind: "ask",
-        target: { kind: "frame", frame: selection.frame },
-        words: "",
-        tool: null,
-      })
-      return
-    }
-    if (selection.kind !== "element") return
-    const { element } = selection
-    if (key === "a" || key === "k") {
-      handled()
-      dispatch({
-        kind: "ask",
-        target: { kind: "element", element },
-        words: "",
-        tool: key === "k" ? "box" : null,
-      })
-      return
-    }
-    const next =
-      event.key === "Enter"
-        ? event.shiftKey
-          ? parentOf(element)
-          : firstChildOf(element)
-        : event.key === "Tab"
-          ? siblingOf(element, event.shiftKey ? -1 : 1)
-          : undefined
-    if (next === undefined) return
-    handled()
-    if (next !== null) dispatch({ kind: "selected", element: next })
   })
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -306,8 +285,12 @@ function useScales(open: boolean, theme: ThemeName | null): Scales {
 export function Overlay() {
   const [state, dispatch] = useReducer(reduce, initial, (state) => ({
     ...state,
+    tools: readTools(),
     sessions: readSessions(),
   }))
+  useEffect(() => {
+    writeTools(state.tools)
+  }, [state.tools])
   const theme = useHostTheme(state.open)
   const scales = useScales(state.open, theme?.name ?? null)
   const drag = usePagePointer(state, dispatch)
@@ -315,20 +298,15 @@ export function Overlay() {
   useKeys(state, dispatch, actions)
   useDocking(state, dispatch)
 
-  const { selection, composer, sidebar, hover } = state
-  const selected = selection.kind === "element" ? selection.element : null
+  const { composer, sidebar, hover } = state
+  const selected = selectedOf(state)
   // A frame's sheet stays up while the pointer crosses the page, as the prototype's frame did.
-  const hovered = hover?.via === "page" && selection.kind !== "frame" ? hover.element : null
-  useTick([
-    selected,
-    hover?.via === "sheet" ? null : (hover?.element ?? null),
-    composer?.target.kind === "element" ? composer.target.element : null,
-  ])
+  const hovered = hover?.via === "page" && composer?.target.kind !== "frame" ? hover.element : null
+  useTick([selected, hover?.via === "sheet" ? null : (hover?.element ?? null)])
   const preview = useSettled(
     sidebar.kind === "open" && sidebar.tab === "specs" ? hovered : null,
     PREVIEW_MS,
   )
-  const source = useSource(selected)
   const live = drag ? itemsIn(drag, 40) : []
   const dock = sidebar.kind === "open" ? { side: sidebar.side, width: sidebar.width } : null
   const area = uncovered(dock, viewport())
@@ -341,13 +319,7 @@ export function Overlay() {
       <MotionConfig reducedMotion="user">
         {state.open && (
           <>
-            <PageLayer
-              state={state}
-              drag={drag}
-              live={live}
-              source={source && fileOf(source)}
-              dispatch={dispatch}
-            />
+            <PageLayer state={state} drag={drag} live={live} dispatch={dispatch} />
             <Pins state={state} area={area} actions={actions} dispatch={dispatch} />
             {composer && <Marks marks={composer.draft.marks} dispatch={dispatch} />}
             {composer?.tool && (

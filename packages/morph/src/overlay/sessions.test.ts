@@ -104,7 +104,7 @@ describe("pins", () => {
       { kind: "cycled", by: -1 },
     )
     expect(state.sessions.card).toBe(ids.button)
-    expect(state.selection).toEqual({ kind: "none" })
+    expect(state.composer).toBeNull()
     expect(reduce(state, { kind: "cycled", by: 1 }).sessions.card).toBe(ids.hero)
   })
 

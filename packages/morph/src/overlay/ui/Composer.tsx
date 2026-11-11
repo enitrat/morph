@@ -2,13 +2,14 @@ import { motion } from "motion/react"
 import { type Dispatch, useEffect, useRef } from "react"
 
 import { type SessionActions } from "../ask"
-import { type Composer as Open, type Event, type SketchTool } from "../model"
+import { type Composer as Open, type Event, type Frame, type SketchTool } from "../model"
 import { anchor, type Box, boxOf } from "../place"
 import { nameOf } from "../tree"
 import { Glyph, type GlyphName } from "./Glyph"
 import { fileOf, useSize, useSource } from "./hooks"
 import { Kbd } from "./Kbd"
 import { appear } from "./lib/motion"
+import { groupsOf } from "./FrameSheet"
 import { enterChips, Suggestions, useSuggestions } from "./Suggestions"
 import { type Area, frameBox } from "./PageLayer"
 
@@ -33,10 +34,50 @@ function about(composer: NonNullable<Open>): { name: string; box: Box; element: 
       ? frame.items.length
       : frame.items.filter((item) => nameOf(item) === frame.narrow).length
   return {
-    name: frame.narrow === null ? `Frame · ${count} components` : `${count} × ${frame.narrow}`,
+    name:
+      frame.narrow === null
+        ? `Frame · ${count} component${count === 1 ? "" : "s"}`
+        : `${count} × ${frame.narrow}`,
     box: frameBox(frame),
     element: null,
   }
+}
+
+/** A frame's repeated component kinds: picking one narrows the ask to every instance of it. */
+function Kinds({ frame, dispatch }: { frame: Frame; dispatch: Dispatch<Event> }) {
+  const groups = groupsOf(frame).filter(({ elements }) => elements.length > 1)
+  if (groups.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-1" role="group" aria-label="Narrow to one kind">
+      {groups.map(({ name, elements }) => {
+        const on = frame.narrow === name
+        return (
+          <button
+            key={name}
+            type="button"
+            aria-pressed={on}
+            onPointerOver={() => {
+              dispatch({ kind: "hovered", hover: { via: "sheet", elements } })
+            }}
+            onPointerOut={() => {
+              dispatch({ kind: "hovered", hover: null })
+            }}
+            onClick={() => {
+              dispatch({ kind: "narrowed", name })
+            }}
+            className={`ring-focus flex h-6 items-center gap-1 rounded-md px-2 text-[11.5px] transition-colors duration-150 ${
+              on
+                ? "bg-accent-soft text-accent shadow-[inset_0_0_0_1px_var(--ring)]"
+                : "bg-surface-2 text-ink-2 hover:text-ink"
+            }`}
+          >
+            <span className="max-w-28 truncate">{name}</span>
+            <span className="tnum font-mono text-[10.5px] opacity-60">×{elements.length}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 /** The ask: words plus sketch marks, anchored to what it is about. */
@@ -128,6 +169,9 @@ export function Composer({
           </span>
         )}
       </div>
+      {composer.target.kind === "frame" && (
+        <Kinds frame={composer.target.frame} dispatch={dispatch} />
+      )}
       <textarea
         ref={field}
         rows={2}

@@ -344,22 +344,16 @@ it("keeps a newer selection when an earlier ask finishes locating", async () => 
     state = reduce(state, event)
   }
   dispatch({ kind: "selected", element: first })
-  dispatch({
-    kind: "ask",
-    target: { kind: "element", element: first },
-    words: "Calmer",
-    tool: null,
-  })
+  dispatch({ kind: "typed", words: "Calmer" })
   const sent = actionsOf(dispatch).ask({
     target: { kind: "element", element: first },
     words: "Calmer",
     marks: [],
   })
   expect(state.composer).toBeNull()
-  expect(state.selection).toEqual({ kind: "none" })
   dispatch({ kind: "selected", element: second })
   finish({ status: 200, body: { sources: [{ path: "app/hero.tsx", line: 1, col: 1 }] } })
   await sent
-  expect(state.selection).toEqual({ kind: "element", element: second })
+  expect(state.composer?.target).toEqual({ kind: "element", element: second })
   expect(state.sessions.page.sessions).toHaveLength(1)
 })

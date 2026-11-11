@@ -1,9 +1,9 @@
 // Adapted from Detent's MorphingDock (MIT, see LICENSE): one surface that morphs between the
 // launcher and the session bar on the dock's spring, with the shared plate under the active tool.
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { type Dispatch, type ReactNode } from "react"
+import { type Dispatch, type ReactNode, useEffect, useRef, useState } from "react"
 
-import { type Event, type State } from "../model"
+import { type Event, type State, type Tab } from "../model"
 import { isGenerating, pinned, statusOf } from "../sessions"
 import { Glyph, type GlyphName } from "./Glyph"
 import { Kbd } from "./Kbd"
@@ -96,19 +96,14 @@ function Hint({ state }: { state: State }) {
             {k("]")} pins
           </span>,
         ]
-      : state.selection.kind === "element"
+      : state.composer?.target.kind === "element"
         ? [
-            <span key="a">{k("A")} Ask</span>,
-            <span key="p">{k("⇧↵")} parent</span>,
-            <span key="c">{k("↵")} child</span>,
-            <span key="s">{k("⇥")} sibling</span>,
+            <span key="p">{k("⌥↑")} parent</span>,
+            <span key="c">{k("⌥↓")} child</span>,
+            <span key="e">{k("esc")} clear</span>,
           ]
-        : state.selection.kind === "frame"
-          ? [
-              <span key="l">Click a label to select</span>,
-              <span key="a">{k("A")} ask about frame</span>,
-              <span key="e">{k("esc")} clear</span>,
-            ]
+        : state.composer?.target.kind === "frame"
+          ? [<span key="l">Click a label to pick one</span>, <span key="e">{k("esc")} clear</span>]
           : [<span key="c">Click to select</span>, <span key="d">Drag to frame</span>]
   return (
     <span className="flex items-center gap-3 px-2 text-[12px] whitespace-nowrap text-ink-2">
@@ -166,6 +161,81 @@ function Running({ state }: { state: State }) {
   )
 }
 
+const TOOLS: { id: Tab; label: string; what: string; key: string }[] = [
+  { id: "specs", label: "Specs", what: "Layout, box model and tokens of what you pick", key: "S" },
+  { id: "tune", label: "Tune", what: "Token dials that write straight to the code", key: "T" },
+]
+
+/** Opt-in tools beyond asking for variants, remembered by this browser. */
+function Advanced({
+  tools,
+  onClose,
+  dispatch,
+}: {
+  tools: readonly Tab[]
+  onClose: () => void
+  dispatch: Dispatch<Event>
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const away = (event: PointerEvent) => {
+      if (!event.composedPath().some((node) => node === ref.current)) onClose()
+    }
+    window.addEventListener("pointerdown", away, true)
+    return () => {
+      window.removeEventListener("pointerdown", away, true)
+    }
+  }, [onClose])
+  return (
+    <motion.div
+      ref={ref}
+      role="dialog"
+      aria-label="Advanced"
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0, transition: { duration: dur.enter, ease: ease.out } }}
+      exit={{ opacity: 0, transition: { duration: dur.exit } }}
+      className="glass pointer-events-auto absolute bottom-[52px] grid w-[300px] gap-1 rounded-xl p-2"
+    >
+      <span className="px-2 pt-1 pb-1.5 text-[11px] font-medium tracking-wide text-ink-3 uppercase">
+        Advanced
+      </span>
+      {TOOLS.map((tool) => {
+        const on = tools.includes(tool.id)
+        return (
+          <button
+            key={tool.id}
+            type="button"
+            role="switch"
+            aria-checked={on}
+            onClick={() => {
+              dispatch({
+                kind: "tools",
+                tools: on ? tools.filter((id) => id !== tool.id) : [...tools, tool.id],
+              })
+            }}
+            className="ring-focus flex items-start gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-surface-2"
+          >
+            <span className="grid min-w-0 flex-1 gap-0.5">
+              <span className="flex items-center gap-1.5 text-[12.5px] font-medium text-ink">
+                {tool.label}
+                <Kbd>{tool.key}</Kbd>
+              </span>
+              <span className="text-[11.5px] text-ink-3">{tool.what}</span>
+            </span>
+            <span
+              className={`mt-0.5 flex h-[18px] w-[30px] flex-none items-center rounded-full p-0.5 transition-colors duration-150 ${on ? "bg-accent" : "bg-surface-3"}`}
+            >
+              <span
+                className={`size-3.5 rounded-full bg-white shadow-sm transition-transform duration-150 ${on ? "translate-x-3" : ""}`}
+              />
+            </span>
+          </button>
+        )
+      })}
+    </motion.div>
+  )
+}
+
 /** The launcher while Morph is closed; the session bar, centred on the uncovered page, while open. */
 export function Dock({
   state,
@@ -178,6 +248,7 @@ export function Dock({
 }) {
   const reduce = useReducedMotion()
   const swap = { duration: reduce ? 0 : 0.2, ease: ease.out }
+  const [advanced, setAdvanced] = useState(false)
   return (
     <motion.div
       className="pointer-events-none fixed bottom-4 z-[2147483645] flex w-0 justify-center"
@@ -185,6 +256,17 @@ export function Dock({
       animate={{ left: state.open ? center : innerWidth - 80 }}
       transition={reduce ? { duration: 0 } : spring.move}
     >
+      <AnimatePresence>
+        {state.open && advanced && (
+          <Advanced
+            tools={state.tools}
+            onClose={() => {
+              setAdvanced(false)
+            }}
+            dispatch={dispatch}
+          />
+        )}
+      </AnimatePresence>
       <motion.div
         layout
         role="toolbar"
@@ -210,15 +292,29 @@ export function Dock({
                 <Hint state={state} />
               )}
               <span className="h-4 w-px bg-line" />
-              <Tool
-                glyph="panel"
-                label="Inspect"
-                shortcut="\"
-                on={state.sidebar.kind === "open"}
+              {state.tools.length > 0 && (
+                <Tool
+                  glyph="panel"
+                  label="Inspect"
+                  shortcut="\"
+                  on={state.sidebar.kind === "open"}
+                  onClick={() => {
+                    dispatch({ kind: "inspector" })
+                  }}
+                />
+              )}
+              <button
+                type="button"
+                aria-label="Advanced"
+                aria-expanded={advanced}
+                title="Advanced"
                 onClick={() => {
-                  dispatch({ kind: "inspector" })
+                  setAdvanced(!advanced)
                 }}
-              />
+                className={`ring-focus grid size-8 place-items-center rounded-full hover:bg-surface-2 hover:text-ink ${advanced ? "bg-surface-2 text-ink" : "text-ink-2"}`}
+              >
+                <Glyph name="more" size={16} />
+              </button>
               <button
                 type="button"
                 aria-label="Close Morph"

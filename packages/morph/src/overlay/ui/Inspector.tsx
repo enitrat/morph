@@ -4,7 +4,7 @@ import { type Dispatch, type ReactNode } from "react"
 import { FineTune } from "../fine-tune"
 import { targetElements } from "../pinned-targets"
 import { pinned, type Sessions } from "../sessions"
-import { type Event, type State, type Tab } from "../model"
+import { type Event, selectedOf, type State, type Tab } from "../model"
 import { MARGIN } from "../place"
 import { type Scales } from "../scale"
 import { keyOf } from "../source"
@@ -12,7 +12,7 @@ import { fmt } from "../specs"
 import { nameOf } from "../tree"
 import { type ShownTheme } from "../theme"
 import { Glyph } from "./Glyph"
-import { fileOf, useSource } from "./hooks"
+import { useSource } from "./hooks"
 import { Kbd } from "./Kbd"
 import { FrameSheet } from "./FrameSheet"
 import { ElementSpecs, type Comparison } from "./Specs"
@@ -21,21 +21,8 @@ import { Empty, Identity } from "./parts"
 
 const TABS: { id: Tab; label: string; key: string }[] = [
   { id: "specs", label: "Specs", key: "S" },
-  { id: "morph", label: "Morph", key: "T" },
+  { id: "tune", label: "Tune", key: "T" },
 ]
-
-function Primary({ children, onClick }: { children: ReactNode; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="ring-focus flex h-7 items-center gap-1.5 rounded-md bg-accent px-2.5 text-[12.5px] font-semibold text-on-accent shadow-[0_6px_16px_-6px_rgb(124_196_255/0.6)] transition-transform duration-150 active:scale-[0.97]"
-    >
-      <Glyph name="ask" />
-      {children}
-    </button>
-  )
-}
 
 function Note({ children }: { children: ReactNode }) {
   return (
@@ -65,8 +52,8 @@ function SpecsTab({
   scales: Scales
   dispatch: Dispatch<Event>
 }) {
-  const { selection, sessions } = state
-  const committed = selection.kind === "element" ? selection.element : null
+  const { composer, sessions } = state
+  const committed = selectedOf(state)
   const card = sessions.card === null ? undefined : sessions.pins[sessions.card]
   // With nothing selected, Specs reads the open card's target.
   const settled = committed ?? (card && targetElements(card.targets)[0]) ?? null
@@ -82,8 +69,8 @@ function SpecsTab({
         dispatch={dispatch}
       />
     )
-  if (selection.kind === "frame")
-    return <FrameSheet frame={selection.frame} scales={scales} dispatch={dispatch} />
+  if (composer?.target.kind === "frame")
+    return <FrameSheet frame={composer.target.frame} scales={scales} dispatch={dispatch} />
   return (
     <Empty title="Point at anything">
       Hover the page to preview an element's specs here. Click to keep it. Drag a frame to read a
@@ -105,21 +92,21 @@ function SpecsTab({
   )
 }
 
-function MorphTab({ element, theme }: { element: Element | null; theme: ShownTheme | null }) {
+function TuneTab({ element, theme }: { element: Element | null; theme: ShownTheme | null }) {
   const source = useSource(element)
   if (element === null)
     return (
-      <Empty title="Nothing to morph">
-        Select an element on the page. Its spacing, colour and props show here as dials that write
-        to the code.
+      <Empty title="Nothing to tune">
+        Pick an element on the page. Its spacing, colour and props show here as dials that write to
+        the code.
       </Empty>
     )
   const box = element.getBoundingClientRect()
   return (
     <>
       <Identity
-        kicker="Morph · writes to code"
-        glyph="morph"
+        kicker="Tune · writes to code"
+        glyph="tune"
         name={nameOf(element)}
         dims={`${fmt(box.width)}×${fmt(box.height)}`}
         source={source ? `${source.path}:${source.line}` : null}
@@ -135,64 +122,21 @@ function MorphTab({ element, theme }: { element: Element | null; theme: ShownThe
   )
 }
 
-function Foot({
-  state,
-  preview,
-  dispatch,
-}: {
-  state: State
-  preview: Element | null
-  dispatch: Dispatch<Event>
-}) {
-  const { selection, sidebar } = state
-  const element = selection.kind === "element" ? selection.element : null
-  const source = useSource(element)
+/** What the open tab is showing when it is not the selection, or what its dials do. */
+function Foot({ state, preview }: { state: State; preview: Element | null }) {
+  const { sidebar } = state
   if (sidebar.kind !== "open") return null
-  let body: ReactNode
-  if (sidebar.tab === "specs" && preview !== null && preview !== element)
-    body = <Note>Previewing. Click on the page to inspect it.</Note>
-  else if (selection.kind === "frame")
-    body = (
-      <>
-        <Note>Fix opens a scoped ask</Note>
-        <Primary
-          onClick={() => {
-            dispatch({
-              kind: "ask",
-              target: { kind: "frame", frame: selection.frame },
-              words: "",
-              tool: null,
-            })
-          }}
-        >
-          Ask about {selection.frame.narrow === null ? "frame" : "these"}
-          <Kbd onInk>A</Kbd>
-        </Primary>
-      </>
-    )
-  else if (element !== null)
-    body = (
-      <>
-        <Note>
-          {sidebar.tab === "morph"
-            ? "Steps preview live, release writes"
-            : source
-              ? fileOf(source)
-              : ""}
-        </Note>
-        <Primary
-          onClick={() => {
-            dispatch({ kind: "ask", target: { kind: "element", element }, words: "", tool: null })
-          }}
-        >
-          <span className="max-w-32 truncate">Ask about {nameOf(element)}</span>
-          <Kbd onInk>A</Kbd>
-        </Primary>
-      </>
-    )
-  else return null
+  const note =
+    sidebar.tab === "tune"
+      ? "Steps preview live, release writes"
+      : preview !== null && preview !== selectedOf(state)
+        ? "Previewing. Click on the page to pick it."
+        : null
+  if (note === null) return null
   return (
-    <div className="flex h-12 flex-none items-center gap-2 border-t border-line px-3.5">{body}</div>
+    <div className="flex h-10 flex-none items-center border-t border-line px-3.5">
+      <Note>{note}</Note>
+    </div>
   )
 }
 
@@ -234,7 +178,7 @@ export function Inspector({
           }}
         >
           <div className="flex h-11 flex-none items-center gap-0.5 border-b border-line px-1.5">
-            {TABS.map((tab) => {
+            {TABS.filter((tab) => state.tools.includes(tab.id)).map((tab) => {
               const on = open.tab === tab.id
               return (
                 <button
@@ -278,14 +222,9 @@ export function Inspector({
             {open.tab === "specs" && (
               <SpecsTab state={state} preview={preview} scales={scales} dispatch={dispatch} />
             )}
-            {open.tab === "morph" && (
-              <MorphTab
-                element={state.selection.kind === "element" ? state.selection.element : null}
-                theme={theme}
-              />
-            )}
+            {open.tab === "tune" && <TuneTab element={selectedOf(state)} theme={theme} />}
           </div>
-          <Foot state={state} preview={open.tab === "specs" ? preview : null} dispatch={dispatch} />
+          <Foot state={state} preview={open.tab === "specs" ? preview : null} />
         </motion.aside>
       )}
     </AnimatePresence>

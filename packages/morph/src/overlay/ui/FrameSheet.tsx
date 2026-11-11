@@ -65,15 +65,7 @@ function Group({
   )
 }
 
-function FindingRow({
-  finding,
-  frame,
-  dispatch,
-}: {
-  finding: Finding
-  frame: Frame
-  dispatch: Dispatch<Event>
-}) {
+function FindingRow({ finding, dispatch }: { finding: Finding; dispatch: Dispatch<Event> }) {
   return (
     <div
       className="group flex gap-2.5 rounded-md px-2 py-2 hover:bg-warn-soft"
@@ -141,12 +133,7 @@ function FindingRow({
         type="button"
         className="ring-focus h-6 self-start rounded-md px-2 text-[11.5px] font-semibold text-warn shadow-[inset_0_0_0_1px_rgb(245_177_74/0.45)] hover:bg-warn hover:text-on-warn"
         onClick={() => {
-          dispatch({
-            kind: "ask",
-            target: { kind: "frame", frame },
-            words: finding.fix,
-            tool: null,
-          })
+          dispatch({ kind: "typed", words: finding.fix })
         }}
       >
         Fix
@@ -204,7 +191,7 @@ export function FrameSheet({
         >
           <div className="-mx-2 grid gap-0.5">
             {sheet.findings.map((finding) => (
-              <FindingRow key={finding.key} finding={finding} frame={frame} dispatch={dispatch} />
+              <FindingRow key={finding.key} finding={finding} dispatch={dispatch} />
             ))}
           </div>
         </Section>
