@@ -245,17 +245,14 @@ describe("replay transport", () => {
     ])
   })
 
-  it("goes back to a kept version, and resets to the original", async () => {
+  it("resets to the original, with no history and no open session", async () => {
     const { stage, call, landed, kept } = setup()
     const id = await landed("Draw the flight path")
     await call("keep", { id, variant: "v1" })
-    stage.jump(0)
-    expect(kept(ROUTE)).toBe("pass/PassRoute.tsx")
-    await landed("Draw the flight path")
-    stage.jump(1)
     expect(kept(ROUTE)).toBe("pass/PassRoute.tsx/flight-path:v1")
-    expect(stage.snapshot().sessions).toEqual([])
+    await landed("Put it on a map")
     stage.reset()
+    expect(stage.snapshot().sessions).toEqual([])
     expect(stage.snapshot().versions).toHaveLength(1)
     expect(kept(PASS)).toBe("pass/Pass.tsx")
   })

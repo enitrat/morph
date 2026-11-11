@@ -125,6 +125,11 @@ function keptAlong(versions: readonly Version[], at: number): Map<string, Varian
 }
 
 /** One line per file the board's version changed, with its real diff from the original. */
+/** Every scene's live state; each `data.ts` exports `reset`, which puts it back as first drawn. */
+const live = Object.values(
+  import.meta.glob<{ reset: () => void }>("../scenes/*/data.ts", { eager: true }),
+)
+
 export function Ledger({ stage }: { stage: Stage }) {
   const snapshot = useSyncExternalStore(stage.subscribe, stage.snapshot)
   const kept = keptAlong(snapshot.versions, snapshot.at)
@@ -146,6 +151,18 @@ export function Ledger({ stage }: { stage: Stage }) {
             ? "Keep a variant and its diff lands here."
             : `${lines.length} ${lines.length === 1 ? "file" : "files"} changed`}
         </span>
+        {lines.length > 0 && (
+          <button
+            type="button"
+            className="ml-auto text-[12px] font-normal text-faint hover:text-text"
+            onClick={() => {
+              stage.reset()
+              for (const scene of live) scene.reset()
+            }}
+          >
+            Reset the table
+          </button>
+        )}
       </h2>
       {lines.length > 0 && (
         <ul className="mt-3 grid gap-2">

@@ -5,7 +5,6 @@ import { LiveBoard } from "./Board"
 import { Coach } from "./Coach"
 import { Ledger } from "./Ledger"
 import { Touch } from "./Touch"
-import { Versions } from "./Versions"
 
 const INSTALL = `pnpm add -D "github:enitrat/morph#path:/packages/morph"`
 const GITHUB = "https://github.com/enitrat/morph"
@@ -135,7 +134,6 @@ export function App({ stage, touch }: { stage: Stage; touch: boolean }) {
           <Coach stage={stage} touch={touch} />
         </div>
         {touch && <Touch stage={stage} />}
-        <Versions stage={stage} />
         <p data-morph className="mt-4 text-[13px]/[1.45] text-faint">
           <b className="font-medium text-muted">The asks here are hand-designed and replayed.</b> In
           your app, you type anything.

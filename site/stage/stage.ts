@@ -196,8 +196,6 @@ export interface Stage {
   keep(id: SessionId, variant: VariantId): Result
   discard(id: SessionId): Result
   retry(id: SessionId): Result
-  /** Puts the board back on a kept version; every open session is discarded. */
-  jump(version: number): void
   /** Back to the original, with no history. */
   reset(): void
   /** The answer to a page poll, which also picks each session's first ready variant. */
@@ -381,14 +379,6 @@ export function createStage(manifest: Manifest): Stage {
     },
     retry(id) {
       return find(id) === undefined ? refuse({ kind: "not-found" }) : done(undefined)
-    },
-    jump(version) {
-      if (
-        state.versions[version] === undefined ||
-        (version === state.at && state.sessions.length === 0)
-      )
-        return
-      set({ ...state, sessions: [], at: version })
     },
     reset() {
       set(initial)

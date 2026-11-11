@@ -7,7 +7,7 @@ import type { Stage } from "../stage/stage"
 import { Table } from "../scenes/table/Table"
 
 /** Every file's body, or null while one of them is still loading. */
-export function drawnOf(repo: Repo): Drawn | null {
+function drawnOf(repo: Repo): Drawn | null {
   const drawn = new Map<string, Body>()
   for (const [path, revision] of repo) {
     const body = revision.body()

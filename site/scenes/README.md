@@ -62,8 +62,7 @@ render every part. To make that hold:
 
 1. **State lives in `data.ts`, never in a component, and `data.ts` exports `reset()`**, which the
    page's Reset calls for every scene. The pass's seat is a store (`useSeat`). A seat chosen
-   on one design survives every morph, and the version
-   thumbnails show the same live state.
+   on one design survives every morph.
 2. **Parts draw only with the object tokens.** Colour, type and rules come from the tokens below,
    through Tailwind utilities: `bg-paper text-ink text-ink-2 border-rule bg-accent text-accent
    font-body font-display font-num`. No literal colours or font families in a part.
@@ -124,8 +123,7 @@ Every object marks:
 The board root is `data-board`, with `--color-board`, `--color-board-edge` and `--color-dot`.
 
 A table variant (`table/asks/<slug>/vN/theme.css`) is the whole stylesheet. The page nests it
-inside `[data-repo="…"] { … }`, so it applies to that board only and a version's thumbnail keeps
-its own style. It is unlayered, so it wins over every Tailwind utility without `!important`. Write
+inside `[data-repo="…"] { … }`, so it applies to that board only. It is unlayered, so it wins over every Tailwind utility without `!important`. Write
 plain selectors: `[data-object="pass"] [data-role="code"] { … }`. No `@keyframes`, no
 `@font-face`.
 
