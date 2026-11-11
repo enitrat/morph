@@ -5,8 +5,8 @@ import { replayTransport } from "./replay"
 import { createStage } from "./stage"
 import { type Operation, operations, type PageView, SessionId } from "./wire"
 
-const TOTAL = "site/scenes/receipt/ReceiptTotal.tsx"
-const RECEIPT = "site/scenes/receipt/Receipt.tsx"
+const ROUTE = "site/scenes/pass/PassRoute.tsx"
+const PASS = "site/scenes/pass/Pass.tsx"
 const TABLE = "site/scenes/table/Table.tsx"
 const THEME = "site/scenes/table/theme.css"
 
@@ -17,14 +17,14 @@ function setup() {
   const call = async (op: Operation, body?: unknown, query = new URLSearchParams()) =>
     transport({ op, query, body })
   const page = async () => operations.page.response.parse((await call("page")).body)
-  const ask = (words: string, path = TOTAL, id = SessionId.parse(crypto.randomUUID())) =>
+  const ask = (words: string, path = ROUTE, id = SessionId.parse(crypto.randomUUID())) =>
     call("ask", {
       id,
       words,
-      targets: [{ source: { path, line: 7, col: 5 }, owner: ["Receipt"], text: "Total" }],
+      targets: [{ source: { path, line: 7, col: 5 }, owner: ["Pass"], text: "Lisbon" }],
     })
   /** Asks, then lets every variant land and the first one show. */
-  const landed = async (words: string, path = TOTAL) => {
+  const landed = async (words: string, path = ROUTE) => {
     const id = SessionId.parse(crypto.randomUUID())
     const reply = await ask(words, path, id)
     if (reply.status !== 200) throw new Error(JSON.stringify(reply.body))
@@ -47,7 +47,7 @@ const only = (view: PageView) => {
 describe("replay transport", () => {
   it("shows the first ready variant on a page poll, after one poll on the original", async () => {
     const { page, ask, at, shown } = setup()
-    const asked = await ask("Make the total the hero")
+    const asked = await ask("Draw the flight path")
     expect(asked.status).toBe(200)
     expect(only(operations.ask.response.parse(asked.body)).place).toEqual({ kind: "original" })
 
@@ -55,15 +55,15 @@ describe("replay transport", () => {
     const first = only(await page())
     expect(first.place).toEqual({ kind: "original" })
     expect(first.variants.map((variant) => variant.state)).toEqual(["ready", "ready", "ready"])
-    expect(shown(TOTAL)).toBe("receipt/ReceiptTotal.tsx")
+    expect(shown(ROUTE)).toBe("pass/PassRoute.tsx")
 
     expect(only(await page()).place).toEqual({ kind: "shown", variant: "v1", edited: false })
-    expect(shown(TOTAL)).toBe("receipt/ReceiptTotal.tsx/total-hero:v1")
+    expect(shown(ROUTE)).toBe("pass/PassRoute.tsx/flight-path:v1")
   })
 
-  it("moves through the job phases before the first variant lands in 3 to 5 s", async () => {
+  it("moves through the job phases before the first variant lands", async () => {
     const { page, ask, at } = setup()
-    await ask("Make the total the hero")
+    await ask("Draw the flight path")
     const phases: string[] = []
     let landed = 0
     for (let ms = 0; ms <= 6000 && landed === 0; ms += 50) {
@@ -74,23 +74,23 @@ describe("replay transport", () => {
       if (view.place.kind === "shown") landed = ms
     }
     expect([...new Set(phases)]).toEqual(["queued", "slot", "agent", "checks", "capture"])
-    expect(landed).toBeGreaterThanOrEqual(3000)
+    expect(landed).toBeGreaterThanOrEqual(1500)
     expect(landed).toBeLessThanOrEqual(5000)
   })
 
   it("flips, then keeps, a variant as its file's new revision and a new version", async () => {
     const { stage, call, landed, kept, shown } = setup()
-    const id = await landed("Make the total the hero")
+    const id = await landed("Draw the flight path")
     const flipped = await call("show", { id, variant: "v2" })
     expect(only(operations.show.response.parse(flipped.body)).place).toMatchObject({
       variant: "v2",
     })
-    expect(shown(TOTAL)).toBe("receipt/ReceiptTotal.tsx/total-hero:v2")
-    expect(kept(TOTAL)).toBe("receipt/ReceiptTotal.tsx")
+    expect(shown(ROUTE)).toBe("pass/PassRoute.tsx/flight-path:v2")
+    expect(kept(ROUTE)).toBe("pass/PassRoute.tsx")
 
     const reply = await call("keep", { id, variant: "v2" })
     expect(operations.keep.response.parse(reply.body).sessions).toEqual([])
-    expect(kept(TOTAL)).toBe("receipt/ReceiptTotal.tsx/total-hero:v2")
+    expect(kept(ROUTE)).toBe("pass/PassRoute.tsx/flight-path:v2")
     const { versions, at } = stage.snapshot()
     expect(versions.map((version) => version.parent)).toEqual([null, 0])
     expect(at).toBe(1)
@@ -98,28 +98,28 @@ describe("replay transport", () => {
 
   it("reports the file a variant rewrites and its stat against the revision it starts from", async () => {
     const { page, ask, at } = setup()
-    await ask("Make the total the hero")
+    await ask("Draw the flight path")
     at(10_000)
     const [a] = only(await page()).variants
-    expect(a).toMatchObject({ state: "ready", files: [TOTAL] })
+    expect(a).toMatchObject({ state: "ready", files: [ROUTE] })
     expect(a?.state === "ready" && a.stat.add + a.stat.del).toBeGreaterThan(0)
   })
 
   it("refuses a keep of a variant the page does not show", async () => {
     const { call, ask } = setup()
     const id = SessionId.parse(crypto.randomUUID())
-    await ask("Make the total the hero", TOTAL, id)
+    await ask("Draw the flight path", ROUTE, id)
     const reply = await call("keep", { id, variant: "v3" })
     expect(reply).toEqual({ status: 409, body: { error: { kind: "not-shown", variant: "v3" } } })
   })
 
   it("snaps free text to the closest recorded ask, and says so on each variant", async () => {
     const { page, ask, at } = setup()
-    expect((await ask("a bigger total, please")).status).toBe(200)
+    expect((await ask("could you draw the route please")).status).toBe(200)
     at(10_000)
     const [a] = only(await page()).variants
     expect(a?.state === "ready" && a.summary).toMatch(
-      /^Closest recorded ask: “Make the total the hero”\./,
+      /^Closest recorded ask: “Draw the flight path”\./,
     )
   })
 
@@ -128,15 +128,15 @@ describe("replay transport", () => {
     const reply = await ask("make the button blue")
     expect(reply.status).toBe(409)
     expect(reply.body).toMatchObject({ error: { kind: "planner-failed" } })
-    expect(JSON.stringify(reply.body)).toContain("Make the total the hero")
+    expect(JSON.stringify(reply.body)).toContain("Draw the flight path")
   })
 
   it("suggests the asks of the picked file, and the table's at the board", async () => {
     const { call } = setup()
     const at = async (path: string) =>
       (await call("suggest", undefined, new URLSearchParams({ path }))).body
-    expect(await at(TOTAL)).toMatchObject({
-      suggestions: expect.arrayContaining([{ words: "Make the total the hero", kind: "house" }]),
+    expect(await at(ROUTE)).toMatchObject({
+      suggestions: expect.arrayContaining([{ words: "Draw the flight path", kind: "house" }]),
     })
     const board = await at(TABLE)
     const styles = manifest.files.get(THEME as never)?.original.asks ?? []
@@ -148,99 +148,99 @@ describe("replay transport", () => {
   it("answers an ask re-posted with the same id with the session it started", async () => {
     const { page, ask } = setup()
     const id = SessionId.parse(crypto.randomUUID())
-    await ask("Make the total the hero", TOTAL, id)
-    await ask("Make the total the hero", TOTAL, id)
+    await ask("Draw the flight path", ROUTE, id)
+    await ask("Draw the flight path", ROUTE, id)
     expect((await page()).sessions).toHaveLength(1)
   })
 
   it("holds a second ask on a shown file: it waits on the first, which a keep leaves stale", async () => {
     const { call, page, landed, kept } = setup()
-    const first = await landed("Make the total the hero")
-    const second = await landed("Make the total the hero")
+    const first = await landed("Draw the flight path")
+    const second = await landed("Draw the flight path")
     const [older, newer] = (await page()).sessions
     // The newer ask's first variant takes the file, as the bridge ranks it; the older one waits.
     expect(newer?.place).toEqual({ kind: "shown", variant: "v1", edited: false })
     expect(older?.place).toEqual({
       kind: "waiting",
       variant: "v1",
-      on: [{ session: second, variant: "v1", files: [TOTAL] }],
+      on: [{ session: second, variant: "v1", files: [ROUTE] }],
     })
     // Flipping the older one takes the file back.
     await call("show", { id: first, variant: "v3" })
     const [back, held] = (await page()).sessions
     expect(back?.place).toMatchObject({ kind: "shown", variant: "v3" })
-    expect(held?.place).toMatchObject({ kind: "waiting", on: [{ session: first, files: [TOTAL] }] })
+    expect(held?.place).toMatchObject({ kind: "waiting", on: [{ session: first, files: [ROUTE] }] })
     // Keeping it rewrites the file under the other, which can no longer move it.
     await call("keep", { id: first, variant: "v3" })
-    expect(kept(TOTAL)).toBe("receipt/ReceiptTotal.tsx/total-hero:v3")
+    expect(kept(ROUTE)).toBe("pass/PassRoute.tsx/flight-path:v3")
     expect(only(await page()).place).toEqual({
       kind: "conflict",
       want: "v1",
-      files: [TOTAL],
+      files: [ROUTE],
       showing: null,
     })
     const refused = await call("keep", { id: second, variant: "v1" })
-    expect(refused).toEqual({ status: 409, body: { error: { kind: "conflict", files: [TOTAL] } } })
+    expect(refused).toEqual({ status: 409, body: { error: { kind: "conflict", files: [ROUTE] } } })
   })
 
   it("stacks asks on three files: each shows at once, none waits on another", async () => {
     const { page, landed, shown } = setup()
-    await landed("Make the total the hero")
-    await landed("Invoice", RECEIPT)
+    await landed("Draw the flight path")
+    await landed("Departure board", PASS)
     await landed("Swiss", TABLE)
     expect((await page()).sessions.map((session) => session.place)).toEqual([
       { kind: "shown", variant: "v1", edited: false },
       { kind: "shown", variant: "v1", edited: false },
       { kind: "shown", variant: "v1", edited: false },
     ])
-    expect([shown(TOTAL), shown(RECEIPT), shown(THEME)]).toEqual([
-      "receipt/ReceiptTotal.tsx/total-hero:v1",
-      "receipt/Receipt.tsx/invoice:v1",
+    expect([shown(ROUTE), shown(PASS), shown(THEME)]).toEqual([
+      "pass/PassRoute.tsx/flight-path:v1",
+      "pass/Pass.tsx/departures:v1",
       "table/theme.css/swiss:v1",
     ])
   })
 
   it("keeps a part through a layout keep, then lays a table style over both", async () => {
     const { stage, call, landed, kept } = setup()
-    const total = await landed("Make the total the hero")
-    await call("show", { id: total, variant: "v2" })
-    await call("keep", { id: total, variant: "v2" })
-    const layout = await landed("Invoice", RECEIPT)
+    const route = await landed("Draw the flight path")
+    await call("show", { id: route, variant: "v2" })
+    await call("keep", { id: route, variant: "v2" })
+    const layout = await landed("Departure board", PASS)
     await call("keep", { id: layout, variant: "v1" })
-    expect(kept(TOTAL)).toBe("receipt/ReceiptTotal.tsx/total-hero:v2")
+    expect(kept(ROUTE)).toBe("pass/PassRoute.tsx/flight-path:v2")
     const table = await landed("Swiss", TABLE)
     await call("show", { id: table, variant: "v3" })
     const { shown } = stage.snapshot()
     expect([
-      shown.get(TOTAL as never)?.key,
-      shown.get(RECEIPT as never)?.key,
+      shown.get(ROUTE as never)?.key,
+      shown.get(PASS as never)?.key,
       shown.get(THEME as never)?.key,
     ]).toEqual([
-      "receipt/ReceiptTotal.tsx/total-hero:v2",
-      "receipt/Receipt.tsx/invoice:v1",
+      "pass/PassRoute.tsx/flight-path:v2",
+      "pass/Pass.tsx/departures:v1",
       "table/theme.css/swiss:v3",
     ])
     await call("keep", { id: table, variant: "v3" })
     expect(stage.snapshot().versions.map((version) => version.kept?.ask.words ?? null)).toEqual([
       null,
-      "Make the total the hero",
-      "Invoice",
+      "Draw the flight path",
+      "Departure board",
       "Swiss",
     ])
   })
 
   it("goes back to a kept version, and resets to the original", async () => {
     const { stage, call, landed, kept } = setup()
-    const id = await landed("Make the total the hero")
+    const id = await landed("Draw the flight path")
     await call("keep", { id, variant: "v1" })
     stage.jump(0)
-    expect(kept(TOTAL)).toBe("receipt/ReceiptTotal.tsx")
-    await landed("Make the total the hero")
+    expect(kept(ROUTE)).toBe("pass/PassRoute.tsx")
+    await landed("Draw the flight path")
     stage.jump(1)
-    expect(kept(TOTAL)).toBe("receipt/ReceiptTotal.tsx/total-hero:v1")
+    expect(kept(ROUTE)).toBe("pass/PassRoute.tsx/flight-path:v1")
     expect(stage.snapshot().sessions).toEqual([])
     stage.reset()
     expect(stage.snapshot().versions).toHaveLength(1)
-    expect(kept(RECEIPT)).toBe("receipt/Receipt.tsx")
+    expect(kept(PASS)).toBe("pass/Pass.tsx")
   })
 })

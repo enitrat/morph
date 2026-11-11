@@ -1,6 +1,6 @@
 // Type-checks the site, then each scene under its own rootDirs. tsc resolves a variant's relative
-// imports from its scene folder, as the scenes plugin does, so `./data` in `receipt/asks/…/v1/`
-// means `receipt/data.ts`. One rootDirs set per scene keeps two scenes' `./data` apart.
+// imports from its scene folder, as the scenes plugin does, so `./data` in `pass/asks/…/v1/`
+// means `pass/data.ts`. One rootDirs set per scene keeps two scenes' `./data` apart.
 import { execFileSync } from "node:child_process"
 import { mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { basename, join, relative } from "node:path"

@@ -25,7 +25,7 @@ declare module "virtual:morph-scenes" {
     variants: [RawVariant, RawVariant, RawVariant]
   }
   interface RawFile {
-    /** The file's repo path, `site/scenes/receipt/ReceiptTotal.tsx`. */
+    /** The file's repo path, `site/scenes/pass/PassRoute.tsx`. */
     path: string
     /** The component it exports, or the stylesheet's name. */
     name: string

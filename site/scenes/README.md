@@ -1,17 +1,17 @@
 # Scenes: how the playground's board is authored
 
 The board is a small virtual repo. Every file in it has a current revision, and a recorded ask
-rewrites exactly one file. Asks on different files stack: a kept total renders inside any receipt
+rewrites exactly one file. Asks on different files stack: a kept route renders inside any pass
 layout, and a table style restyles both. This is how real Morph composes, because each level is
 its own source file.
 
 There are three levels:
 
-| Level  | File                                                                            | Example ask               |
-| ------ | ------------------------------------------------------------------------------- | ------------------------- |
-| Part   | an object's inner component, `receipt/ReceiptTotal.tsx`                         | "Make the total the hero" |
-| Object | an object's layout, the component named after its folder, `receipt/Receipt.tsx` | "Invoice"                 |
-| Table  | a stylesheet of the `table` scene, `table/theme.css`                            | "Swiss"                   |
+| Level  | File                                                                      | Example ask            |
+| ------ | ------------------------------------------------------------------------- | ---------------------- |
+| Part   | an object's inner component, `pass/PassRoute.tsx`                         | "Draw the flight path" |
+| Object | an object's layout, the component named after its folder, `pass/Pass.tsx` | "Departure board"      |
+| Table  | a stylesheet of the `table` scene, `table/theme.css`                      | "Swiss"                |
 
 ## Folder convention
 
@@ -31,7 +31,7 @@ scenes/<id>/
 
 - The repo's files are a scene folder's top-level `.tsx` and `.css` files. `.ts` files are plain
   modules.
-- An ask belongs to the file its `v1/` holds. Picking any JSX in `ReceiptTotal.tsx` offers that
+- An ask belongs to the file its `v1/` holds. Picking any JSX in `PassRoute.tsx` offers that
   file's asks. Picking the entry also offers the asks of the scene's stylesheets, so clicking the
   bare board offers the table asks.
 - The plugin (`tools/scenes-plugin.ts`) derives everything else: the revision tree, each variant's
@@ -44,25 +44,25 @@ scenes/<id>/
 Write imports as if the variant file sat in its scene folder:
 
 ```tsx
-import { ReceiptTotal } from "./ReceiptTotal" // a repo file: always `{ Name }` from "./Name"
+import { PassRoute } from "./PassRoute" // a repo file: always `{ Name }` from "./Name"
 import { money, useTip } from "./data" // a plain module
 ```
 
 The plugin resolves a variant's relative imports from its scene folder. An import of a repo file
 resolves to a live binding (`stage/live.tsx`) that renders the revision of that file the board
-draws, so `Receipt.tsx` v2 renders whichever `ReceiptTotal.tsx` is kept. `pnpm --filter
+draws, so `Pass.tsx` v2 renders whichever `PassRoute.tsx` is kept. `pnpm --filter
 morph-site typecheck` writes one tsconfig per scene into `.tsconfigs/`, with that scene's variant
 folders as `rootDirs`, so tsc resolves imports the same way and two scenes' `./data` stay apart.
 
 ## The part props contract
 
-Parts take no props. A layout places `<ReceiptItems />` and `<ReceiptTotal />` and never reaches
+Parts take no props. A layout places `<PassRoute />` and `<PassSeat />` and never reaches
 inside them. Every variant of a part must work inside every layout, and every layout variant must
 render every part. To make that hold:
 
 1. **State lives in `data.ts`, never in a component, and `data.ts` exports `reset()`**, which the
-   page's Reset calls for every scene. The tip and the number of people are a
-   store (`useTip`, `usePeople`). A tip set on one design survives every morph, and the version
+   page's Reset calls for every scene. The pass's seat is a store (`useSeat`). A seat chosen
+   on one design survives every morph, and the version
    thumbnails show the same live state.
 2. **Parts draw only with the object tokens.** Colour, type and rules come from the tokens below,
    through Tailwind utilities: `bg-paper text-ink text-ink-2 border-rule bg-accent text-accent
@@ -70,34 +70,17 @@ render every part. To make that hold:
 3. **Parts mark their anatomy with `data-role`**, so a layout or a table style can reach inside
    without knowing which variant is on the page:
 
-| Part             | Root                   | Roles inside                                                                                                                                                                                                                                      |
-| ---------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ReceiptItems`   | `data-part="items"`    | `line` (one item), `name`, `qty`, `price`, `group` (a course heading), `photo`                                                                                                                                                                    |
-| `ReceiptTotal`   | `data-part="total"`    | `row` (subtotal, tip), `label`, `tips` (the control), `tip` (a button, `aria-pressed`), `grand` (the total), `amount` (its number), `rule`                                                                                                        |
-| `PlayerCover`    | `data-part="cover"`    | `art` (the sleeve, an SVG that fills whatever box the layout gives it, round or square)                                                                                                                                                           |
-| `PlayerProgress` | `data-part="progress"` | `track` (the seekable element, `role="slider"`), `fill` (the played portion, or each played bar of a waveform), `head` (the playhead), `time` (elapsed), `remain` (time left or the length), `lyric` (the sung line)                              |
-| `PlayerControls` | `data-part="controls"` | `play` (play and pause, `aria-pressed`), `key` (restart, skip), `toggle` (like, loop, `aria-pressed`)                                                                                                                                             |
-| `PaletteSearch`  | `data-part="search"`   | `icon`, `input` (the field), `ghost` (the completion drawn under it), `key`; with filters: `scopes`, `scope` (a chip or token, `aria-pressed`), `count`, `label`                                                                                  |
-| `PaletteResults` | `data-part="results"`  | `section` (a group's wrapper), `group` (its heading), `row` (a command, `aria-selected`, `--slot`), `icon`, `name`, `hit` (a matched letter), `detail`, `keys`, `key`, `empty`; with recent: `recent`, `pick` (a recent command), `uses`, `meter` |
-| `PaletteFooter`  | `data-part="footer"`   | `legend` (a key and its label), `key`, `label`, `status` (what ran last)                                                                                                                                                                          |
+| Part             | Root                   | Roles inside                                                                                                                                                                                                         |
+| ---------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PlayerCover`    | `data-part="cover"`    | `art` (the sleeve, an SVG that fills whatever box the layout gives it, round or square)                                                                                                                              |
+| `PlayerProgress` | `data-part="progress"` | `track` (the seekable element, `role="slider"`), `fill` (the played portion, or each played bar of a waveform), `head` (the playhead), `time` (elapsed), `remain` (time left or the length), `lyric` (the sung line) |
+| `PlayerControls` | `data-part="controls"` | `play` (play and pause, `aria-pressed`), `key` (restart, skip), `toggle` (like, loop, `aria-pressed`)                                                                                                                |
 
 The player's parts size to their box and never set their own height budget: a layout gives the
 cover its box and leaves at least 56 px for the progress and 60 px for the controls. Its playback,
 like and loop live in `player/data.ts`, so the song keeps playing through every morph. Hardware a
 layout draws around a part (an LCD, a speaker rail) sets the ink tokens locally, so a table style
 recolours the shell and the screen keeps its own ink.
-
-The palette's query, selection and history live in `palette/data.ts`. A row's `--slot` is the
-command's fixed index, so a ring or a grid can keep each command in its place while the query
-filters the others out. A ring layout lays rows out with `translate` from `--slot`; a table style
-never sets a row's position. Ring layouts (`radial`, `dial`, `wheel`) hide the `recent` block and
-show only the pressed scope chip. A rule that changes the field's type must also cover `ghost`,
-which sits under the input letter for letter. The CRT marks its overlay `scanlines`, so a light
-style can drop it.
-
-A total that draws its `grand` as a shape says so with `data-shape`: `stamp` for a round seal,
-`band` for a filled bar. Table styles restyle those through the attribute, never through the
-part's classes.
 
 The boarding pass (`pass/`) keeps its seat in `useSeat` and its gate countdown in `useGate`:
 
@@ -112,7 +95,7 @@ Its layouts add `field`, `label` and `value` for the passenger, flight and date,
 `code` when it sets the codes itself, so a table style never sets `display` on a part's roles.
 
 A layout styles that anatomy with descendant variants on its root, for example
-`[&_[data-role=label]]:uppercase` on the thermal receipt.
+`[&_[data-role=label]]:uppercase`.
 
 ## Object tokens
 
@@ -143,21 +126,21 @@ The board root is `data-board`, with `--color-board`, `--color-board-edge` and `
 A table variant (`table/asks/<slug>/vN/theme.css`) is the whole stylesheet. The page nests it
 inside `[data-repo="…"] { … }`, so it applies to that board only and a version's thumbnail keeps
 its own style. It is unlayered, so it wins over every Tailwind utility without `!important`. Write
-plain selectors: `[data-object="receipt"] [data-role="grand"] { … }`. No `@keyframes`, no
+plain selectors: `[data-object="pass"] [data-role="code"] { … }`. No `@keyframes`, no
 `@font-face`.
 
 Each table variant must change more than colour: type, borders, density, case, alignment. Write
 it per object, in the object's own block, between the markers already in every theme file:
-`/* board */`, `/* receipt */`, `/* pass */`, `/* palette */`, `/* player */`.
+`/* board */`, `/* pass */`, `/* player */`.
 An object added later fills its own block in the original `theme.css` (usually empty) and in each
 of the nine variants, and nothing else. Its rules must hold over every layout and part variant of
 that object, so prefer roles and tokens over layout-specific selectors.
 
 ## View Transitions
 
-`src/styles.css` names each object and part on the live board (`view-transition-name: receipt`,
-`receipt-total`, …), so a part glides to where the new layout puts it. A new object adds its
-names there. A name must be unique on the board, so never set one inside a scene file.
+The page names each object and part on the live board from its `data-object` and `data-part`
+before every morph, so a part glides to where the new layout puts it. Never set a
+`view-transition-name` inside a scene file.
 
 ## How to add an ask
 

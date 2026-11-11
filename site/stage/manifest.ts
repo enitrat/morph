@@ -19,7 +19,7 @@ export type Level = "part" | "object" | "table"
  * Its `asks` are the recorded asks that start from it, so a refine is an ask under a variant.
  */
 export interface Revision {
-  /** `receipt/Receipt.tsx`, `receipt/Receipt.tsx/invoice:v2`: unique across the manifest. */
+  /** `pass/Pass.tsx`, `pass/Pass.tsx/departures:v2`: unique across the manifest. */
   readonly key: string
   readonly file: FileNode
   /** The variant that wrote it; null for the original. */
@@ -52,7 +52,7 @@ export interface VariantNode {
 
 export interface FileNode {
   readonly path: RepoPath
-  /** The component it exports, `ReceiptTotal`, or the stylesheet's name. */
+  /** The component it exports, `PassRoute`, or the stylesheet's name. */
   readonly name: string
   /** What a visitor calls it, "The total", from its scene's `files`. */
   readonly label: string
@@ -68,7 +68,7 @@ export interface SceneNode {
   readonly id: string
   readonly title: string
   readonly kind: SceneInput["kind"]
-  /** The scene folder, `site/scenes/receipt`. */
+  /** The scene folder, `site/scenes/pass`. */
   readonly dir: RepoPath
   /** Its layout, the component named after the folder. */
   readonly entry: RepoPath
@@ -207,7 +207,7 @@ export const manifest = manifestOf(raw)
 
 /**
  * A variant's own file as the repo path it stands for once written:
- * `site/scenes/receipt/asks/invoice/v1/Receipt.tsx` is `site/scenes/receipt/Receipt.tsx`.
+ * `site/scenes/pass/asks/departures/v1/Pass.tsx` is `site/scenes/pass/Pass.tsx`.
  */
 export const canonical = (path: string): string =>
   path.replaceAll(/\/asks\/[^/]+\/v[123](?=\/)/g, "")

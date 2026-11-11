@@ -10,9 +10,9 @@ const LIVE = "\0morph-live:"
 const VARIANTS = ["v1", "v2", "v3"] as const
 /** The files of the virtual repo: a scene folder's top-level components and stylesheets. */
 const REVISIONED = /\.(tsx|css)$/
-/** A variant folder inside an ask, `…/asks/invoice/v2`, which stands for its scene folder. */
+/** A variant folder inside an ask, `…/asks/departures/v2`, which stands for its scene folder. */
 const VARIANT_DIR = /\/asks\/[^/]+\/v[123](?=\/|$)/g
-/** `import { ReceiptTotal } from "./ReceiptTotal"`, the one way to import a repo file. */
+/** `import { PassRoute } from "./PassRoute"`, the one way to import a repo file. */
 const PART_IMPORT = /import\s+\{\s*(\w+)\s*\}\s+from\s+["'](\.\.?\/[^"']+)["']/g
 const ANY_IMPORT = /import\s+(type\s+)?([^;]*?)\s+from\s+["'](\.\.?\/[^"']+)["']/g
 
@@ -24,7 +24,7 @@ export interface ScenesOptions {
 }
 
 export interface ScannedRevision {
-  /** `receipt/Receipt.tsx`, `receipt/Receipt.tsx/invoice:v2`: unique across the repo. */
+  /** `pass/Pass.tsx`, `pass/Pass.tsx/departures:v2`: unique across the repo. */
   readonly key: string
   /** The file on disk that holds this revision's text. */
   readonly abs: string
@@ -46,9 +46,9 @@ export interface ScannedVariant {
 }
 
 export interface ScannedFile {
-  /** `site/scenes/receipt/ReceiptTotal.tsx`. */
+  /** `site/scenes/pass/PassRoute.tsx`. */
   readonly path: string
-  /** The component it exports, `ReceiptTotal`, or the stylesheet's name. */
+  /** The component it exports, `PassRoute`, or the stylesheet's name. */
   readonly name: string
   readonly kind: "component" | "style"
   readonly original: ScannedRevision
@@ -62,7 +62,7 @@ export interface ScannedFile {
 export interface ScannedScene {
   readonly id: string
   readonly dir: string
-  /** `site/scenes/receipt/Receipt.tsx`: the component named after the folder. */
+  /** `site/scenes/pass/Pass.tsx`: the component named after the folder. */
   readonly entry: string
   readonly files: readonly ScannedFile[]
 }
@@ -234,7 +234,7 @@ export function rootDirsOf(scenes: readonly ScannedScene[]): string[] {
  * `virtual:morph-scenes`: the scenes folder as a virtual repo, one revision tree per file, with each
  * variant's line stat computed here and its code split into its own lazy chunk.
  *
- * A relative import of a repo file, `import { ReceiptTotal } from "./ReceiptTotal"`, resolves to a
+ * A relative import of a repo file, `import { PassRoute } from "./PassRoute"`, resolves to a
  * live binding that renders whichever revision of that file the board shows, so a kept part renders
  * inside every layout. A variant file's other relative imports resolve from its scene folder. The
  * build fails on any piece of the convention that is missing (see `scenes/README.md`).

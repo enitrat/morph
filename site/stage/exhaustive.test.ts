@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { type AskNode, type FileNode, manifest } from "./manifest"
 import { replayTransport } from "./replay"
-import { createStage } from "./stage"
+import { createStage, REPLAY_SPEED } from "./stage"
 import { type Operation, operations, SessionId, type VariantId } from "./wire"
 
 const VARIANTS: readonly VariantId[] = ["v1", "v2", "v3"]
@@ -51,6 +51,9 @@ describe("every recorded ask", () => {
         expect(variant.meta.ms.total, variant.revision.key).toBeGreaterThan(
           15_000 + variant.meta.ms.agent + variant.meta.ms.checks,
         )
+        const lands = variant.meta.ms.total / REPLAY_SPEED
+        expect(lands, `${variant.revision.key} lands in ${lands} ms`).toBeGreaterThanOrEqual(1500)
+        expect(lands, `${variant.revision.key} lands in ${lands} ms`).toBeLessThanOrEqual(5000)
       }
   })
 
