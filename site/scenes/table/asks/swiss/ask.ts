@@ -1,6 +1,7 @@
 import { defineAsk } from "../../../../stage/scene"
 
 export default defineAsk({
+  lead: true,
   words: "Swiss",
   aliases: [
     "swiss style",

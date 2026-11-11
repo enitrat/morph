@@ -21,6 +21,8 @@ export interface AskInput {
   readonly words: string
   /** Other phrasings the free-text match accepts. */
   readonly aliases?: readonly string[]
+  /** Offered first where it is picked, and prefilled in the composer there. */
+  readonly lead?: boolean
 }
 
 export const defineAsk = (ask: AskInput): AskInput => ask

@@ -142,6 +142,7 @@ describe("replay transport", () => {
     const styles = manifest.files.get(THEME as never)?.original.asks ?? []
     expect(board).toEqual({
       suggestions: styles.map((node) => ({ words: node.words, kind: "house" })),
+      prefill: "Swiss",
     })
   })
 
@@ -152,6 +153,7 @@ describe("replay transport", () => {
     expect(reply.body).toMatchObject({
       suggestions: expect.arrayContaining([{ words: "Departure board", kind: "house" }]),
     })
+    expect(reply.body).toMatchObject({ prefill: "Departure board" })
     expect((await ask("Departure board", STUB)).status).toBe(200)
     at(10_000)
     const view = operations.page.response.parse((await call("page")).body)

@@ -36,6 +36,8 @@ export interface AskNode {
   readonly slug: string
   readonly words: string
   readonly aliases: readonly string[]
+  /** Offered first, and prefilled in the composer. */
+  readonly lead: boolean
   /** The revision this ask starts from: every variant rewrites its file. */
   readonly base: Revision
   /** The tuple position is the variant id. */
@@ -115,7 +117,9 @@ function revisionOf(from: RawRevision, file: FileNode, variant: VariantNode | nu
       })),
     source: from.source,
   }
-  revision.asks = from.asks.map((ask) => askOf(ask, revision))
+  revision.asks = from.asks
+    .map((ask) => askOf(ask, revision))
+    .sort((a, b) => Number(b.lead) - Number(a.lead))
   return revision
 }
 
@@ -124,6 +128,7 @@ function askOf(from: RawAsk, base: Revision): AskNode {
     slug: from.slug,
     words: from.ask.words,
     aliases: from.ask.aliases ?? [],
+    lead: from.ask.lead ?? false,
     base,
     variants: undefined as never,
   }

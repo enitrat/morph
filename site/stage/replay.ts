@@ -125,11 +125,10 @@ export function replayTransport(
     discard: write("discard", ({ id }) => stage.discard(id), stage),
     suggest: ({ query }) => {
       const session = SessionId.safeParse(query.get("session"))
-      return ok({
-        suggestions: stage.suggestions(
-          session.success ? { session: session.data } : { path: query.get("path") ?? "" },
-        ),
-      })
+      if (session.success) return ok({ suggestions: stage.suggestions({ session: session.data }) })
+      // The composer starts with the first ask, so a visitor only has to press Enter.
+      const suggestions = stage.suggestions({ path: query.get("path") ?? "" })
+      return ok({ suggestions, prefill: suggestions[0]?.words })
     },
   }
 

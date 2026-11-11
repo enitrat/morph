@@ -1,6 +1,7 @@
 import { defineAsk } from "../../../../stage/scene"
 
 export default defineAsk({
+  lead: true,
   words: "Draw the flight path",
   aliases: [
     "flight path",
