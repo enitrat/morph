@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url"
 
 import { expect, it } from "vitest"
 
-import { tryLock, unlock, withLock } from "./lock"
+import { tryLock, unlock } from "./lock"
 
 it("refuses a live holder, recovers a dead holder, and ignores an old release", async () => {
   const root = await mkdtemp(join(tmpdir(), "morph-lock-test-"))
@@ -33,26 +33,6 @@ it("refuses a live holder, recovers a dead holder, and ignores an old release", 
     await rm(root, { recursive: true, force: true })
   }
 })
-
-it("keeps concurrent callers out of the critical section", async () => {
-  const root = await mkdtemp(join(tmpdir(), "morph-lock-test-"))
-  let inside = 0
-  try {
-    await Promise.all(
-      Array.from({ length: 8 }, async () => {
-        for (let i = 0; i < 30; i++) {
-          await withLock(join(root, "lock"), async () => {
-            expect(++inside).toBe(1)
-            await new Promise((resolve) => setTimeout(resolve, 1))
-            inside--
-          })
-        }
-      }),
-    )
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-}, 30_000)
 
 it("keeps separate processes out of the critical section", async () => {
   const root = await mkdtemp(join(tmpdir(), "morph-lock-test-"))

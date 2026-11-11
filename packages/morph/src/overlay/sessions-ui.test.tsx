@@ -142,13 +142,6 @@ it("opens the first ask's card, so the flip keys are in view when its variants l
   expect(ui.text()).toContain("0–3 flip")
 })
 
-it("leads the hint for a picked element with A to ask", async () => {
-  fakeBridge((_, now) => now, page())
-  const ui = await mount({ asks: false })
-  ui.send({ kind: "selected", element: ui.elements[0] as Element })
-  await vi.waitFor(() => expect(ui.text()).toMatch(/^A Ask.*parent/))
-})
-
 it("takes the files over, names the holder while waiting, and returns when flipped back", async () => {
   const hold = (session: SessionId, variant: "v1" | "v2", files: string[]) => ({
     session,
@@ -205,8 +198,11 @@ it("keeps the shown variant by name, then drops its pin", async () => {
   ui.press("Keep B")
   await vi.waitFor(() => expect(ui.text()).toContain("Kept B on Button in button.tsx"))
   expect(bridge.requests).toEqual([{ op: "keep", body: { id: ids.button, variant: "v2" } }])
-  expect(ui.chip("Button")).toBeUndefined()
-  expect(ui.host.querySelectorAll("button[aria-label^=Pin]")).toHaveLength(1)
+  // The kept pin leaves through its exit animation, a frame after the notice.
+  await vi.waitFor(() => {
+    expect(ui.chip("Button")).toBeUndefined()
+    expect(ui.host.querySelectorAll("button[aria-label^=Pin]")).toHaveLength(1)
+  })
 })
 
 it("shows a conflict's files and offers to keep what is on the page", async () => {

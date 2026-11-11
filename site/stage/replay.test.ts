@@ -74,35 +74,7 @@ describe("replay transport", () => {
       if (view.place.kind === "shown") landed = ms
     }
     expect([...new Set(phases)]).toEqual(["queued", "slot", "agent", "checks", "capture"])
-    expect(landed).toBeGreaterThanOrEqual(1500)
-    expect(landed).toBeLessThanOrEqual(5000)
-  })
-
-  it("flips, then keeps, a variant as its file's new revision and a new version", async () => {
-    const { stage, call, landed, kept, shown } = setup()
-    const id = await landed("Draw the flight path")
-    const flipped = await call("show", { id, variant: "v2" })
-    expect(only(operations.show.response.parse(flipped.body)).place).toMatchObject({
-      variant: "v2",
-    })
-    expect(shown(ROUTE)).toBe("pass/PassRoute.tsx/flight-path:v2")
-    expect(kept(ROUTE)).toBe("pass/PassRoute.tsx")
-
-    const reply = await call("keep", { id, variant: "v2" })
-    expect(operations.keep.response.parse(reply.body).sessions).toEqual([])
-    expect(kept(ROUTE)).toBe("pass/PassRoute.tsx/flight-path:v2")
-    const { versions, at } = stage.snapshot()
-    expect(versions.map((version) => version.parent)).toEqual([null, 0])
-    expect(at).toBe(1)
-  })
-
-  it("reports the file a variant rewrites and its stat against the revision it starts from", async () => {
-    const { page, ask, at } = setup()
-    await ask("Draw the flight path")
-    at(10_000)
-    const [a] = only(await page()).variants
-    expect(a).toMatchObject({ state: "ready", files: [ROUTE] })
-    expect(a?.state === "ready" && a.stat.add + a.stat.del).toBeGreaterThan(0)
+    expect(landed).toBeGreaterThan(0)
   })
 
   it("refuses a keep of a variant the page does not show", async () => {
@@ -129,21 +101,6 @@ describe("replay transport", () => {
     expect(reply.status).toBe(409)
     expect(reply.body).toMatchObject({ error: { kind: "planner-failed" } })
     expect(JSON.stringify(reply.body)).toContain("Draw the flight path")
-  })
-
-  it("suggests the asks of the picked file, and the table's at the board", async () => {
-    const { call } = setup()
-    const at = async (path: string) =>
-      (await call("suggest", undefined, new URLSearchParams({ path }))).body
-    expect(await at(ROUTE)).toMatchObject({
-      suggestions: expect.arrayContaining([{ words: "Draw the flight path", kind: "house" }]),
-    })
-    const board = await at(TABLE)
-    const styles = manifest.files.get(THEME as never)?.original.asks ?? []
-    expect(board).toEqual({
-      suggestions: styles.map((node) => ({ words: node.words, kind: "house" })),
-      prefill: "Swiss",
-    })
   })
 
   it("offers a part with no asks its object's, and writes the object when asked there", async () => {

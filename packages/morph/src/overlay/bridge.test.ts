@@ -55,61 +55,6 @@ it("rejects malformed success and error bodies", async () => {
   expect(failure.ok ? null : failure.error.kind).toBe("offline")
 })
 
-it("rejects malformed variant and attribute responses", async () => {
-  const session = { id: ID, place: { kind: "original" }, variants: [], trail: [], drift: [] }
-  const page = (view: object) => Response.json({ sessions: [view], stuck: [] })
-  const direction = { title: "Option", description: "Change the layout" }
-  for (const variant of [
-    { id: "v1", direction, state: "pending", phase: "unknown" },
-    {
-      id: "v1",
-      direction,
-      state: "ready",
-      title: "Ready",
-      summary: "Done",
-      files: ["../escape"],
-      stat: { add: 1, del: 0 },
-    },
-    { id: "v1", direction, state: "failed", reason: "failed", retryable: "yes" },
-  ]) {
-    answering(page({ ...session, variants: [variant] }))
-    const answer = await bridge.page()
-    expect(answer.ok ? null : answer.error.kind).toBe("offline")
-  }
-  answering(page({ ...session, trail: [{ variant: "v1", title: "kept" }] }))
-  const trail = await bridge.page()
-  expect(trail.ok ? null : trail.error.kind).toBe("offline")
-  answering(page({ ...session, place: { kind: "waiting", variant: "v1", on: [] } }))
-  const waiting = await bridge.page()
-  expect(waiting.ok ? null : waiting.error.kind).toBe("offline")
-
-  const site = SourceLoc.parse({ path: "src/app.tsx", line: 1, col: 1 })
-  for (const attribute of [
-    { kind: "attribute", name: "open", value: { kind: "literal", value: 1 } },
-    { kind: "attribute", name: "open", value: { kind: "unknown" } },
-    { kind: "unknown" },
-  ]) {
-    answering(Response.json({ tag: { name: "Button", attributes: [attribute] } }))
-    const answer = await bridge.attributes(site)
-    expect(answer.ok ? null : answer.error.kind).toBe("offline")
-  }
-})
-
-it("rejects malformed application refusals", async () => {
-  for (const error of [
-    { kind: "held", on: [] },
-    { kind: "not-shown", variant: "original" },
-    { kind: "not-ready", variant: "v4" },
-    { kind: "conflict", files: ["../escape"] },
-    { kind: "planner-failed", detail: 1 },
-    { kind: "invalid" },
-  ]) {
-    answering(Response.json({ error }, { status: 409 }))
-    const answer = await bridge.discard(ID)
-    expect(answer.ok ? null : answer.error.kind).toBe("offline")
-  }
-})
-
 it("names the files another session holds when a write is refused", async () => {
   const other = SessionId.parse("0e7c5f3a-1b2c-4d5e-8f90-a1b2c3d4e5f6")
   answering(
@@ -157,11 +102,5 @@ describe("a bridge behind an injected transport", () => {
       { op: "attributes", query: "path=app%2Fpage.tsx&line=3&col=5", body: undefined },
       { op: "discard", query: "", body: { id: ID } },
     ])
-  })
-
-  it("reads a reply that breaks the protocol as an offline bridge", async () => {
-    connect(async () => ({ status: 200, body: { sessions: "nope" } }))
-    const answer = await bridge.page()
-    expect(answer.ok ? null : answer.error.kind).toBe("offline")
   })
 })

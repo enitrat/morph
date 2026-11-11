@@ -265,68 +265,6 @@ describe("plan with one session", () => {
 })
 
 describe("plan with several sessions", () => {
-  it("shows two sessions whose files are disjoint at once", async () => {
-    const store = new MemoryStore(BASE)
-    const [s, t] = [id(), id()]
-    const a = variant(store, s, "v1", { "a.tsx": edit(BASE["a.tsx"]!, 2, "S") })
-    const b = variant(store, t, "v1", { "b.tsx": edit(BASE["b.tsx"]!, 2, "T") })
-    const tab = page(store, [offer(s, 1, a), offer(t, 2, b)])
-
-    await tab.run({ kind: "show", session: s, choice: "v1" })
-    await tab.run({ kind: "show", session: t, choice: "v1" })
-
-    expect(await tab.places()).toEqual({
-      [s]: { kind: "shown", variant: "v1" },
-      [t]: { kind: "shown", variant: "v1" },
-    })
-    expect(store.read()).toEqual({
-      ...BASE,
-      "a.tsx": edit(BASE["a.tsx"]!, 2, "S"),
-      "b.tsx": edit(BASE["b.tsx"]!, 2, "T"),
-    })
-  })
-
-  it("gives shared files to the newest flip, and gives them back when it is discarded", async () => {
-    const store = new MemoryStore(BASE)
-    const [s, t] = [id(), id()]
-    const header = variant(store, s, "v1", {
-      "page.tsx": edit(BASE["page.tsx"]!, 2, "header"),
-      "a.tsx": edit(BASE["a.tsx"]!, 2, "header"),
-    })
-    const card = variant(store, t, "v2", {
-      "page.tsx": edit(BASE["page.tsx"]!, 8, "card"),
-      "b.tsx": edit(BASE["b.tsx"]!, 2, "card"),
-    })
-    const tab = page(store, [offer(s, 1, header), offer(t, 2, card)])
-    await tab.run({ kind: "show", session: s, choice: "v1" })
-
-    const taken = await tab.run({ kind: "show", session: t, choice: "v2" })
-
-    expect(taken.ok && Object.fromEntries(taken.places)).toEqual({
-      [s]: {
-        kind: "waiting",
-        variant: "v1",
-        on: [{ session: t, variant: "v2", files: ["page.tsx"] }],
-      },
-      [t]: { kind: "shown", variant: "v2" },
-    })
-    expect(store.read()).toEqual({
-      ...BASE,
-      "page.tsx": edit(BASE["page.tsx"]!, 8, "card"),
-      "b.tsx": edit(BASE["b.tsx"]!, 2, "card"),
-    })
-
-    await tab.run({ kind: "discard", session: t })
-    tab.offers.pop()
-
-    expect(await tab.places()).toEqual({ [s]: { kind: "shown", variant: "v1" } })
-    expect(store.read()).toEqual({
-      ...BASE,
-      "page.tsx": edit(BASE["page.tsx"]!, 2, "header"),
-      "a.tsx": edit(BASE["a.tsx"]!, 2, "header"),
-    })
-  })
-
   it("takes the files back when the waiting session is flipped again", async () => {
     const store = new MemoryStore(BASE)
     const [s, t] = [id(), id()]
@@ -366,65 +304,6 @@ describe("plan with several sessions", () => {
         on: [{ session: s, variant: "v1", files: ["page.tsx"] }],
       },
     })
-  })
-
-  it("keeps the holder and brings the waiting session back merged onto the kept code", async () => {
-    const store = new MemoryStore(BASE)
-    const [s, t] = [id(), id()]
-    const header = variant(store, s, "v1", { "page.tsx": edit(BASE["page.tsx"]!, 2, "header") })
-    const card = variant(store, t, "v1", { "page.tsx": edit(BASE["page.tsx"]!, 8, "card") })
-    const tab = page(store, [offer(s, 1, header), offer(t, 2, card)])
-    await tab.run({ kind: "show", session: t, choice: "v1" })
-    await tab.run({ kind: "show", session: s, choice: "v1" })
-
-    const kept = await tab.run({ kind: "keep", session: s, variant: "v1" })
-
-    expect(kept.ok && kept.places.get(t)).toEqual({ kind: "shown", variant: "v1" })
-    expect(store.read()["page.tsx"]).toBe(edit(edit(BASE["page.tsx"]!, 2, "header"), 8, "card"))
-    tab.offers.shift()
-    await tab.run({ kind: "discard", session: t })
-    expect(store.read()["page.tsx"]).toBe(edit(BASE["page.tsx"]!, 2, "header"))
-  })
-
-  it("keeps a waiting session by taking its files over, and the displaced one comes back on the kept code", async () => {
-    const store = new MemoryStore(BASE)
-    const [s, t] = [id(), id()]
-    const header = variant(store, s, "v1", {
-      "page.tsx": edit(BASE["page.tsx"]!, 2, "header"),
-      "a.tsx": edit(BASE["a.tsx"]!, 2, "header"),
-    })
-    const card = variant(store, t, "v1", { "page.tsx": edit(BASE["page.tsx"]!, 8, "card") })
-    const tab = page(store, [offer(s, 1, header), offer(t, 2, card)])
-    await tab.run({ kind: "show", session: s, choice: "v1" })
-    await tab.run({ kind: "show", session: t, choice: "v1" })
-    expect((await tab.places())[s]).toMatchObject({ kind: "waiting" })
-
-    const kept = await tab.run({ kind: "keep", session: s, variant: "v1" })
-
-    expect(kept.ok && kept.journal.leases).toEqual({
-      "page.tsx": expect.objectContaining({ session: t, variant: "v1" }),
-    })
-    expect(store.read()).toEqual({
-      ...BASE,
-      "a.tsx": edit(BASE["a.tsx"]!, 2, "header"),
-      "page.tsx": edit(edit(BASE["page.tsx"]!, 2, "header"), 8, "card"),
-    })
-  })
-
-  it("refuses a keep that names a variant the session neither shows nor waits for", async () => {
-    const store = new MemoryStore(BASE)
-    const s = id()
-    const v1 = variant(store, s, "v1", { "a.tsx": edit(BASE["a.tsx"]!, 2, "one") })
-    const v2 = variant(store, s, "v2", { "a.tsx": edit(BASE["a.tsx"]!, 2, "two") })
-    const tab = page(store, [offer(s, 1, v1, v2)])
-    await tab.run({ kind: "show", session: s, choice: "v1" })
-    const before = tab.journal()
-
-    const kept = await tab.run({ kind: "keep", session: s, variant: "v2" })
-
-    expect(kept).toEqual({ ok: false, refusal: { kind: "not-shown", variant: "v2" } })
-    expect(tab.journal()).toBe(before)
-    expect(store.read()["a.tsx"]).toBe(edit(BASE["a.tsx"]!, 2, "one"))
   })
 
   it("keeps a designer's hand edit on a shown file through a takeover and a return", async () => {

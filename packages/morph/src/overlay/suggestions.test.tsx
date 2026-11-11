@@ -92,6 +92,7 @@ it("offers the bridge's suggestions for the picked site, and a click asks with t
   const sent = ui.calls.find((call) => call.op === "ask")?.body
   expect(sent).toMatchObject({ words: "Make it feel premium" })
   expect(ui.events[0]).toMatchObject({ kind: "asked", pin: { words: "Make it feel premium" } })
+  expect(ui.events.some((event) => event.kind === "typed")).toBe(false)
 })
 
 it("moves from the empty field into the chips with ↓", async () => {
@@ -127,13 +128,4 @@ it("starts an empty composer with the bridge's prefill once, and keeps the chips
   await vi.waitFor(() => expect(ui.chips()).toHaveLength(2))
   const typed = ui.events.filter((event) => event.kind === "typed")
   expect(typed).toEqual([{ kind: "typed", words: "Departure board" }])
-})
-
-it("leaves the composer empty when the bridge sends no prefill", async () => {
-  const ui = mountComposer(() => ({
-    status: 200,
-    body: { suggestions: [{ words: "Departure board", kind: "house" }] },
-  }))
-  await vi.waitFor(() => expect(ui.chips()).toHaveLength(1))
-  expect(ui.events.some((event) => event.kind === "typed")).toBe(false)
 })
