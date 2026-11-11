@@ -15,7 +15,7 @@ import { dirname, join } from "node:path"
 import { describe, expect, it } from "vitest"
 
 import { RepoPath } from "../variant/model"
-import { argPath, checks, deadLinksIn, reasonOf } from "./checks"
+import { checks, deadLinksIn, reasonOf } from "./checks"
 import { farm } from "./slots"
 import { MorphConfig } from "../core/config"
 import { CONFIG, MODULES } from "./test-fixtures"
@@ -171,8 +171,9 @@ it("uses app-local commands and paths in the checkout being checked", async () =
     const files: Record<string, string> = {
       "package.json": '{"name":"root"}',
       [`${app}/src/page.tsx`]: "export const value = 1\n",
+      "shared/button.tsx": "export const button = 2\n",
       [`${app}/node_modules/.bin/format-local`]:
-        '#!/bin/sh\nprintf "%s\\n" "$PWD|$1" > format-result\n',
+        '#!/bin/sh\nprintf "%s\\n" "$PWD" "$@" > format-result\n',
       [`${app}/node_modules/.bin/check-local`]: '#!/bin/sh\nprintf "%s\\n" "$PWD" > check-result\n',
     }
     for (const [path, content] of Object.entries(files)) {
@@ -203,20 +204,19 @@ it("uses app-local commands and paths in the checkout being checked", async () =
         }),
       ),
     )
-    const result = await checks(root, [RepoPath.parse(`${app}/src/page.tsx`)], config)
-    expect(result).toEqual({ ok: true })
-    expect(readFileSync(join(root, app, "format-result"), "utf8").trim()).toBe(
-      `${join(root, app)}|src/page.tsx`,
+    const result = await checks(
+      root,
+      [RepoPath.parse(`${app}/src/page.tsx`), RepoPath.parse("shared/button.tsx")],
+      config,
     )
+    expect(result).toEqual({ ok: true })
+    expect(
+      readFileSync(join(root, app, "format-result"), "utf8")
+        .trim()
+        .split("\n"),
+    ).toEqual([join(root, app), "src/page.tsx", join(root, "shared/button.tsx")])
     expect(readFileSync(join(root, app, "check-result"), "utf8").trim()).toBe(join(root, app))
   } finally {
     rmSync(parent, { recursive: true, force: true })
   }
-})
-
-it("passes a file outside the app to its checks by absolute path, never with ..", () => {
-  expect(argPath("/repo/examples/next", "/repo/examples/next/app/page.tsx")).toBe("app/page.tsx")
-  expect(argPath("/repo/examples/next", "/repo/examples/shared/tour.tsx")).toBe(
-    "/repo/examples/shared/tour.tsx",
-  )
 })

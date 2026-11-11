@@ -7,7 +7,7 @@ import { lightness } from "../core/color"
 import { resolve } from "../core/graph"
 import { type Read } from "../inspector/types"
 import { RepoPath } from "../variant/model"
-import { type Context, isShared, reachOf, type Row, rowsOf, type Seen } from "./rows"
+import { type Context, reachOf, type Row, rowsOf, type Seen } from "./rows"
 import { scalesOf } from "./utilities"
 
 const { tokens, components } = repoCatalog()
@@ -87,17 +87,6 @@ describe("fine-tune rows", () => {
     expect(dark?.line).not.toContain("--")
   })
 
-  it("marks a shared role's track shared and a component token's not", () => {
-    const [fill] = rowsOf(
-      seen({ reads: [read("background-color", "--button-secondary-bg")] }),
-      context,
-    )
-    const own = trackOf(fill, "all")
-    expect(own && isShared(own)).toBe(false)
-    const darkTrack = trackOf(fill, DARK)
-    expect(darkTrack && isShared(darkTrack)).toBe(true)
-  })
-
   it("orders every colour track from darker to lighter, so + always lightens", () => {
     const [fill] = rowsOf(
       seen({ reads: [read("background-color", "--button-secondary-bg")] }),
@@ -117,10 +106,10 @@ describe("fine-tune rows", () => {
     }
   })
 
-  it("counts the components a token reaches, once per pick", () => {
+  it("counts both the component and blocks that render it in a token's reach", () => {
     const [row] = rowsOf(seen({ reads: [read("padding-inline", "--button-px-md")] }), context)
     const source = trackOf(row, "all")?.source
-    expect(source?.kind === "token" && source.impact).toBeGreaterThan(0)
+    expect(source?.kind === "token" && source.impact).toBe(2)
   })
 
   it("offers no row for a scale unit or a fill the element only sits on", () => {

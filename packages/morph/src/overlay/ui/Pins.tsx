@@ -57,13 +57,13 @@ const layoutKey = (boxes: readonly (Box | null)[]) =>
   ].join("|")
 
 /** The choices a card flips through with ←/→: the original, then each ready variant. */
-export const choicesOf = (view: SessionView): Choice[] => [
+const choicesOf = (view: SessionView): Choice[] => [
   "original",
   ...view.variants.flatMap((variant) => (variant.state === "ready" ? [variant.id] : [])),
 ]
 
 /** What a key on the open card does: flip to a choice, or say why that variant cannot show. */
-export type Flip = { kind: "show"; choice: Choice } | { kind: "notice"; text: string }
+type Flip = { kind: "show"; choice: Choice } | { kind: "notice"; text: string }
 
 /** 0 to 3 pick a row and ←/→ step through the ready ones; a row not ready says so. */
 export function flipOf(view: SessionView, key: string): Flip | null {
@@ -90,7 +90,7 @@ export function flipOf(view: SessionView, key: string): Flip | null {
 }
 
 /** What the page shows for the session, or waits to show. */
-export function currentOf(view: SessionView): Choice | null {
+function currentOf(view: SessionView): Choice | null {
   const { place } = view
   if (place.kind === "shown" || place.kind === "waiting") return place.variant
   if (place.kind === "conflict") return place.showing
@@ -98,7 +98,7 @@ export function currentOf(view: SessionView): Choice | null {
 }
 
 /** The variant Keep names: the one shown, the one waited for (keep takes over), or the one a conflict left on the page. */
-export function keepable(view: SessionView): VariantId | null {
+function keepable(view: SessionView): VariantId | null {
   const { place } = view
   if (place.kind === "shown" || place.kind === "waiting") return place.variant
   if (place.kind === "conflict") return place.showing

@@ -44,16 +44,20 @@ it("locates ordered fiber slots in batches, retaining empty slots and failed bat
       }),
     })
   })
-  const instances = Array.from({ length: 34 }, (_, i) =>
-    i === 1 ? fiber([]) : fiber([i * 4 + 1, i * 4 + 2, i * 4 + 3, i * 4 + 4, 999]),
+  const instances = Array.from({ length: 70 }, (_, i) =>
+    i === 1 ? fiber([]) : fiber([i * 4 + 1, i * 4 + 2]),
   )
   const found = await sitesOf(instances)
-  expect(batches.map((frames) => frames.length)).toEqual([60, 64, 8])
-  expect(found).toHaveLength(34)
-  expect(found.slice(0, 4)).toEqual([site(2), null, site(10), site(14)])
-  expect(found.slice(16, 32)).toEqual(Array(16).fill(null))
-  expect(found.slice(32)).toEqual([site(130), site(134)])
-  expect(batches.flat()).not.toContain("http://localhost:3000/chunk.js:999:1")
+  expect(batches.length).toBeGreaterThan(1)
+  for (const frames of batches) expect(frames.length).toBeLessThanOrEqual(64)
+  const rejected = new Set(batches[1])
+  expect(found).toEqual(
+    instances.map((_, i) =>
+      i === 1 || rejected.has(`http://localhost:3000/chunk.js:${i * 4 + 2}:1`)
+        ? null
+        : site(i * 4 + 2),
+    ),
+  )
 })
 
 it("keeps the own site while selecting the first non-plumbing owner", async () => {

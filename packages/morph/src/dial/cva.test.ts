@@ -56,10 +56,10 @@ export function Button(props: VariantProps<typeof styles>) {}`
   ])
 })
 
-it("offers numeric variant options and their default as strings", () => {
-  const text = `const styles = cva('', { variants: { columns: { 1: 'grid-cols-1', 2: 'grid-cols-2' } }, defaultVariants: { columns: 1 } })
+it("offers numeric and statically computed variants, ignoring dynamic keys", () => {
+  const text = `const styles = cva('', { variants: { columns: { 1: 'grid-cols-1', 2: 'grid-cols-2', ['3']: 'grid-cols-3', [dynamic]: 'unknown' } }, defaultVariants: { columns: 1 } })
 export function Grid(props: VariantProps<typeof styles>) { return <div /> }`
   expect(cvaControls(text, "Grid")).toEqual([
-    { kind: "enum", name: "columns", options: ["1", "2"], default: "1" },
+    { kind: "enum", name: "columns", options: ["1", "2", "3"], default: "1" },
   ])
 })

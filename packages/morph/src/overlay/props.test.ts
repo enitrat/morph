@@ -176,7 +176,7 @@ describe("the props of a picked instance", () => {
     expect(props).toMatchObject({ rows: [{ value: "ghost", at: null }, { at: { places: 1 } }] })
   })
 
-  it("follows a forwarded prop up to the page's call site, which reaches only the page", async () => {
+  it("edits forwarded props at the caller and local props at their wrapper, with each scope's reach", async () => {
     const page = component(Page, {}, 0)
     const wrapper = component(Wrapper, {}, 40, page)
     const picked = rendered(component(Button, { variant: undefined }, 30, wrapper))
@@ -186,24 +186,11 @@ describe("the props of a picked instance", () => {
     expect(props).toMatchObject({
       rows: [
         { at: { site: SITES[40]?.site, tag: "Wrapper", written: null, places: 1, wrapper: null } },
-        { at: { site: SITES[30]?.site, tag: "Button", written: null } },
-      ],
-    })
-  })
-
-  it("reaches every use of the wrapper whose body holds the call site", async () => {
-    const page = component(Page, {}, 0)
-    const wrapper = component(Wrapper, {}, 40, page)
-    const picked = rendered(component(Button, { variant: undefined }, 30, wrapper))
-
-    const props = await deriveProps(picked)
-
-    expect(props).toMatchObject({
-      rows: [
-        { at: { site: SITES[40]?.site } },
         {
           at: {
             site: SITES[30]?.site,
+            tag: "Button",
+            written: null,
             places: 1,
             wrapper: { name: "Wrapper", uses: 4, examples: 1 },
           },
@@ -217,7 +204,7 @@ describe("the props of a picked instance", () => {
     const wrapper = component(Wrapper, {}, 40, component(Page, {}, 0))
     const picked = rendered(component(Button, { variant: undefined }, 30, wrapper))
 
-    expect(typeof (await deriveProps(picked))).toBe("string")
+    expect(await deriveProps(picked)).toContain("doesn't build")
   })
 
   it("stops when the wrapper holds another value than it passes on", async () => {

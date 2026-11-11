@@ -274,9 +274,10 @@ describe("counting a wrapper's uses", () => {
   const WRAPPER = "apps/site/components/save-button.tsx"
   const uses = {
     [WRAPPER]: `export function SaveButton() {\n  return <Button>Save</Button>\n}\nexport const Twice = () => <SaveButton />\n`,
-    "apps/site/app/a/page.tsx": `import { SaveButton } from "@/components/save-button"\nexport default () => (\n  <div>\n    <SaveButton />\n    <SaveButton\n      size="lg"\n    >\n      x\n    </SaveButton>\n  </div>\n)\n`,
+    "apps/site/app/a/page.tsx": `import { SaveButton as Action } from "@/components/save-button"\n// <Action />\nexport default () => (\n  <div>\n    <Action />\n    <Action\n      size="lg"\n    >\n      x\n    </Action>\n  </div>\n)\n`,
     "packages/ui/src/x/examples/demo.tsx": `import { SaveButton } from "@/components/save-button"\nexport const Demo = () => <SaveButton/>\n`,
     "apps/site/app/a/page.test.tsx": `import { SaveButton } from "@/components/save-button"\nrender(<SaveButton />)\n`,
+    "apps/site/app/type-only.tsx": `import type { SaveButton } from "@/components/save-button"\nexport const Demo = () => <SaveButton />`,
     "apps/site/app/b/other.tsx": `function SaveButton() {}\nconst Namesake = () => <SaveButton />\nconst Longer = () => <SaveButtonGroup />\n`,
     "packages/ui/src/x/fixtures/app/page.tsx": `import { SaveButton } from "@/components/save-button"\nexport default () => [\n  <SaveButton />,\n  <SaveButton />,\n]\n`,
     "e2e/save.tsx": `import { SaveButton } from "@/components/save-button"\nmount(<SaveButton />)\n`,

@@ -5,7 +5,6 @@ import { buildTokens, chainOf, resolveToken } from "./graph"
 import { editError, stepsFor, type TokenEdit } from "./edit"
 import { impactOf } from "./impact"
 import { displayOf } from "./display"
-import { previewCss } from "./preview"
 import { tokensReadIn } from "./usage"
 import { type TokenName } from "./design-system"
 import { readDesignSystem } from "../bridge/design-system"
@@ -19,7 +18,7 @@ function rebuilt(edits: readonly TokenEdit[]) {
   const written = applyEdits(tokens, edits)
   const next = tokens.files.map((file) => ({
     ...file,
-    css: written.files.get(file.path) ?? file.css,
+    css: written.get(file.path) ?? file.css,
   }))
   return { tokens: buildTokens(next, tokens.themes), written }
 }
@@ -50,19 +49,12 @@ describe("token graph", () => {
 })
 
 describe("writing an edit", () => {
-  it("changes only dark when a role is edited for dark", () => {
-    const after = rebuilt([{ token: "--secondary", scope: DARK, to: "var(--neutral-700)" }]).tokens
-    expect(resolveToken(after, "--button-secondary-bg", DARK)).toBe("#404040")
-    expect(resolveToken(after, "--button-secondary-bg", LIGHT)).toBe("#f5f5f5")
-  })
-
   it("pins dark at today's value when a light edit hits a token dark inherits", () => {
-    const { tokens: after, written } = rebuilt([
+    const { tokens: after } = rebuilt([
       { token: "--primary", scope: LIGHT, to: "var(--violet-400)" },
     ])
     expect(resolveToken(after, "--primary", LIGHT)).toBe("#a78bfa")
     expect(resolveToken(after, "--primary", DARK)).toBe("#8b5cf6")
-    expect(written.changes.map((change) => change.block)).toEqual([DARK, LIGHT])
   })
 
   it("repoints a component token for both themes and leaves the rest of the file alone", () => {
@@ -71,7 +63,7 @@ describe("writing an edit", () => {
     expect(resolveToken(after, "--button-secondary-bg", DARK)).toBe("#fafafa")
     const path = "packages/ui/src/components/atoms/button/button.tokens.css"
     const before = (files.get(path) ?? "").split("\n")
-    const lines = (written.files.get(path) ?? "").split("\n")
+    const lines = (written.get(path) ?? "").split("\n")
     expect(lines.filter((line, index) => line !== before[index])).toEqual([
       "    --button-secondary-bg: var(--inverse);",
     ])
@@ -79,11 +71,8 @@ describe("writing an edit", () => {
 })
 
 it("writes into the block that declares the token when a file opens .light twice", () => {
-  const { tokens: after, written } = rebuilt([
-    { token: "--panel-tile-bg", scope: LIGHT, to: "var(--card)" },
-  ])
+  const { tokens: after } = rebuilt([{ token: "--panel-tile-bg", scope: LIGHT, to: "var(--card)" }])
   expect(resolveToken(after, "--panel-tile-bg", LIGHT)).toBe(resolveToken(tokens, "--card", LIGHT))
-  expect(written.changes.map((change) => change.token)).toContain("--panel-tile-bg")
 })
 
 describe("design-system rules", () => {
@@ -180,11 +169,8 @@ describe("the graph with edits applied", () => {
       { token: "--primary", scope: DARK, to: "var(--violet-400)" },
     ]
     const { tokens: written, written: plan } = rebuilt(edits)
-    const css = [...plan.files.values()].join("\n")
+    const css = [...plan.values()].join("\n")
     expect(css.match(/--primary:/g)).toHaveLength(2)
-    expect(plan.changes.filter((change) => change.block === DARK)).toEqual([
-      expect.objectContaining({ token: "--primary", from: undefined, to: "var(--violet-400)" }),
-    ])
     expect(resolveToken(written, "--primary", LIGHT)).toBe(
       resolveToken(tokens, "--violet-600", LIGHT),
     )
@@ -194,7 +180,7 @@ describe("the graph with edits applied", () => {
   })
 
   it("writes the last of two edits to the same declaration", () => {
-    const { tokens: after, written } = rebuilt([
+    const { tokens: after } = rebuilt([
       { token: "--primary", scope: LIGHT, to: "var(--violet-400)" },
       { token: "--primary", scope: LIGHT, to: "var(--violet-600)" },
     ])
@@ -202,7 +188,6 @@ describe("the graph with edits applied", () => {
       resolveToken(tokens, "--violet-600", LIGHT),
     )
     expect(resolveToken(after, "--primary", DARK)).toBe(resolveToken(tokens, "--primary", DARK))
-    expect(written.changes.filter((change) => change.block === LIGHT)).toHaveLength(1)
   })
 
   it("keeps a dark edit when a light edit of the same token follows it", () => {
@@ -231,21 +216,5 @@ describe("display", () => {
     ["auto", { kind: "raw", text: "auto" }],
   ] as const)("reads %s", (value, display) => {
     expect(displayOf(tokens, value, LIGHT)).toEqual(display)
-  })
-})
-
-describe("preview", () => {
-  const edit = { token: "--secondary", scope: DARK, to: "var(--neutral-700)" } as const
-
-  it("covers the page by the root's theme", () => {
-    expect(previewCss(tokens.themes, [edit], "page")).toBe(
-      ".dark { --secondary: var(--neutral-700) !important; }",
-    )
-  })
-
-  it("scopes a theme edit to stages of that theme, by their own class or the root's", () => {
-    expect(previewCss(tokens.themes, [edit], { within: ".after" })).toBe(
-      ".after.dark, :root.dark .after:not(.light), .after .dark { --secondary: var(--neutral-700) !important; }",
-    )
   })
 })

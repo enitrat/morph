@@ -179,15 +179,7 @@ export function readImportable(
   root: string,
   config: MorphConfig,
 ): { specifier: string; names: string[] }[] {
-  return importsOf(componentsOf(config, snapshot(root, config, [])))
-}
-
-/** Each specifier the agent may import components from, with the names it imports there. */
-export function importableOf(ds: DesignSystem): { specifier: string; names: string[] }[] {
-  return importsOf(ds.components)
-}
-
-function importsOf(components: readonly Component[]): { specifier: string; names: string[] }[] {
+  const components = componentsOf(config, snapshot(root, config, []))
   const names = new Map<string, string[]>()
   for (const { importFrom, namedExports } of components)
     if (importFrom !== null)

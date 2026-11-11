@@ -1,9 +1,13 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { type AskNode, type FileNode, manifest } from "./manifest"
 import { replayTransport } from "./replay"
-import { createStage, REPLAY_SPEED } from "./stage"
+import { createStage } from "./stage"
 import { type Operation, operations, SessionId, type VariantId } from "./wire"
+
+// Skip the demo transport's cosmetic write delay; job progress uses the clock supplied below.
+beforeEach(() => vi.useFakeTimers())
+afterEach(() => vi.useRealTimers())
 
 const VARIANTS: readonly VariantId[] = ["v1", "v2", "v3"]
 
@@ -12,8 +16,10 @@ function replay() {
   const stage = createStage(manifest)
   let now = 0
   const transport = replayTransport(stage, () => now)
-  const call = async (op: Operation, body?: unknown) => {
-    const reply = await transport({ op, query: new URLSearchParams(), body })
+  const call = async (op: Operation, body?: unknown, query = new URLSearchParams()) => {
+    const pending = transport({ op, query, body })
+    await vi.runAllTimersAsync()
+    const reply = await pending
     if (reply.status !== 200) throw new Error(`${op}: ${JSON.stringify(reply.body)}`)
     return reply.body
   }
@@ -24,14 +30,24 @@ function replay() {
   const land = async (file: FileNode, ask: AskNode) => {
     const id = SessionId.parse(crypto.randomUUID())
     await call("ask", { id, words: ask.words, targets: target(file) })
-    now += 10_000
+    now += 1499
+    await call("page")
+    const early = operations.page.response.parse(await call("page"))
+    expect(early.sessions.find((entry) => entry.id === id)?.variants.map((v) => v.state)).toEqual([
+      "pending",
+      "pending",
+      "pending",
+    ])
+    now += 3501
     await call("page")
     const view = operations.page.response.parse(await call("page"))
     const session = view.sessions.find((entry) => entry.id === id)
-    expect(session?.variants.every((variant) => variant.state === "ready")).toBe(true)
+    expect(session?.variants.map((variant) => variant.state)).toEqual(["ready", "ready", "ready"])
+    for (const variant of session?.variants ?? [])
+      if (variant.state === "ready") expect(variant.title.length).toBeLessThanOrEqual(36)
     return id
   }
-  return { stage, call, land, target, advance: () => (now += 10_000) }
+  return { stage, call, land, target }
 }
 
 /** Where an ask is picked: the file itself, or a scene's entry for a stylesheet. */
@@ -43,40 +59,34 @@ const recorded = [...manifest.files.values()].flatMap((file) =>
 )
 
 describe("every recorded ask", () => {
-  it("has three variants on every file, with a title short enough for the thread card", () => {
-    expect(recorded.length).toBeGreaterThan(0)
-    for (const { ask } of recorded)
-      for (const variant of ask.variants) {
-        expect(variant.meta.title.length, variant.revision.key).toBeLessThanOrEqual(36)
-        expect(variant.meta.ms.total, variant.revision.key).toBeGreaterThan(
-          15_000 + variant.meta.ms.agent + variant.meta.ms.checks,
-        )
-        const lands = variant.meta.ms.total / REPLAY_SPEED
-        expect(lands, `${variant.revision.key} lands in ${lands} ms`).toBeGreaterThanOrEqual(1500)
-        expect(lands, `${variant.revision.key} lands in ${lands} ms`).toBeLessThanOrEqual(5000)
-      }
-  })
-
   it.each(recorded.map(({ file, ask }) => [`${file.name}: ${ask.words}`, file, ask] as const))(
     "%s: asks, flips each variant, keeps each, and refines one step",
     async (_, file, ask) => {
       for (const variant of VARIANTS) {
         const { stage, call, land } = replay()
         const id = await land(pickedAt(file), ask)
-        for (const choice of [...VARIANTS, "original" as const, variant])
+        for (const choice of [...VARIANTS, "original" as const, variant]) {
           operations.show.response.parse(await call("show", { id, variant: choice }))
-        expect(stage.snapshot().shown.get(file.path)?.key).toBe(
-          ask.variants[VARIANTS.indexOf(variant)]?.revision.key,
-        )
+          const expected =
+            choice === "original" ? file.original : ask.variants[VARIANTS.indexOf(choice)]?.revision
+          expect(stage.snapshot().shown.get(file.path)?.key).toBe(expected?.key)
+        }
         operations.keep.response.parse(await call("keep", { id, variant }))
         const kept = stage.snapshot().kept.get(file.path)
-        expect(kept?.from?.ask).toBe(ask)
+        expect(kept?.key).toBe(ask.variants[VARIANTS.indexOf(variant)]?.revision.key)
 
-        // Every other ask of every file is still offered on top of the keep.
-        for (const other of recorded.filter((entry) => entry.ask !== ask))
-          expect(manifest.offeredAt(pickedAt(other.file), stage.snapshot().kept)).toContain(
-            other.ask,
+        // A keep must not strand the visitor: other recorded asks stay reachable through suggestions.
+        for (const other of recorded.filter((entry) => entry.ask !== ask)) {
+          const reply = await call(
+            "suggest",
+            undefined,
+            new URLSearchParams({ path: pickedAt(other.file).path }),
           )
+          const words = operations.suggest.response
+            .parse(reply)
+            .suggestions.map((entry) => entry.words)
+          expect(words).toContain(other.ask.words)
+        }
 
         for (const refine of kept?.asks ?? []) {
           const { stage: again, call: callAgain, land: landAgain, target } = replay()
@@ -101,18 +111,4 @@ describe("every recorded ask", () => {
       }
     },
   )
-
-  it("offers each file's asks as suggestions where a designer picks it", async () => {
-    const transport = replayTransport(createStage(manifest))
-    for (const file of manifest.files.values()) {
-      if (file.kind === "style") continue
-      const reply = await transport({
-        op: "suggest",
-        query: new URLSearchParams({ path: file.path }),
-        body: undefined,
-      })
-      const words = operations.suggest.response.parse(reply.body).suggestions.map((s) => s.words)
-      expect(words).toEqual(manifest.offeredAt(file, manifest.original).map((ask) => ask.words))
-    }
-  })
 })

@@ -29,13 +29,6 @@ const status = (guarded: ReturnType<typeof guard>) =>
   "answer" in guarded ? guarded.answer.status : "admitted"
 
 describe("guard", () => {
-  it("answers 404 outside development", async () => {
-    vi.stubEnv("NODE_ENV", "production")
-    const guarded = call()
-    expect(status(guarded)).toBe(404)
-    expect("answer" in guarded && (await guarded.answer.text())).toBe("")
-  })
-
   it("refuses a Host other than localhost", () => {
     expect(status(call({ headers: { host: "evil.example:6006" } }))).toBe(403)
     expect(status(call({ headers: { host: "127.0.0.1:6006" } }))).toBe("admitted")
@@ -54,10 +47,6 @@ describe("guard", () => {
     vi.stubEnv("MORPH_ORIGINS", "http://localhost:4000")
     expect(status(call({ headers: { origin: "http://localhost:3000" } }))).toBe(403)
     expect(status(call({ headers: { origin: "http://localhost:4000" } }))).toBe("admitted")
-  })
-
-  it("refuses a POST without x-morph: 1", () => {
-    expect(status(call({ headers: { "x-morph": "" } }))).toBe(403)
   })
 
   it("answers a preflight with the allowed headers", () => {

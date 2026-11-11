@@ -30,6 +30,19 @@ const NONE = { light: "", dark: "" }
 
 afterEach(() => {
   document.documentElement.className = ""
+  document.head.replaceChildren()
+  document.body.replaceChildren()
+})
+
+it("previews only the active page theme, including after switching themes", () => {
+  document.head.innerHTML = `<style>${previewCss(themes, edits, "page")}</style>`
+  const root = document.documentElement
+  root.className = "light"
+  expect(getComputedStyle(root).getPropertyValue("--x")).toBe("light-edit")
+  expect(getComputedStyle(root).getPropertyValue("--y")).toBe("")
+  root.className = "dark"
+  expect(getComputedStyle(root).getPropertyValue("--x")).toBe("")
+  expect(getComputedStyle(root).getPropertyValue("--y")).toBe("dark-edit")
 })
 
 describe("a preview scoped to stages", () => {

@@ -70,17 +70,17 @@ function writeToken(repo: Host, now: Journal, edit: TokenEdit): WriteResult<Dial
   const written = applyEdits(tokens, [edit])
   const on = holdersOf(
     now.leases,
-    [...written.files.keys()].map((path) => RepoPath.parse(path)),
+    [...written.keys()].map((path) => RepoPath.parse(path)),
   )
   if (on.length > 0) return refuse({ kind: "held", on })
-  for (const [path, css] of written.files) {
+  for (const [path, css] of written) {
     try {
       writeFileSync(join(repo.root, path), css)
     } catch (cause) {
       return { ok: false, kind: "write-failed", operation: "write-source", resource: path, cause }
     }
   }
-  return { ok: true, value: { changed: true, file: [...written.files.keys()].join(", ") } }
+  return { ok: true, value: { changed: true, file: [...written.keys()].join(", ") } }
 }
 
 async function writeJsx(

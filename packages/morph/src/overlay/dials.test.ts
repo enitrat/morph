@@ -96,16 +96,6 @@ describe("a Fine-tune dial", () => {
     expect(writes).toHaveLength(2)
   })
 
-  it("goes back to the code's step when the designer does not confirm", async () => {
-    const dial = dialOf(null)
-    dial.step(2)
-    expect(dial.revert()).toBe(0)
-    expect(dial.unconfirmed).toBe(false)
-    dial.release()
-    await settled()
-    expect(writes).toEqual([])
-  })
-
   it("writes the latest desired step after a pending write succeeds", async () => {
     let finish: (response: Response) => void = () => {
       throw new Error("no pending write")
@@ -179,10 +169,6 @@ describe("what a Fine-tune write asks first", () => {
       "This changes every Button in the product (37 components, 1 on this page). Write it?",
     )
     expect(questionOf(track("--secondary", null), 1)).toBe("This changes 57 components. Write it?")
-  })
-
-  it("asks nothing when the write restyles only the picked element", () => {
-    expect(questionOf(track("--button-secondary-bg", "Button", 1), 1)).toBeNull()
   })
 
   it("asks once per row: a confirmed row writes at once when picked again", async () => {

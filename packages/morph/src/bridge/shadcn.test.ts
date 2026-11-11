@@ -7,7 +7,7 @@ import { declarationFor, themeNamed, type TokenName } from "../core/design-syste
 import { editError, stepsFor } from "../core/edit"
 import { ThemeName, MorphConfig, type MorphConfigInput } from "../core/config"
 import { scalesOf } from "../dial/utilities"
-import { buildDesignSystem, componentFor, importableOf, snapshotOf } from "./design-system"
+import { buildDesignSystem, componentFor, readImportable, snapshotOf } from "./design-system"
 import { propControls } from "./props"
 
 const FIXTURES = join(import.meta.dirname, "fixtures")
@@ -138,7 +138,7 @@ describe("a shadcn dashboard's design system", () => {
       importFrom: "@/components/ui/button",
       props: { kind: "cva", file: "src/components/ui/button.tsx" },
     })
-    expect(importableOf(ds)).toContainEqual({
+    expect(readImportable(DASH, config)).toContainEqual({
       specifier: "@/components/ui/button",
       names: ["Button"],
     })

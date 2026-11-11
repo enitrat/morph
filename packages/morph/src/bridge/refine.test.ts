@@ -17,7 +17,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { Anchor, type Ask, type Parent, SessionId, trailOf, VariantId } from "../variant/model"
 import { writeJson } from "./disk"
 import { commitTree } from "./git"
-import { plannerPrompt, variantPrompt } from "./prompt"
+import { variantPrompt } from "./prompt"
 import { ask, discard, jobDir, openSessions, readSessionFile, refine, show } from "./session"
 import { openHost, SPAWNING_TEST_MS } from "./test-fixtures"
 
@@ -79,8 +79,8 @@ async function fixture() {
   writeFileSync(
     claude,
     `#!/bin/sh
-cat > /dev/null
 bin=$(dirname "$0")
+cat > "$bin/prompt"
 echo run >> "$bin/calls"
 if [ -f "$bin/fail" ]; then
   echo '${JSON.stringify(failure)}'
@@ -135,10 +135,10 @@ describe("the prompts of a refine round", () => {
   }
   const request = askOf(SessionId.parse(randomUUID()), "make the price bigger and bolder")
 
-  it("uses the project's styling rules without assuming a framework", () => {
+  it("passes project styling rules and refinement context to the variant agent", () => {
     const prompt = variantPrompt(
       request,
-      null,
+      parent,
       { title: "Rows", description: "Use rows." },
       {
         imports: [],
@@ -146,31 +146,9 @@ describe("the prompts of a refine round", () => {
       },
     )
     expect(prompt).toContain("Use CSS modules already in this project.")
-    expect(prompt).not.toContain("React 19 + Next.js + Tailwind 4")
-    expect(prompt).not.toContain("Style with the Tailwind utilities")
-  })
-
-  it("carry the original words, the kept variant and the feedback, and start from the code", () => {
-    for (const prompt of [
-      plannerPrompt(request, parent),
-      variantPrompt(
-        request,
-        parent,
-        { title: "Bold", description: "Bolder." },
-        { imports: [], styleRules: [] },
-      ),
-    ]) {
-      expect(prompt).toContain("make these cards list rows")
-      expect(prompt).toContain(
-        'Kept "Compact row, price as lead": Cards become rows with the price first.',
-      )
-      expect(prompt).toContain(
-        'Their feedback on "Compact row, price as lead": make the price bigger and bolder',
-      )
-      expect(prompt).toContain("already contains the kept variant")
-    }
-    expect(plannerPrompt(request, parent)).toContain("differ only in how they apply the feedback")
-    expect(plannerPrompt(request, null)).not.toContain("kept variant")
+    expect(prompt).toContain("make these cards list rows")
+    expect(prompt).toContain("Cards become rows with the price first.")
+    expect(prompt).toContain("make the price bigger and bolder")
   })
 })
 
@@ -225,6 +203,10 @@ describe("refine", () => {
 
     unlinkSync(join(bin, "fail"))
     const planned = await refine(repo, request, signal)
+    const prompt = readFileSync(join(bin, "prompt"), "utf8")
+    expect(prompt).toContain("make these cards list rows")
+    expect(prompt).toContain("Cards become rows.")
+    expect(prompt).toContain("make the price bigger")
     expect(planned).toMatchObject({
       ok: true,
       value: {

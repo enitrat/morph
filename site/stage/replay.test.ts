@@ -1,9 +1,13 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { manifest } from "./manifest"
 import { replayTransport } from "./replay"
 import { createStage } from "./stage"
 import { type Operation, operations, type PageView, SessionId } from "./wire"
+
+// Skip the demo transport's cosmetic write delay; job progress uses the clock supplied below.
+beforeEach(() => vi.useFakeTimers())
+afterEach(() => vi.useRealTimers())
 
 const ROUTE = "site/scenes/pass/PassRoute.tsx"
 const PASS = "site/scenes/pass/Pass.tsx"
@@ -14,8 +18,11 @@ function setup() {
   const stage = createStage(manifest)
   let now = 0
   const transport = replayTransport(stage, () => now)
-  const call = async (op: Operation, body?: unknown, query = new URLSearchParams()) =>
-    transport({ op, query, body })
+  const call = async (op: Operation, body?: unknown, query = new URLSearchParams()) => {
+    const pending = transport({ op, query, body })
+    await vi.runAllTimersAsync()
+    return pending
+  }
   const page = async () => operations.page.response.parse((await call("page")).body)
   const ask = (words: string, path = ROUTE, id = SessionId.parse(crypto.randomUUID())) =>
     call("ask", {

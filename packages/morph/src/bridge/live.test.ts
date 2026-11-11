@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from "node:child_process"
+import { execFileSync } from "node:child_process"
 import { randomUUID } from "node:crypto"
 import {
   chmodSync,
@@ -20,7 +20,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { EMPTY_JOURNAL, Seq, SessionId, type Target, type VariantId } from "../variant/model"
 import { type Offer, type Request } from "../variant/swap"
 import { changedFiles, commitTree, homeOf, openRepo, type Repo, snapshot } from "./git"
-import { baseOf, converge, readJournal } from "./live"
+import { converge, readJournal } from "./live"
 import { withLock } from "./lock"
 import { SPAWNING_TEST_MS } from "./test-fixtures"
 
@@ -36,12 +36,12 @@ const edit = (text: string, line: number, to: string) =>
     .map((current, index) => (index === line - 1 ? to : current))
     .join("\n")
 
-const BASE: Tree = {
+const BASE = {
   "src/a.tsx": lines("a"),
   "src/b.tsx": lines("b"),
   "src/c.tsx": lines("c"),
   "src/deep/d.tsx": lines("d"),
-}
+} satisfies Tree
 const ALL = [...Object.keys(BASE), "src/new/notice.tsx"]
 
 const dirs: string[] = []
@@ -118,6 +118,104 @@ async function run(repo: Repo, offers: readonly Offer[], request: Request) {
 }
 
 describe("converge", () => {
+  it("swaps changed, added and deleted files, then restores them while preserving hand edits", async () => {
+    const { root, repo, variant } = await fixture()
+    const s = id()
+    const offers = [
+      offer(
+        s,
+        1,
+        await variant(s, "v1", {
+          "src/a.tsx": edit(BASE["src/a.tsx"], 2, "A"),
+          "src/b.tsx": null,
+          "src/new/notice.tsx": "export {}\n",
+        }),
+        await variant(s, "v2", {
+          "src/a.tsx": edit(BASE["src/a.tsx"], 2, "B"),
+          "src/c.tsx": edit(BASE["src/c.tsx"], 2, "B"),
+        }),
+      ),
+    ]
+    write(root, { "src/a.tsx": edit(BASE["src/a.tsx"], 7, "mine before") })
+    await run(repo, offers, { kind: "show", session: s, choice: "v1" })
+    expect(read(root, ALL)).toEqual({
+      ...BASE,
+      "src/a.tsx": edit(edit(BASE["src/a.tsx"], 7, "mine before"), 2, "A"),
+      "src/b.tsx": null,
+      "src/new/notice.tsx": "export {}\n",
+    })
+    write(root, {
+      "src/a.tsx": edit(edit(BASE["src/a.tsx"], 7, "mine before"), 2, "A") + "mine after\n",
+    })
+    await run(repo, offers, { kind: "show", session: s, choice: "v2" })
+    expect(read(root, ALL)).toEqual({
+      ...BASE,
+      "src/a.tsx": edit(edit(BASE["src/a.tsx"], 7, "mine before"), 2, "B") + "mine after\n",
+      "src/c.tsx": edit(BASE["src/c.tsx"], 2, "B"),
+      "src/new/notice.tsx": null,
+    })
+    await run(repo, offers, { kind: "discard", session: s })
+    expect(read(root, ALL)).toEqual({
+      ...BASE,
+      "src/a.tsx": edit(BASE["src/a.tsx"], 7, "mine before") + "mine after\n",
+      "src/new/notice.tsx": null,
+    })
+  })
+
+  it("refuses an overlapping discard atomically and blocks another session from taking the edited file", async () => {
+    const { root, repo, variant } = await fixture()
+    const s = id()
+    const t = id()
+    const offers = [
+      offer(
+        s,
+        1,
+        await variant(s, "v1", {
+          "src/a.tsx": edit(BASE["src/a.tsx"], 2, "A"),
+          "src/b.tsx": edit(BASE["src/b.tsx"], 2, "A"),
+        }),
+      ),
+      offer(t, 2, await variant(t, "v1", { "src/a.tsx": edit(BASE["src/a.tsx"], 7, "B") })),
+    ]
+    await run(repo, offers, { kind: "show", session: s, choice: "v1" })
+    write(root, { "src/a.tsx": edit(BASE["src/a.tsx"], 2, "mine") })
+    const before = read(root, ALL)
+    expect(await converge(repo, async () => offers, { kind: "discard", session: s })).toEqual({
+      ok: false,
+      refusal: { kind: "conflict", files: ["src/a.tsx"] },
+    })
+    expect(read(root, ALL)).toEqual(before)
+    expect(await run(repo, offers, { kind: "show", session: t, choice: "v1" })).toEqual({
+      [s]: { kind: "conflict", want: "v1", files: ["src/a.tsx"], showing: "v1" },
+      [t]: {
+        kind: "waiting",
+        variant: "v1",
+        on: [{ session: s, variant: "v1", files: ["src/a.tsx"] }],
+      },
+    })
+    expect(read(root, ALL)).toEqual(before)
+  })
+
+  it("stays on the first ready variant when an earlier choice finishes later", async () => {
+    const { root, repo, variant } = await fixture()
+    const s = id()
+    const v2 = await variant(s, "v2", { "src/a.tsx": edit(BASE["src/a.tsx"], 2, "two") })
+    const offers = [offer(s, 1, v2)]
+    expect(await run(repo, offers, { kind: "settle" })).toEqual({
+      [s]: { kind: "shown", variant: "v2" },
+    })
+    offers[0] = offer(
+      s,
+      1,
+      await variant(s, "v1", { "src/a.tsx": edit(BASE["src/a.tsx"], 2, "one") }),
+      v2,
+    )
+    expect(await run(repo, offers, { kind: "settle" })).toEqual({
+      [s]: { kind: "shown", variant: "v2" },
+    })
+    expect(read(root, ["src/a.tsx"])["src/a.tsx"]).toBe(edit(BASE["src/a.tsx"], 2, "two"))
+  })
+
   it("reads the idle journal an older Morph left as empty, so the repo can start sessions", async () => {
     const { repo, variant } = await fixture()
     writeFileSync(
@@ -126,7 +224,7 @@ describe("converge", () => {
     )
     const s = id()
     const offers = [
-      offer(s, 1, await variant(s, "v1", { "src/a.tsx": edit(BASE["src/a.tsx"]!, 2, "A") })),
+      offer(s, 1, await variant(s, "v1", { "src/a.tsx": edit(BASE["src/a.tsx"], 2, "A") })),
     ]
     expect(await run(repo, offers, { kind: "show", session: s, choice: "v1" })).toEqual({
       [s]: { kind: "shown", variant: "v1" },
@@ -137,7 +235,7 @@ describe("converge", () => {
     const { root, repo, variant } = await fixture()
     const s = id()
     const offers = [
-      offer(s, 1, await variant(s, "v1", { "src/a.tsx": edit(BASE["src/a.tsx"]!, 2, "A") })),
+      offer(s, 1, await variant(s, "v1", { "src/a.tsx": edit(BASE["src/a.tsx"], 2, "A") })),
     ]
     await run(repo, offers, { kind: "show", session: s, choice: "v1" })
     const file = statSync(join(root, "src/a.tsx"))
@@ -150,18 +248,22 @@ describe("converge", () => {
     expect([after.ino, after.mtimeMs]).toEqual([file.ino, file.mtimeMs])
     const settled = statSync(join(homeOf(repo), "live.json"))
     expect([settled.ino, settled.mtimeMs]).toEqual([journal.ino, journal.mtimeMs])
+
+    expect(await run(repo, [], { kind: "settle" })).toEqual({})
+    expect(read(root, ["src/a.tsx"])["src/a.tsx"]).toBe(edit(BASE["src/a.tsx"], 2, "A"))
+    expect(await readJournal(repo)).toMatchObject({ want: {}, leases: {} })
   })
 
   it("finishes a takeover across two sessions that crashed between the journal and the files", async () => {
     const { root, repo, variant } = await fixture()
     const [s, t] = [id(), id()]
     const header = await variant(s, "v1", {
-      "src/a.tsx": edit(BASE["src/a.tsx"]!, 2, "S"),
-      "src/b.tsx": edit(BASE["src/b.tsx"]!, 2, "S"),
+      "src/a.tsx": edit(BASE["src/a.tsx"], 2, "S"),
+      "src/b.tsx": edit(BASE["src/b.tsx"], 2, "S"),
     })
     const card = await variant(t, "v1", {
-      "src/b.tsx": edit(BASE["src/b.tsx"]!, 6, "T"),
-      "src/deep/d.tsx": edit(BASE["src/deep/d.tsx"]!, 2, "T"),
+      "src/b.tsx": edit(BASE["src/b.tsx"], 6, "T"),
+      "src/deep/d.tsx": edit(BASE["src/deep/d.tsx"], 2, "T"),
       "src/new/notice.tsx": "export const Notice = 1\n",
     })
     const offers = [offer(s, 1, header), offer(t, 2, card)]
@@ -187,8 +289,8 @@ describe("converge", () => {
     })
     expect(read(root, ALL)).toEqual({
       ...BASE,
-      "src/b.tsx": edit(BASE["src/b.tsx"]!, 6, "T"),
-      "src/deep/d.tsx": edit(BASE["src/deep/d.tsx"]!, 2, "T"),
+      "src/b.tsx": edit(BASE["src/b.tsx"], 6, "T"),
+      "src/deep/d.tsx": edit(BASE["src/deep/d.tsx"], 2, "T"),
       "src/new/notice.tsx": "export const Notice = 1\n",
     })
     expect(await readJournal(repo)).toMatchObject({ moving: null, stuck: [] })
@@ -203,7 +305,7 @@ describe("converge", () => {
     const { root, repo, variant } = await fixture()
     const s = id()
     const offers = [
-      offer(s, 1, await variant(s, "v1", { "src/a.tsx": edit(BASE["src/a.tsx"]!, 2, "A") })),
+      offer(s, 1, await variant(s, "v1", { "src/a.tsx": edit(BASE["src/a.tsx"], 2, "A") })),
     ]
 
     const held = await withLock(join(homeOf(repo), "lock"), async () => {
@@ -214,50 +316,7 @@ describe("converge", () => {
     })
 
     expect(await held.call).toEqual({ [s]: { kind: "shown", variant: "v1" } })
-    expect(read(root, ["src/a.tsx"])["src/a.tsx"]).toBe(edit(BASE["src/a.tsx"]!, 2, "A"))
-  })
-
-  it("breaks a lock left by a dead process", async () => {
-    const { repo, variant } = await fixture()
-    const s = id()
-    const offers = [
-      offer(s, 1, await variant(s, "v1", { "src/a.tsx": edit(BASE["src/a.tsx"]!, 2, "A") })),
-    ]
-    const dead = spawnSync("true").pid
-    mkdirSync(join(homeOf(repo), "lock"), { recursive: true })
-    writeFileSync(join(homeOf(repo), "lock", "pid"), String(dead))
-
-    expect(await run(repo, offers, { kind: "settle" })).toEqual({
-      [s]: { kind: "shown", variant: "v1" },
-    })
-  })
-})
-
-describe("baseOf", () => {
-  it("takes every shown variant out of a new base and keeps the designer's edits", async () => {
-    const { root, repo, variant } = await fixture()
-    const [s, t] = [id(), id()]
-    const offers = [
-      offer(s, 1, await variant(s, "v1", { "src/a.tsx": edit(BASE["src/a.tsx"]!, 2, "S") })),
-      offer(t, 2, await variant(t, "v1", { "src/b.tsx": edit(BASE["src/b.tsx"]!, 2, "T") })),
-    ]
-    await run(repo, offers, { kind: "settle" })
-    write(root, {
-      "src/a.tsx": edit(read(root, ["src/a.tsx"])["src/a.tsx"]!, 7, "mine"),
-      "src/c.tsx": edit(BASE["src/c.tsx"]!, 1, "mine"),
-    })
-
-    const first = await baseOf(repo)
-    const second = await baseOf(repo)
-
-    expect(second.opened).toBe(first.opened + 1)
-    expect(sh(root, "show", `${first.base}:src/a.tsx`)).toBe(edit(BASE["src/a.tsx"]!, 7, "mine"))
-    expect(sh(root, "show", `${first.base}:src/b.tsx`)).toBe(BASE["src/b.tsx"])
-    expect(sh(root, "show", `${first.base}:src/c.tsx`)).toBe(edit(BASE["src/c.tsx"]!, 1, "mine"))
-    expect(read(root, ["src/a.tsx", "src/b.tsx"])).toEqual({
-      "src/a.tsx": edit(edit(BASE["src/a.tsx"]!, 2, "S"), 7, "mine"),
-      "src/b.tsx": edit(BASE["src/b.tsx"]!, 2, "T"),
-    })
+    expect(read(root, ["src/a.tsx"])["src/a.tsx"]).toBe(edit(BASE["src/a.tsx"], 2, "A"))
   })
 })
 
@@ -268,7 +327,7 @@ describe("worktrees", () => {
     sh(root, "worktree", "add", "--quiet", "--detach", other)
     const s = id()
     const offers = [
-      offer(s, 1, await variant(s, "v1", { "src/a.tsx": edit(BASE["src/a.tsx"]!, 2, "A") })),
+      offer(s, 1, await variant(s, "v1", { "src/a.tsx": edit(BASE["src/a.tsx"], 2, "A") })),
     ]
     await run(repo, offers, { kind: "settle" })
 

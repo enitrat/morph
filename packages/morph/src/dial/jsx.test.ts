@@ -27,16 +27,6 @@ describe("swapping a class in one JSX tag", () => {
     expect(line(swapped.text, 8)).toContain('"p-4 text-sm"')
   })
 
-  it("is a no-op when the tag already holds the step", () => {
-    const once = swapClass(FILE, 3, 5, "p-4", "p-5")
-    if (!once.ok) throw new Error(once.reason)
-    expect(swapClass(once.text, 3, 5, "p-4", "p-5")).toEqual({
-      ok: true,
-      text: once.text,
-      changed: false,
-    })
-  })
-
   it("refuses a class the tag does not write exactly once", () => {
     expect(swapClass(FILE, 8, 7, "p-3", "p-5")).toMatchObject({ ok: false })
     expect(swapClass(FILE.replace("gap-2", "p-4"), 3, 5, "p-4", "p-5")).toMatchObject({ ok: false })

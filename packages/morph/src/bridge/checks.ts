@@ -76,7 +76,7 @@ export function commandAt(root: string, workspace: string, app: string, bin: str
  * `file` as a check's argument from `cwd`: relative inside it, absolute outside, since formatters
  * such as oxfmt refuse a path with `..` in it.
  */
-export function argPath(cwd: string, file: string): string {
+function argPath(cwd: string, file: string): string {
   const path = relative(cwd, file)
   return path.startsWith("..") ? file : path
 }

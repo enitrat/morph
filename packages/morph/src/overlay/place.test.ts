@@ -1,17 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { PANEL_NARROW, PANEL_WIDTH } from "./model"
-import {
-  anchor,
-  cardSpot,
-  dockFor,
-  labelSpots,
-  overlap,
-  PIN,
-  pinSpots,
-  tagSpot,
-  uncovered,
-} from "./place"
+import { anchor, cardSpot, dockFor, labelSpots, PIN, pinSpots, tagSpot, uncovered } from "./place"
 
 const viewport = { width: 1440, height: 900 }
 const box = (left: number, top: number, right: number, bottom: number) => ({
@@ -56,7 +46,6 @@ describe("dockFor", () => {
   })
 
   it("ignores a selection scrolled out of view", () => {
-    expect(overlap(box(1000, -500, 1300, -100), "right", PANEL_WIDTH, viewport)).toBe(0)
     expect(dockFor(box(1000, -500, 1300, -100), viewport, "right").side).toBe("right")
   })
 })
@@ -151,17 +140,6 @@ describe("cardSpot", () => {
       y: 200,
       docked: false,
     })
-  })
-
-  it("goes left of a target whose right side the inspector covers", () => {
-    const area = uncovered({ side: "right", width: PANEL_WIDTH }, viewport)
-    const spot = cardSpot(box(700, 200, 1000, 300), card, area, viewport)
-    expect(spot).toMatchObject({ docked: false, x: 700 - 12 - card.width })
-  })
-
-  it("goes below a full-width target", () => {
-    const spot = cardSpot(box(0, 80, 1440, 300), card, full, viewport)
-    expect(spot).toMatchObject({ docked: false, y: 312 })
   })
 
   it("docks to a corner when no side has room, still clear of the target", () => {

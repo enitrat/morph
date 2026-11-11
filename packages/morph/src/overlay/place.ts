@@ -47,7 +47,7 @@ export function panelSpan(side: Side, width: number, viewport: Viewport): [numbe
 }
 
 /** How many pixels of `box`'s width run under the inspector, counting its margin as covered. */
-export function overlap(box: Box, side: Side, width: number, viewport: Viewport): number {
+function overlap(box: Box, side: Side, width: number, viewport: Viewport): number {
   if (box.bottom < 0 || box.top > viewport.height) return 0
   const [a, b] = panelSpan(side, width, viewport)
   return Math.max(0, Math.min(box.right, b + MARGIN) - Math.max(box.left, a - MARGIN))

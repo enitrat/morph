@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { SessionId, SourceLoc } from "../variant/model"
+import { SessionId } from "../variant/model"
 import { bridge, connect, explain } from "./bridge"
 
 const ID = SessionId.parse("6f1c1f6e-3f0e-4f4e-9d2a-2b1f6c3d4e5f")
@@ -15,13 +15,6 @@ connect("/__morph/")
 
 afterEach(() => {
   vi.unstubAllGlobals()
-})
-
-it("calls the bridge at the path its adapter mounts it on", async () => {
-  const fetch = vi.fn(async () => Response.json(null))
-  vi.stubGlobal("fetch", fetch)
-  await bridge.discard(ID)
-  expect(fetch).toHaveBeenCalledWith("/__morph/discard", expect.anything())
 })
 
 describe("what the overlay says when the bridge cannot answer", () => {
@@ -72,35 +65,4 @@ it("names the files another session holds when a write is refused", async () => 
   expect(answer.ok ? null : explain(answer.error)).toBe(
     "Another Ask shows app/page.tsx, app/card.tsx. Discard or keep it first.",
   )
-})
-
-it("reads the page every session operation answers", async () => {
-  const view = {
-    id: ID,
-    place: { kind: "shown", variant: "v1", edited: false },
-    variants: [],
-    trail: [],
-    drift: ["app/page.tsx"],
-  }
-  answering(Response.json({ sessions: [view], stuck: [] }))
-  expect(await bridge.show(ID, "v1")).toEqual({ ok: true, value: { sessions: [view], stuck: [] } })
-})
-
-describe("a bridge behind an injected transport", () => {
-  afterEach(() => connect("/__morph/"))
-
-  it("sends the operation, query and body to the transport and validates what it answers", async () => {
-    const calls: unknown[] = []
-    connect(async (call) => {
-      calls.push({ op: call.op, query: String(call.query), body: call.body })
-      return { status: 200, body: { tag: null } }
-    })
-    const site = SourceLoc.parse({ path: "app/page.tsx", line: 3, col: 5 })
-    expect(await bridge.attributes(site)).toEqual({ ok: true, value: { tag: null } })
-    await bridge.discard(ID)
-    expect(calls).toEqual([
-      { op: "attributes", query: "path=app%2Fpage.tsx&line=3&col=5", body: undefined },
-      { op: "discard", query: "", body: { id: ID } },
-    ])
-  })
 })

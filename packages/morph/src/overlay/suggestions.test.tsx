@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 import { MotionGlobalConfig } from "motion/react"
-import { createElement } from "react"
+import { createElement, useReducer } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, expect, it, vi } from "vitest"
 
 import { connect, type WireCall } from "./bridge"
 import { invalidateCatalog } from "./catalog"
-import { type Event } from "./model"
+import { initial, reduce } from "./model"
 import { page } from "./session-fixtures"
 import { invalidateSources } from "./source"
 import { Composer } from "./ui/Composer"
@@ -49,23 +49,31 @@ function mountComposer(answerSuggest: (call: WireCall) => { status: number; body
     throw new Error(`unexpected ${call.op}`)
   })
   const element = pricingCard()
-  const events: Event[] = []
   const host = document.createElement("div")
   document.body.append(host)
   root = createRoot(host)
-  root.render(
-    createElement(Composer, {
+  function Harness() {
+    const [state, dispatch] = useReducer(reduce, {
+      ...initial,
+      open: true,
       composer: {
         target: { kind: "element", element },
         draft: { words: "", marks: [] },
         tool: null,
       },
-      area: { left: 0, right: innerWidth },
-      dispatch: (event: Event) => events.push(event),
-    }),
-  )
+    })
+    return (
+      state.composer &&
+      createElement(Composer, {
+        composer: state.composer,
+        area: { left: 0, right: innerWidth },
+        dispatch,
+      })
+    )
+  }
+  root.render(createElement(Harness))
   const chips = () => [...host.querySelectorAll("[aria-label=Suggestions] button")]
-  return { calls, events, chips, host }
+  return { calls, chips, host }
 }
 
 it("offers the bridge's suggestions for the picked site, and a click asks with those words", async () => {
@@ -91,8 +99,6 @@ it("offers the bridge's suggestions for the picked site, and a click asks with t
   await vi.waitFor(() => expect(ui.calls.some((call) => call.op === "ask")).toBe(true))
   const sent = ui.calls.find((call) => call.op === "ask")?.body
   expect(sent).toMatchObject({ words: "Make it feel premium" })
-  expect(ui.events[0]).toMatchObject({ kind: "asked", pin: { words: "Make it feel premium" } })
-  expect(ui.events.some((event) => event.kind === "typed")).toBe(false)
 })
 
 it("moves from the empty field into the chips with ↓", async () => {
@@ -126,6 +132,18 @@ it("starts an empty composer with the bridge's prefill once, and keeps the chips
     },
   }))
   await vi.waitFor(() => expect(ui.chips()).toHaveLength(2))
-  const typed = ui.events.filter((event) => event.kind === "typed")
-  expect(typed).toEqual([{ kind: "typed", words: "Departure board" }])
+  const field = ui.host.querySelector("textarea")
+  if (!field) throw new Error("composer field missing")
+  await vi.waitFor(() => expect(field.value).toBe("Departure board"))
+  const type = (words: string) => {
+    // Use the native setter so React observes a browser edit instead of its tracked value setter.
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(field, words)
+    field.dispatchEvent(new Event("input", { bubbles: true }))
+  }
+  type("My own layout")
+  await vi.waitFor(() => expect(ui.chips()).toHaveLength(0))
+  expect(field.value).toBe("My own layout")
+  type("")
+  await vi.waitFor(() => expect(ui.chips()).toHaveLength(2))
+  expect(field.value).toBe("")
 })

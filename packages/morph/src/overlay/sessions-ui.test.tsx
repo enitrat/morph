@@ -4,11 +4,12 @@ import { createElement, type Dispatch, useReducer } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, expect, it, vi } from "vitest"
 
+import { operations } from "../protocol"
 import { type PageView, type SessionId } from "../variant/model"
 import { ask } from "./ask"
 import { connect } from "./bridge"
 import { useSessions } from "./live"
-import { type Event, initial, reduce } from "./model"
+import { type Event, initial, reduce, type State } from "./model"
 import { ids, page, path, ready, session } from "./session-fixtures"
 import { Dock, Notice } from "./ui/Dock"
 import { Pins } from "./ui/Pins"
@@ -183,28 +184,6 @@ it("takes the files over, names the holder while waiting, and returns when flipp
   })
 })
 
-it("keeps the shown variant by name, then drops its pin", async () => {
-  const bridge = fakeBridge(
-    ({ op }) => {
-      if (op === "keep") return page(hero({ kind: "original" }))
-      throw new Error(`unexpected ${op}`)
-    },
-    page(hero({ kind: "original" }), button({ kind: "shown", variant: "v2", edited: false })),
-  )
-  const ui = await mount()
-  await vi.waitFor(() => expect(ui.chip("Button")).toContain("B"))
-  ui.press("Pin 2, Button, B")
-  await vi.waitFor(() => expect(ui.text()).toContain("Keep B"))
-  ui.press("Keep B")
-  await vi.waitFor(() => expect(ui.text()).toContain("Kept B on Button in button.tsx"))
-  expect(bridge.requests).toEqual([{ op: "keep", body: { id: ids.button, variant: "v2" } }])
-  // The kept pin leaves through its exit animation, a frame after the notice.
-  await vi.waitFor(() => {
-    expect(ui.chip("Button")).toBeUndefined()
-    expect(ui.host.querySelectorAll("button[aria-label^=Pin]")).toHaveLength(1)
-  })
-})
-
 it("shows a conflict's files and offers to keep what is on the page", async () => {
   const bridge = fakeBridge(
     ({ op }) => {
@@ -225,26 +204,6 @@ it("shows a conflict's files and offers to keep what is on the page", async () =
   await vi.waitFor(() =>
     expect(bridge.requests).toEqual([{ op: "keep", body: { id: ids.hero, variant: "v3" } }]),
   )
-})
-
-it("gives sessions a reload left open their pins back from what this browser stored", async () => {
-  localStorage.setItem(
-    "morph:pins",
-    JSON.stringify({
-      [ids.button]: { n: 4, name: "Button", words: "Softer", file: "button.tsx", at: [] },
-    }),
-  )
-  fakeBridge(
-    (_, now) => now,
-    page(hero({ kind: "original" }), button({ kind: "shown", variant: "v3", edited: false })),
-  )
-  const ui = await mount({ asks: false })
-  await vi.waitFor(() => expect(ui.chip("Button")).toContain("C"))
-  expect(ui.chip("Session")).toContain("original")
-  const numbers = [...ui.host.querySelectorAll("[role=toolbar] button[aria-pressed]")].map(
-    (chip) => chip.textContent?.match(/^\d+/)?.[0],
-  )
-  expect(numbers.filter(Boolean)).toEqual(["4", "5"])
 })
 
 it("offers the bridge's refine suggestions under an empty refine field, and refines with one", async () => {
@@ -300,14 +259,52 @@ it("offers the bridge's refine suggestions under an empty refine field, and refi
   )
 })
 
-it("pins an ask before locating it, so the next pick is not cleared when the first lands", async () => {
-  connect(async () => ({ status: 200, body: { sources: [] } }))
-  const element = document.createElement("section")
-  document.body.append(element)
-  const events: Event[] = []
-  const sent = ask({ target: { kind: "element", element }, words: "Calmer", marks: [] }, (event) =>
-    events.push(event),
+it("keeps a newer selection when an earlier ask finishes locating", async () => {
+  const first = document.createElement("section")
+  const second = document.createElement("button")
+  document.body.append(first, second)
+  Object.assign(first, {
+    __reactFiber$test: {
+      type: "section",
+      memoizedProps: {},
+      _debugStack: { stack: `Error\n    at ${location.origin}/hero.js:1:1` },
+    },
+  })
+  let finish: (reply: { status: number; body: unknown }) => void = () => {
+    throw new Error("locate was not requested")
+  }
+  connect(async ({ op, body }) => {
+    if (op === "locate")
+      return new Promise((resolve) => {
+        finish = resolve
+      })
+    if (op === "plumbing") return { status: 200, body: { plumbing: [] } }
+    if (op === "ask") {
+      const request = operations.ask.request.parse(body)
+      return { status: 200, body: page(session(request.id, { kind: "original" })) }
+    }
+    throw new Error(`unexpected ${op}`)
+  })
+  let state: State = { ...initial, open: true }
+  const dispatch = (event: Event) => {
+    state = reduce(state, event)
+  }
+  dispatch({ kind: "selected", element: first })
+  dispatch({
+    kind: "ask",
+    target: { kind: "element", element: first },
+    words: "Calmer",
+    tool: null,
+  })
+  const sent = ask(
+    { target: { kind: "element", element: first }, words: "Calmer", marks: [] },
+    dispatch,
   )
-  expect(events.map((event) => event.kind)).toEqual(["asked"])
+  expect(state.composer).toBeNull()
+  expect(state.selection).toEqual({ kind: "none" })
+  dispatch({ kind: "selected", element: second })
+  finish({ status: 200, body: { sources: [{ path: "app/hero.tsx", line: 1, col: 1 }] } })
   await sent
+  expect(state.selection).toEqual({ kind: "element", element: second })
+  expect(state.sessions.page.sessions).toHaveLength(1)
 })

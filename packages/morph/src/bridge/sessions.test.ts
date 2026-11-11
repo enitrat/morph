@@ -184,19 +184,22 @@ describe("several sessions", () => {
     expect(read("src/card.tsx")).toBe(edit(BASE["src/card.tsx"], 2, "card"))
   })
 
-  it("gives a shared file to the newest flip, and back to the waiting session when the holder is discarded", async () => {
-    const { repo, open, ready, read } = await fixture()
+  it("gives a shared file to the newest flip and returns it on discard, preserving hand edits", async () => {
+    const { root, repo, open, ready, read, places } = await fixture()
     const header = await open()
     const card = await open()
     await ready(header, "v1", {
       "app/page.tsx": edit(BASE["app/page.tsx"], 2, "header"),
       "src/header.tsx": edit(BASE["src/header.tsx"], 2, "header"),
     })
+    await show(repo, header, "v1")
+    write(root, { "app/page.tsx": read("app/page.tsx") + "mine\n" })
     await ready(card, "v1", {
       "app/page.tsx": edit(BASE["app/page.tsx"], 7, "card"),
       "src/card.tsx": edit(BASE["src/card.tsx"], 2, "card"),
     })
-    await show(repo, header, "v1")
+    expect((await places())[header]).toMatchObject({ kind: "shown", variant: "v1" })
+    expect((await places())[card]).toMatchObject({ kind: "waiting" })
 
     const taken = await show(repo, card, "v1")
 
@@ -208,15 +211,20 @@ describe("several sessions", () => {
       },
       { kind: "shown", variant: "v1", edited: false },
     ])
-    expect(read("app/page.tsx")).toBe(edit(BASE["app/page.tsx"], 7, "card"))
+    expect(read("app/page.tsx")).toBe(edit(BASE["app/page.tsx"], 7, "card") + "mine\n")
     expect(read("src/header.tsx")).toBe(BASE["src/header.tsx"])
+
+    await show(repo, header, "v1")
+    expect((await places())[card]).toMatchObject({ kind: "waiting" })
+    expect(read("app/page.tsx")).toBe(edit(BASE["app/page.tsx"], 2, "header") + "mine\n")
+    await show(repo, card, "v1")
 
     const discarded = await discard(repo, card)
 
     expect(discarded.ok && discarded.value.sessions).toMatchObject([
       { id: header, place: { kind: "shown", variant: "v1" } },
     ])
-    expect(read("app/page.tsx")).toBe(edit(BASE["app/page.tsx"], 2, "header"))
+    expect(read("app/page.tsx")).toBe(edit(BASE["app/page.tsx"], 2, "header") + "mine\n")
     expect(read("src/card.tsx")).toBe(BASE["src/card.tsx"])
   })
 
@@ -296,13 +304,21 @@ describe("several sessions", () => {
     await ready(header, "v1", { "src/header.tsx": edit(BASE["src/header.tsx"], 2, "header") })
     await page(repo)
     expect(read("src/header.tsx")).toBe(edit(BASE["src/header.tsx"], 2, "header"))
-    write(root, { "src/card.tsx": edit(BASE["src/card.tsx"], 5, "mine") })
+    write(root, {
+      "src/header.tsx": read("src/header.tsx") + "mine on shown file\n",
+      "src/card.tsx": edit(BASE["src/card.tsx"], 5, "mine"),
+    })
 
     const next = await open()
 
     const base = (await readSessionFile(repo, next))?.base
-    expect(sh(root, "show", `${base}:src/header.tsx`)).toBe(BASE["src/header.tsx"])
+    expect(sh(root, "show", `${base}:src/header.tsx`)).toBe(
+      BASE["src/header.tsx"] + "mine on shown file\n",
+    )
     expect(sh(root, "show", `${base}:src/card.tsx`)).toBe(edit(BASE["src/card.tsx"], 5, "mine"))
+    expect(read("src/header.tsx")).toBe(
+      edit(BASE["src/header.tsx"], 2, "header") + "mine on shown file\n",
+    )
   })
 
   it("leaves no lock folder behind for a session it keeps or discards", async () => {

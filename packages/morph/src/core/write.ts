@@ -105,47 +105,22 @@ function withChange(tokens: Tokens, change: LineChange): Tokens {
   return { ...tokens, graph }
 }
 
-/**
- * The line changes `edits` write, each edit planned against the tokens the edits before it left,
- * so a light and a dark edit of a token with no `.dark` declaration add that declaration once.
- * Two changes of one declaration merge into one, from the code's value to the last.
- */
-function planEdits(tokens: Tokens, edits: readonly TokenEdit[]): LineChange[] {
-  let next = tokens
-  const changes: LineChange[] = []
-  for (const edit of edits) {
-    for (const change of planEdit(next, edit)) {
-      next = withChange(next, change)
-      const at = changes.findIndex(
-        (entry) =>
-          entry.file === change.file &&
-          entry.token === change.token &&
-          entry.block === change.block,
-      )
-      const earlier = changes[at]
-      if (earlier) changes[at] = { ...earlier, to: change.to }
-      else changes.push(change)
-    }
-  }
-  return changes
-}
-
-/** The files `edits` rewrite, with their new contents, and the line changes behind them. */
-export function applyEdits(
-  tokens: Tokens,
-  edits: readonly TokenEdit[],
-): { files: Map<string, string>; changes: LineChange[] } {
+/** The files `edits` rewrite, applying each edit to the values left by the preceding edits. */
+export function applyEdits(tokens: Tokens, edits: readonly TokenEdit[]): Map<string, string> {
   assertEdits(tokens, edits)
   const read = new Map(tokens.files.map((file) => [file.path, file.css]))
   const out = new Map<string, string>()
-  const changes = planEdits(tokens, edits)
-  for (const change of changes) {
-    const css = out.get(change.file) ?? read.get(change.file)
-    if (css === undefined) throw new Error(`${change.file} was not read`)
-    out.set(
-      change.file,
-      change.from === undefined ? insertIn(css, tokens, change) : replaceIn(css, tokens, change),
-    )
+  let next = tokens
+  for (const edit of edits) {
+    for (const change of planEdit(next, edit)) {
+      const css = out.get(change.file) ?? read.get(change.file)
+      if (css === undefined) throw new Error(`${change.file} was not read`)
+      out.set(
+        change.file,
+        change.from === undefined ? insertIn(css, tokens, change) : replaceIn(css, tokens, change),
+      )
+      next = withChange(next, change)
+    }
   }
-  return { files: out, changes }
+  return out
 }
