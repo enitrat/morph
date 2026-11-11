@@ -6,6 +6,7 @@ import { type Dispatch, type ReactNode, useEffect, useRef, useState } from "reac
 import { type Event, type State, type Tab } from "../model"
 import { isGenerating, pinned, statusOf } from "../sessions"
 import { Glyph, type GlyphName } from "./Glyph"
+import { useGlass } from "./glass"
 import { Kbd } from "./Kbd"
 import { dur, ease, spring } from "./lib/motion"
 import { Disc } from "./Pins"
@@ -28,14 +29,14 @@ function Chips({ state, dispatch }: { state: State; dispatch: Dispatch<Event> })
             onClick={() => {
               dispatch({ kind: "card", id: on ? null : pin.id })
             }}
-            className={`ring-focus flex h-8 items-center gap-1.5 rounded-full pr-2.5 pl-1 text-[12px] transition-colors duration-150 ${
+            className={`ring-focus flex h-(--ctrl) items-center gap-1.5 rounded-full pr-(--inset) pl-1.5 text-sm transition-colors duration-150 ${
               on ? "bg-surface-2 shadow-[inset_0_0_0_1px_var(--ring)]" : "hover:bg-surface-2"
             }`}
           >
             <Disc pin={pin} view={view} size={22} />
             <span className="max-w-24 truncate font-medium text-ink">{pin.name}</span>
             <span
-              className={`font-mono text-[11px] ${
+              className={`font-mono text-sm ${
                 status.tone === "on"
                   ? "text-accent"
                   : status.tone === "warn"
@@ -69,7 +70,7 @@ export function Notice({ state, center }: { state: State; center: number }) {
             initial={{ opacity: 0, y: reduce ? 0 : 6 }}
             animate={{ opacity: 1, y: 0, transition: { duration: dur.enter, ease: ease.out } }}
             exit={{ opacity: 0, transition: { duration: dur.exit } }}
-            className={`glass flex w-max max-w-[520px] flex-none items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] ${
+            className={`glass flex min-h-(--ctrl) w-max max-w-[520px] flex-none items-center gap-2 rounded-(--r-ctrl) px-(--inset) py-2 ${
               notice.tone === "warn" ? "text-warn" : "text-ink"
             }`}
           >
@@ -106,7 +107,7 @@ function Hint({ state }: { state: State }) {
           ? [<span key="l">Click a label to pick one</span>, <span key="e">{k("esc")} clear</span>]
           : [<span key="c">Click to select</span>, <span key="d">Drag to frame</span>]
   return (
-    <span className="flex items-center gap-3 px-2 text-[12px] whitespace-nowrap text-ink-2">
+    <span className="flex items-center gap-(--inset) px-1 text-sm whitespace-nowrap text-ink-2">
       {parts}
     </span>
   )
@@ -132,12 +133,12 @@ function Tool({
       aria-pressed={on}
       title={`${label}  ${shortcut}`}
       onClick={onClick}
-      className={`ring-focus relative flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] font-medium transition-colors duration-150 ${on ? "text-accent" : "text-ink-2 hover:text-ink"}`}
+      className={`ring-focus relative flex h-(--ctrl) items-center gap-1.5 rounded-full px-(--inset) font-medium transition-colors duration-150 ${on ? "text-ink" : "text-ink-2 hover:text-ink"}`}
     >
       {on && (
         <motion.span
           layoutId="morph-dock-plate"
-          className="absolute inset-0 rounded-full bg-surface-2 shadow-[inset_0_0_0_1px_var(--ring)]"
+          className="absolute inset-0 rounded-full bg-accent-soft shadow-(--press)"
           transition={reduce ? { duration: 0 } : spring.move}
         />
       )}
@@ -155,7 +156,7 @@ function Running({ state }: { state: State }) {
   const running = views.filter(isGenerating).length
   if (views.length === 0) return null
   return (
-    <span className="font-mono text-[11px] text-accent">
+    <span className="font-mono text-sm text-ink-2">
       {running > 0 ? `${running} running` : `${views.length} open`}
     </span>
   )
@@ -177,6 +178,7 @@ function Advanced({
   dispatch: Dispatch<Event>
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  useGlass(ref)
   useEffect(() => {
     const away = (event: PointerEvent) => {
       if (!event.composedPath().some((node) => node === ref.current)) onClose()
@@ -194,9 +196,9 @@ function Advanced({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0, transition: { duration: dur.enter, ease: ease.out } }}
       exit={{ opacity: 0, transition: { duration: dur.exit } }}
-      className="glass pointer-events-auto absolute bottom-[52px] grid w-[300px] gap-1 rounded-xl p-2"
+      className="glass pointer-events-auto absolute bottom-[calc(var(--ctrl)+20px)] grid w-[300px] gap-1 rounded-(--r-panel) p-(--pad)"
     >
-      <span className="px-2 pt-1 pb-1.5 text-[11px] font-medium tracking-wide text-ink-3 uppercase">
+      <span className="px-(--inset) pt-1 pb-1 text-xs font-medium tracking-[0.08em] text-ink-3 uppercase">
         Advanced
       </span>
       {TOOLS.map((tool) => {
@@ -213,20 +215,20 @@ function Advanced({
                 tools: on ? tools.filter((id) => id !== tool.id) : [...tools, tool.id],
               })
             }}
-            className="ring-focus flex items-start gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-surface-2"
+            className="ring-focus flex items-start gap-2.5 rounded-(--r-ctrl) px-(--inset) py-2.5 text-left hover:bg-surface-2"
           >
             <span className="grid min-w-0 flex-1 gap-0.5">
-              <span className="flex items-center gap-1.5 text-[12.5px] font-medium text-ink">
+              <span className="flex items-center gap-1.5 font-medium text-ink">
                 {tool.label}
                 <Kbd>{tool.key}</Kbd>
               </span>
-              <span className="text-[11.5px] text-ink-3">{tool.what}</span>
+              <span className="text-sm text-ink-3">{tool.what}</span>
             </span>
             <span
               className={`mt-0.5 flex h-[18px] w-[30px] flex-none items-center rounded-full p-0.5 transition-colors duration-150 ${on ? "bg-accent" : "bg-surface-3"}`}
             >
               <span
-                className={`size-3.5 rounded-full bg-white shadow-sm transition-transform duration-150 ${on ? "translate-x-3" : ""}`}
+                className={`size-3.5 rounded-full bg-surface-solid shadow-sm transition-transform duration-150 ${on ? "translate-x-3" : ""}`}
               />
             </span>
           </button>
@@ -249,6 +251,8 @@ export function Dock({
   const reduce = useReducedMotion()
   const swap = { duration: reduce ? 0 : 0.2, ease: ease.out }
   const [advanced, setAdvanced] = useState(false)
+  const bar = useRef<HTMLDivElement>(null)
+  useGlass(bar)
   return (
     <motion.div
       className="pointer-events-none fixed bottom-4 z-[2147483645] flex w-0 justify-center"
@@ -268,10 +272,11 @@ export function Dock({
         )}
       </AnimatePresence>
       <motion.div
+        ref={bar}
         layout
         role="toolbar"
         aria-label="Morph"
-        className="glass pointer-events-auto flex h-11 w-max flex-none items-center gap-1 overflow-hidden rounded-full px-1.5"
+        className="glass pointer-events-auto flex h-[calc(var(--ctrl)+12px)] w-max flex-none items-center gap-1 overflow-hidden rounded-full p-1.5"
         transition={reduce ? { duration: 0 } : spring.move}
       >
         <AnimatePresence mode="popLayout" initial={false}>
@@ -283,7 +288,7 @@ export function Dock({
               animate={{ opacity: 1, y: 0, transition: { ...swap, delay: reduce ? 0 : 0.05 } }}
               exit={{ opacity: 0, transition: { duration: dur.exit } }}
             >
-              <span className="grid size-8 place-items-center rounded-full bg-accent text-on-accent">
+              <span className="grid size-(--ctrl) place-items-center rounded-full bg-accent text-on-accent shadow-(--press)">
                 <Glyph name="logo" />
               </span>
               <Chips state={state} dispatch={dispatch} />
@@ -311,7 +316,7 @@ export function Dock({
                 onClick={() => {
                   setAdvanced(!advanced)
                 }}
-                className={`ring-focus grid size-8 place-items-center rounded-full hover:bg-surface-2 hover:text-ink ${advanced ? "bg-surface-2 text-ink" : "text-ink-2"}`}
+                className={`ring-focus grid size-(--ctrl) place-items-center rounded-full hover:bg-surface-2 hover:text-ink ${advanced ? "bg-surface-2 text-ink" : "text-ink-2"}`}
               >
                 <Glyph name="more" size={16} />
               </button>
@@ -322,7 +327,7 @@ export function Dock({
                 onClick={() => {
                   dispatch({ kind: "toggled" })
                 }}
-                className="ring-focus grid size-8 place-items-center rounded-full text-ink-2 hover:bg-surface-2 hover:text-ink"
+                className="ring-focus grid size-(--ctrl) place-items-center rounded-full text-ink-2 hover:bg-surface-2 hover:text-ink"
               >
                 <Glyph name="x" />
               </button>
@@ -332,7 +337,7 @@ export function Dock({
               key="launcher"
               type="button"
               aria-label="Open Morph (Alt+Shift+R)"
-              className="ring-focus flex h-8 items-center gap-2 rounded-full pr-1.5 pl-0.5 text-[12.5px] font-medium text-ink"
+              className="ring-focus flex h-(--ctrl) items-center gap-2 rounded-full pr-1.5 font-medium text-ink"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0, transition: swap }}
               exit={{ opacity: 0, transition: { duration: dur.exit } }}
@@ -340,7 +345,7 @@ export function Dock({
                 dispatch({ kind: "toggled" })
               }}
             >
-              <span className="grid size-8 place-items-center rounded-full bg-accent text-on-accent">
+              <span className="grid size-(--ctrl) place-items-center rounded-full bg-accent text-on-accent shadow-(--press)">
                 <Glyph name="logo" />
               </span>
               Morph

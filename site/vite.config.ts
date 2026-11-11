@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 
+import { lab } from "./tools/lab-plugin.ts"
 import { scenes } from "./tools/scenes-plugin.ts"
 
 // The build ships React's development build (`NODE_ENV=development vite build --mode
@@ -19,6 +20,10 @@ export default defineConfig({
     scenes({
       scenes: fileURLToPath(new URL("./scenes", import.meta.url)),
       repo: fileURLToPath(new URL("..", import.meta.url)),
+    }),
+    lab({
+      dir: fileURLToPath(new URL("./lab/saved", import.meta.url)),
+      root: fileURLToPath(new URL("..", import.meta.url)),
     }),
   ],
   build: {

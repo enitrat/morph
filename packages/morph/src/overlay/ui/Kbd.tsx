@@ -27,7 +27,7 @@ export function keyLabel(text: string) {
 export function Kbd({ children, onInk = false }: { children: string; onInk?: boolean }) {
   return (
     <kbd
-      className={`inline-flex pointer-coarse:hidden h-5 min-w-5 items-center justify-center gap-px rounded-chip px-1 font-sans text-caption font-medium leading-none ${
+      className={`inline-flex pointer-coarse:hidden h-5 min-w-5 items-center justify-center gap-px rounded-full px-1.5 font-sans text-xs font-medium leading-none ${
         onInk
           ? "bg-[color-mix(in_oklch,var(--surface)_16%,transparent)] text-[color-mix(in_oklch,var(--surface)_72%,transparent)]"
           : "bg-surface-2 text-ink-2"

@@ -27,8 +27,8 @@
   --radius-xl: 12px;
   --radius-2xl: 16px;
   --radius-chip: 5px;
-  --font-sans: "Morph Geist", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Morph Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-sans: "Morph Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Morph Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 @theme inline {
@@ -43,6 +43,9 @@
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-on-accent: var(--on-accent);
+  --color-mark: var(--mark);
+  --color-mark-soft: var(--mark-soft);
+  --color-on-mark: var(--on-mark);
   --color-measure: var(--measure);
   --color-measure-soft: var(--measure-soft);
   --color-warn: var(--warn);
@@ -50,33 +53,84 @@
   --color-on-warn: var(--on-warn);
 }
 
-/* The Ice look: every colour the overlay paints, defined once. */
+/*
+ * Glass, from the lab's merged design (site/lab/saved/glass-1.json). Every colour is oklch. The
+ * neutrals carry the primary's hue (256) at low chroma; dark is the light set with L remapped.
+ * The fill (0.78) is the lowest that keeps body text at APCA Lc 75 over the worst backdrop.
+ */
 .ui {
-  --surface: rgb(22 25 31 / 0.92);
-  --surface-solid: #16191f;
-  --surface-2: rgb(160 190 255 / 0.06);
-  --surface-3: rgb(160 190 255 / 0.11);
-  --line: rgb(170 195 255 / 0.12);
-  --ink: #eef2fa;
-  --ink-2: #8892a8;
-  --ink-3: #5f6779;
-  --accent: #7cc4ff;
-  --accent-soft: rgb(124 196 255 / 0.14);
-  --on-accent: #071523;
-  --focus: rgb(124 196 255 / 0.8);
-  --ring: rgb(124 196 255 / 0.35);
-  --measure: #ff3d8b;
-  --measure-soft: rgb(255 61 139 / 0.16);
-  --warn: #f5b14a;
-  --warn-soft: rgb(245 177 74 / 0.14);
-  --on-warn: #2a1c00;
-  --add: #5fd38d;
-  --del: #ff7a7a;
-  --glass:
-    inset 0 0 0 1px var(--line), 0 0 0 1px rgb(0 0 0 / 0.6), 0 16px 40px -12px rgb(0 0 0 / 0.45);
+  --surface: oklch(0.985 0.005 256 / 0.78);
+  --surface-solid: oklch(0.985 0.005 256);
+  --surface-2: oklch(0.45 0.01 256 / 0.1);
+  --surface-3: oklch(0.45 0.01 256 / 0.16);
+  --line: oklch(0.2 0.01 256 / 0.1);
+  --ink: oklch(0.18 0.015 256);
+  --ink-2: oklch(0.34 0.015 256);
+  --ink-3: oklch(0.44 0.012 256);
+  --accent: oklch(0.24 0.02 256);
+  --accent-soft: oklch(1 0 0 / 0.72);
+  --on-accent: oklch(0.985 0.005 256);
+  --ring: oklch(0.2 0.01 256 / 0.16);
+  --mark: oklch(0.6 0.128 106);
+  --mark-soft: oklch(0.6 0.128 106 / 0.16);
+  --on-mark: oklch(0.18 0.015 256);
+  --focus: color-mix(in oklch, var(--ink) 45%, transparent);
+  --measure: var(--mark);
+  --measure-soft: var(--mark-soft);
+  --warn: oklch(0.6 0.13 70);
+  --warn-soft: oklch(0.6 0.13 70 / 0.14);
+  --on-warn: oklch(0.2 0.03 70);
+  --add: oklch(0.55 0.15 150);
+  --del: oklch(0.55 0.18 25);
+  --lift:
+    inset 0 1px 0 oklch(1 0 0 / 0.4), 0 0 0 0.5px oklch(0 0 0 / 0.08),
+    0 1px 3px oklch(0 0 0 / 0.04), 0 4px 10px -4px oklch(0 0 0 / 0.06),
+    0 16px 32px -12px oklch(0 0 0 / 0.1);
+  --press:
+    inset 0 1px 0.5px oklch(1 0 0 / 0.15), 0 1px 2px oklch(0 0 0 / 0.1),
+    0 4px 10px -4px oklch(0 0 0 / 0.15);
+
+  /* The layout system: P from a panel's edge to every surface in it, C tall for every control,
+     every line of text at P + I. Radii follow: panel C/2 + P, control C/2, item in a group C/2 - 4. */
+  --pad: 12px;
+  --ctrl: 34px;
+  --item: 26px;
+  --inset: 12px;
+  --gap: 10px;
+  --r-panel: 29px;
+  --r-ctrl: 17px;
+  --r-item: 13px;
+
   font: 400 13px/18px var(--font-sans);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
+  color-scheme: light;
+}
+
+/* On a dark host page. Shadows vanish on dark ground, so the lift becomes a ring. */
+.ui[data-appearance="dark"] {
+  --surface: oklch(0.25 0.012 256 / 0.78);
+  --surface-solid: oklch(0.25 0.012 256);
+  --surface-2: oklch(0.85 0.01 256 / 0.12);
+  --surface-3: oklch(0.85 0.01 256 / 0.18);
+  --line: oklch(1 0 0 / 0.12);
+  --ink: oklch(0.98 0.005 256);
+  --ink-2: oklch(0.87 0.01 256);
+  --ink-3: oklch(0.8 0.01 256);
+  --accent: oklch(0.96 0.008 256);
+  --accent-soft: oklch(1 0 0 / 0.12);
+  --on-accent: oklch(0.2 0.015 256);
+  --ring: oklch(1 0 0 / 0.18);
+  --mark: oklch(0.86 0.17 106);
+  --mark-soft: oklch(0.86 0.17 106 / 0.18);
+  --warn: oklch(0.8 0.14 75);
+  --warn-soft: oklch(0.8 0.14 75 / 0.16);
+  --add: oklch(0.78 0.15 150);
+  --del: oklch(0.74 0.159 25);
+  --lift:
+    inset 0 0.5px 0 oklch(1 0 0 / 0.1), 0 0 0 1px oklch(1 0 0 / 0.1),
+    0 16px 32px -12px oklch(0 0 0 / 0.3);
+  --press: 0 0 0 0.5px oklch(1 0 0 / 0.2);
   color-scheme: dark;
 }
 
@@ -116,10 +170,13 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Frost and vibrancy everywhere; in Chromium, useGlass swaps in a filter that also bends the
+   backdrop at the rim, and paints the rim light from the same shape. */
 @utility glass {
-  background: var(--surface);
-  backdrop-filter: blur(14px) saturate(1.3);
-  box-shadow: var(--glass);
+  background-color: var(--surface);
+  background-size: 100% 100%;
+  backdrop-filter: blur(18px) saturate(1.6);
+  box-shadow: var(--lift);
 }
 
 @utility hatch {

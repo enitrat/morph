@@ -1,8 +1,8 @@
 declare const __MORPH_UI_FONTS__: { sans: string; mono: string }
 
 const FACES = [
-  ["Morph Geist", __MORPH_UI_FONTS__.sans],
-  ["Morph Geist Mono", __MORPH_UI_FONTS__.mono],
+  ["Morph Sans", __MORPH_UI_FONTS__.sans],
+  ["Morph Mono", __MORPH_UI_FONTS__.mono],
 ] as const
 
 /**

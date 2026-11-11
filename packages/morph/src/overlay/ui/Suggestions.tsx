@@ -65,7 +65,7 @@ export function Suggestions({
 }) {
   if (suggestions.length === 0) return null
   return (
-    <div ref={ref} role="group" aria-label="Suggestions" className="flex flex-wrap gap-1.5">
+    <div ref={ref} role="group" aria-label="Suggestions" className="flex flex-wrap gap-1">
       {suggestions.map(({ words }, index) => (
         <button
           key={words}
@@ -82,7 +82,7 @@ export function Suggestions({
             if (next instanceof HTMLElement) next.focus()
             else if (index + by < 0) onLeave()
           }}
-          className="ring-focus flex h-[22px] max-w-full items-center rounded-md bg-surface-2 px-2 text-[11.5px] text-ink-2 shadow-[inset_0_0_0_1px_var(--line)] transition-colors duration-150 hover:text-ink focus-visible:text-ink"
+          className="ring-focus flex h-(--item) max-w-full items-center rounded-full bg-surface-2 px-(--inset) text-sm text-ink transition-colors duration-150 hover:bg-surface-3"
         >
           <span className="truncate">{words}</span>
         </button>

@@ -1,0 +1,1443 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Glass lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Geist+Mono:wght@400..600&family=Geist:wght@400..600&family=Instrument+Sans:wght@400..600&family=Inter+Tight:wght@400..700&family=Inter:wght@400..700&family=JetBrains+Mono:wght@400;500&family=Kalam:wght@400&display=swap"
+    />
+    <style>
+      :root {
+        --chrome: #131416;
+        --chrome-2: #1b1c1f;
+        --chrome-line: #2a2b2f;
+        --chrome-ink: #e6e6e8;
+        --chrome-ink-2: #8d8e94;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--chrome);
+        color: var(--chrome-ink);
+        font: 13px/18px Geist, system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 312px;
+        height: 100vh;
+        overflow: hidden;
+      }
+      button,
+      select,
+      input {
+        font: inherit;
+        color: inherit;
+      }
+
+      /* Lab chrome */
+      .board {
+        overflow: auto;
+        padding: 20px;
+        cursor: crosshair;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, 620px);
+        gap: 16px;
+        width: max-content;
+      }
+      .cap {
+        display: flex;
+        justify-content: space-between;
+        color: var(--chrome-ink-2);
+        font-size: 11.5px;
+        padding: 0 2px 6px;
+      }
+      .stage {
+        position: relative;
+        width: 620px;
+        height: 540px;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 0 0 1px var(--chrome-line);
+      }
+      .side {
+        border-left: 1px solid var(--chrome-line);
+        background: var(--chrome-2);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .side header {
+        padding: 14px 14px 12px;
+        display: grid;
+        gap: 8px;
+        border-bottom: 1px solid var(--chrome-line);
+      }
+      .title {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+      .title b {
+        font-weight: 600;
+      }
+      .seed,
+      .engine {
+        font: 11.5px/1.3 "Geist Mono", monospace;
+        color: var(--chrome-ink-2);
+      }
+      .about {
+        color: var(--chrome-ink-2);
+        font-size: 12px;
+        text-wrap: pretty;
+      }
+      .knobs {
+        overflow: auto;
+        padding: 0 14px 14px;
+        flex: 1;
+      }
+      .group {
+        color: var(--chrome-ink-2);
+        font-size: 10.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 14px 0 6px;
+      }
+      .knob {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr) 40px;
+        align-items: center;
+        gap: 8px;
+        padding: 3px 0;
+        font-size: 12px;
+      }
+      .knob label {
+        color: var(--chrome-ink-2);
+      }
+      .knob output {
+        font: 11px "Geist Mono", monospace;
+        text-align: right;
+        color: var(--chrome-ink-2);
+      }
+      .knob input[type="range"] {
+        width: 100%;
+        accent-color: var(--chrome-ink);
+      }
+      .knob select {
+        grid-column: 2 / 4;
+        background: var(--chrome);
+        border: 1px solid var(--chrome-line);
+        border-radius: 6px;
+        padding: 3px 6px;
+        font-size: 12px;
+      }
+      .side footer {
+        border-top: 1px solid var(--chrome-line);
+        padding: 12px 14px;
+        display: grid;
+        gap: 10px;
+      }
+      .actions {
+        display: flex;
+        gap: 6px;
+      }
+      .actions button {
+        flex: 1;
+        border: 1px solid var(--chrome-line);
+        background: var(--chrome);
+        border-radius: 7px;
+        padding: 7px 0;
+        cursor: pointer;
+        font-size: 12px;
+        transition: background-color 150ms ease-out;
+      }
+      .actions button:hover {
+        background: #222327;
+      }
+      .actions button:active {
+        transform: scale(0.98);
+      }
+      .actions .save {
+        background: var(--chrome-ink);
+        color: var(--chrome);
+        border-color: transparent;
+        font-weight: 600;
+      }
+      .actions .save:hover {
+        background: #fff;
+      }
+      .status {
+        font: 11px/15px "Geist Mono", monospace;
+        color: var(--chrome-ink-2);
+        min-height: 15px;
+        overflow-wrap: anywhere;
+      }
+      .rail {
+        display: grid;
+        gap: 2px;
+        max-height: 150px;
+        overflow: auto;
+      }
+      .rail button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 0;
+        background: none;
+        padding: 4px 6px;
+        border-radius: 6px;
+        cursor: pointer;
+        font: 11.5px "Geist Mono", monospace;
+        color: var(--chrome-ink-2);
+        text-align: left;
+      }
+      .rail button:hover {
+        background: var(--chrome);
+        color: var(--chrome-ink);
+      }
+      .rail i {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        box-shadow: 0 0 0 1px rgb(0 0 0 / 0.4);
+      }
+      .contrast {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 2px 10px;
+        font: 11px/1.4 "Geist Mono", monospace;
+        color: var(--chrome-ink-2);
+      }
+      .contrast .ok {
+        color: oklch(0.8 0.14 150);
+      }
+      .contrast .bad {
+        color: oklch(0.72 0.17 25);
+      }
+      #filters {
+        position: absolute;
+        width: 0;
+        height: 0;
+      }
+
+      /* The host pages. Glass shows only what is behind it, so each page carries a soft aura. */
+      .host {
+        position: absolute;
+        inset: 0;
+        font: 14px/20px "Inter Tight", system-ui, sans-serif;
+        padding: 0 28px;
+      }
+      .host--light {
+        --h-bg: #f5f6f8;
+        --h-card: #fff;
+        --h-ink: #15171c;
+        --h-ink-2: #5d6370;
+        --h-line: rgb(0 0 0 / 0.08);
+        --h-brand: #2f6bff;
+        background:
+          radial-gradient(260px 200px at 82% 34%, rgb(255 160 200 / 0.55), transparent 70%),
+          radial-gradient(300px 240px at 64% 78%, rgb(140 190 255 / 0.6), transparent 70%),
+          radial-gradient(220px 180px at 96% 88%, rgb(255 214 140 / 0.55), transparent 70%),
+          var(--h-bg);
+        color: var(--h-ink);
+      }
+      .host--dark {
+        --h-bg: #0c0e12;
+        --h-card: #151922;
+        --h-ink: #e7eaf0;
+        --h-ink-2: #8a93a6;
+        --h-line: #232836;
+        --h-brand: #6aa8ff;
+        background:
+          radial-gradient(260px 200px at 82% 34%, rgb(140 70 255 / 0.45), transparent 70%),
+          radial-gradient(300px 240px at 64% 78%, rgb(40 120 255 / 0.45), transparent 70%),
+          radial-gradient(220px 180px at 96% 88%, rgb(255 90 140 / 0.35), transparent 70%),
+          var(--h-bg);
+        color: var(--h-ink);
+      }
+      .host nav {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        height: 52px;
+        color: var(--h-ink-2);
+        font-size: 13px;
+      }
+      .host nav b {
+        color: var(--h-ink);
+        font-weight: 700;
+        margin-right: 8px;
+      }
+      .host nav span:last-child {
+        margin-left: auto;
+        padding: 5px 12px;
+        border-radius: 8px;
+        background: var(--h-brand);
+        color: #fff;
+        font-weight: 600;
+      }
+      .host h2 {
+        font-size: 22px;
+        line-height: 28px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        margin: 6px 0 14px;
+      }
+      .plans {
+        display: flex;
+        gap: 14px;
+      }
+      .plan {
+        width: 228px;
+        flex: none;
+        padding: 18px;
+        border-radius: 12px;
+        background: var(--h-card);
+        box-shadow: 0 0 0 1px var(--h-line), 0 1px 2px rgb(0 0 0 / 0.06);
+        display: grid;
+        gap: 8px;
+      }
+      .plan .eyebrow {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--h-brand);
+      }
+      .plan .price {
+        font-size: 30px;
+        line-height: 34px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .plan .price small {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--h-ink-2);
+        letter-spacing: 0;
+      }
+      .plan p,
+      .plan li {
+        color: var(--h-ink-2);
+        font-size: 13px;
+      }
+      .plan ul {
+        list-style: none;
+        display: grid;
+        gap: 3px;
+      }
+      .plan ul li::before {
+        content: "✓  ";
+        color: var(--h-brand);
+      }
+      .plan .cta {
+        margin-top: 6px;
+        text-align: center;
+        padding: 8px 0;
+        border-radius: 8px;
+        background: var(--h-brand);
+        color: #fff;
+        font-weight: 600;
+        font-size: 13px;
+      }
+      .plan--variant {
+        gap: 4px;
+        background: var(--h-ink);
+        color: var(--h-bg);
+      }
+      .plan--variant .eyebrow {
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: inherit;
+        opacity: 0.6;
+      }
+      .plan--variant .price {
+        font-size: 58px;
+        line-height: 60px;
+        letter-spacing: -0.04em;
+      }
+      .plan--variant .price small,
+      .plan--variant p,
+      .plan--variant li {
+        color: inherit;
+        opacity: 0.65;
+      }
+      .plan--variant ul li::before {
+        color: inherit;
+      }
+      .plan--variant .cta {
+        background: var(--h-bg);
+        color: var(--h-ink);
+      }
+
+      /* The overlay. Every value comes from the variables `tokens()` writes. */
+      .m {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        font: 400 var(--t-md) / 1.4 var(--sans);
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+      }
+      .m-marks {
+        position: absolute;
+        inset: 0;
+        overflow: visible;
+      }
+
+      /* One glass surface: refracted, frosted backdrop, a tint, the lit rim from the same shape, a lift. */
+      .glass {
+        position: absolute;
+        background-color: var(--paper);
+        background-size: 100% 100%;
+        box-shadow: var(--lift);
+        backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+        -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+      }
+      /* The layout system: P from the panel edge to every surface, C tall for every control, and
+         every line of text starting at P + I. Radii follow: panel C/2 + P, control C/2, an item
+         inside a group C/2 - 4. */
+      .m-panel {
+        width: 312px;
+        padding: var(--pad);
+        border-radius: var(--r);
+        display: grid;
+        gap: var(--gap);
+      }
+      .m-head {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        min-width: 0;
+        height: var(--ctrl);
+        line-height: var(--ctrl);
+        padding: 0 var(--inset);
+      }
+      .m-target {
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .m-file {
+        font-family: var(--mono);
+        font-size: var(--t-sm);
+        color: var(--ink-3);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .m-close {
+        align-self: center;
+        flex: none;
+        margin: 0 calc(var(--inset) * -1) 0 auto;
+        display: grid;
+        place-items: center;
+        width: var(--ctrl);
+        height: var(--ctrl);
+        line-height: 1;
+        border-radius: 50%;
+        background: var(--well);
+        color: var(--ink-2);
+      }
+      .m-field,
+      .m-refine {
+        border-radius: var(--r-in);
+        background: var(--well);
+        padding: 0 var(--inset);
+      }
+      .m-field {
+        min-height: calc(var(--ctrl) * 2);
+        padding-block: calc((var(--ctrl) - 1lh) / 2);
+      }
+      .m-refine {
+        height: var(--ctrl);
+        display: flex;
+        align-items: center;
+        color: var(--ink-3);
+      }
+      .m-caret {
+        display: inline-block;
+        width: 1.5px;
+        height: 1.1em;
+        margin-left: 1px;
+        vertical-align: text-bottom;
+        background: var(--act-solid);
+      }
+      .m-sugs {
+        display: flex;
+        gap: 4px;
+      }
+      .m-chip {
+        display: inline-flex;
+        align-items: center;
+        height: var(--item);
+        padding: 0 var(--inset);
+        border-radius: 999px;
+        background: var(--well);
+        font-size: var(--t-sm);
+        white-space: nowrap;
+      }
+      .m-quote {
+        color: var(--ink-2);
+        padding: 0 var(--inset);
+      }
+      .m-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .m-tools {
+        display: flex;
+        align-items: center;
+        height: var(--ctrl);
+        padding: 4px;
+        border-radius: 999px;
+        background: var(--well);
+        font-size: var(--t-sm);
+        color: var(--ink-2);
+      }
+      .m-tools span {
+        display: inline-flex;
+        align-items: center;
+        height: var(--item);
+        padding: 0 calc(var(--inset) - 4px);
+        border-radius: calc(var(--item) / 2);
+      }
+      .m-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: var(--ctrl);
+        padding: 0 max(var(--inset), calc(var(--ctrl) / 2));
+        border-radius: 999px;
+        background: var(--act);
+        color: var(--on-act);
+        box-shadow: var(--act-edge);
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .m-ghost {
+        display: inline-flex;
+        align-items: center;
+        height: var(--ctrl);
+        padding: 0 var(--inset);
+        border-radius: 999px;
+        background: var(--well);
+        font-weight: 500;
+      }
+      .m-meta {
+        margin-left: auto;
+        font-size: var(--t-sm);
+        color: var(--ink-3);
+      }
+      .m-kbd {
+        font: 500 var(--t-xs) / 1 var(--mono);
+        padding: 2px 4px;
+        border-radius: 4px;
+        box-shadow: inset 0 0 0 0.5px currentColor;
+        opacity: 0.7;
+      }
+      .m[data-chips="text"] .m-kbd {
+        box-shadow: none;
+        padding: 0;
+      }
+      .m[data-chips="hidden"] .m-kbd,
+      .m[data-chips="hidden"] .m-meta {
+        display: none;
+      }
+      .m-rows {
+        list-style: none;
+        display: grid;
+        gap: 2px;
+      }
+      .m-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        min-height: var(--ctrl);
+        padding: var(--row) var(--inset);
+        border-radius: var(--r-in);
+      }
+      .m-row b {
+        display: block;
+        font-weight: 500;
+      }
+      .m-row small {
+        display: block;
+        font-size: var(--t-sm);
+        color: var(--ink-3);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .m-row[aria-current] {
+        background: var(--sel);
+        box-shadow: var(--sel-edge);
+      }
+      .m-diff {
+        font: var(--t-sm) / 1 var(--mono);
+        color: var(--ink-3);
+        font-variant-numeric: tabular-nums;
+      }
+      .m-letter {
+        position: relative;
+        display: grid;
+        place-items: center;
+      }
+      .m[data-letters="hand"] .m-letter {
+        justify-items: start;
+        width: 36px;
+        height: 24px;
+        font: 600 calc(var(--t-lg) * 1.35) / 1 var(--hand);
+        color: var(--ink-2);
+      }
+      .m[data-letters="hand"] .m-row[aria-current] .m-letter {
+        color: var(--mark);
+      }
+      .m[data-letters="sans"] .m-letter {
+        min-width: 24px;
+        height: 24px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: var(--well);
+        font: 600 var(--t-sm) / 1 var(--sans);
+        color: var(--ink-2);
+      }
+      .m[data-letters="sans"] .m-row[aria-current] .m-letter {
+        background: var(--act);
+        color: var(--on-act);
+      }
+      .m-letter svg {
+        position: absolute;
+        inset: -6px;
+        overflow: visible;
+      }
+      .m-dock {
+        left: 50%;
+        bottom: 14px;
+        translate: -50% 0;
+        display: flex;
+        align-items: center;
+        gap: var(--inset);
+        height: calc(var(--ctrl) + 12px);
+        padding: 6px;
+        border-radius: 999px;
+        white-space: nowrap;
+        font-size: var(--t-sm);
+        color: var(--ink-2);
+      }
+      .m-logo {
+        display: grid;
+        place-items: center;
+        width: var(--ctrl);
+        height: var(--ctrl);
+        border-radius: 50%;
+        background: var(--act);
+        color: var(--on-act);
+        box-shadow: var(--act-edge);
+        font: 700 var(--t-sm) / 1 var(--mono);
+      }
+      .m-pinchip {
+        color: var(--ink);
+        font-weight: 500;
+      }
+      .m-sep {
+        width: 0.5px;
+        height: 16px;
+        background: var(--rule);
+      }
+      .m-tag {
+        display: inline-flex;
+        align-items: center;
+        height: var(--item);
+        padding: 0 var(--inset);
+        border-radius: 999px;
+        font: 500 var(--t-sm) / 1 var(--sans);
+        white-space: nowrap;
+      }
+      .m-pin {
+        position: absolute;
+        display: grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--act);
+        color: var(--on-act);
+        box-shadow: var(--act-edge), 0 2px 6px rgb(0 0 0 / 0.25);
+        font: 700 var(--t-sm) / 1 var(--sans);
+      }
+      .m-guide {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        box-shadow: inset 0 0 0 var(--pad) rgb(255 0 128 / 0.08);
+        background: linear-gradient(rgb(255 0 128 / 0.7), rgb(255 0 128 / 0.7)) calc(var(--pad) + var(--inset)) 0 / 1px 100% no-repeat;
+      }
+      .m-off {
+        outline: 1.5px solid rgb(255 0 128);
+        outline-offset: 1px;
+      }
+    </style>
+  </head>
+  <body>
+    <svg id="filters" aria-hidden="true"></svg>
+    <main class="board" id="board" title="Click for a new variation">
+      <div class="grid" id="grid"></div>
+    </main>
+    <aside class="side">
+      <header>
+        <div class="title"><b>Glass lab</b><span class="seed" id="seed"></span></div>
+        <p class="about">
+          Liquid-glass controls float over the page; the pick is drawn on the page. Each surface
+          bends what is behind it through a refraction map computed from its own shape (Snell's
+          law over a bezel profile), and its rim is lit from the same shape. Corners are
+          concentric: panel radius = half the control height + padding.
+        </p>
+        <p class="engine" id="engine"></p>
+        <p class="engine" id="align"></p>
+        <div class="contrast" id="contrast"></div>
+      </header>
+      <div class="knobs" id="knobs"></div>
+      <footer>
+        <div class="actions">
+          <button type="button" id="defaults">Defaults</button>
+          <button type="button" id="shuffle">New variation</button>
+          <button type="button" class="save" id="save">Save</button>
+        </div>
+        <p class="status" id="status"></p>
+        <div class="rail" id="rail"></div>
+      </footer>
+    </aside>
+    <script type="module">
+      const SANS = { sf: "Inter", geist: "Geist", instrument: "Instrument Sans" }
+      const MONO = { geist: "Geist Mono", jetbrains: "JetBrains Mono" }
+      const HAND = { caveat: "Caveat", kalam: "Kalam" }
+
+      const range = (key, label, min, max, step, value) => ({ key, label, type: "range", min, max, step, value })
+      const pick = (key, label, options, value) => ({ key, label, type: "select", options, value })
+
+      // Defaults merge the four saved looks: lip bezel, mid fringe, heavy frost (all four), a
+      // neutral cool action and a chartreuse mark (735700), clean marks and plain letters (3 of 4).
+      const GROUPS = [
+        ["Refraction", [
+          range("refract", "Bend", 0, 2, 0.05, 1.5),
+          range("bezel", "Bezel width", 4, 40, 1, 14),
+          pick("profile", "Bezel profile", ["lip", "squircle", "circle"], "lip"),
+          range("ior", "Index (IOR)", 1.1, 2, 0.05, 1.5),
+          range("aberration", "Colour fringe", 0, 1, 0.05, 0.4),
+        ]],
+        ["Glass", [
+          pick("appearance", "Appearance", ["adaptive", "light", "dark"], "adaptive"),
+          range("opacity", "Tint fill", 0.6, 0.95, 0.01, 0.78),
+          range("blur", "Frost", 0, 24, 0.5, 18),
+          range("saturate", "Vibrancy", 1, 2.4, 0.05, 1.6),
+        ]],
+        ["Light", [
+          range("specular", "Rim light", 0, 1, 0.05, 0.5),
+          range("lightAngle", "Light angle", 0, 360, 5, 215),
+          range("shadow", "Lift shadow", 0, 1.5, 0.05, 0.5),
+        ]],
+        ["Colour", [
+          range("actHue", "Neutral hue", 0, 360, 1, 256),
+          pick("actStyle", "Primary", ["ink", "tint"], "ink"),
+          range("actC", "Tint chroma", 0.04, 0.2, 0.01, 0.12),
+          range("markHue", "Mark hue", 0, 360, 1, 106),
+          range("markC", "Mark chroma", 0.06, 0.24, 0.01, 0.17),
+        ]],
+        ["Marks", [
+          pick("marks", "Selection", ["clean", "pencil"], "clean"),
+          range("jitter", "Hand wobble", 0, 3, 0.1, 1),
+          range("overshoot", "Overshoot", 0, 10, 0.5, 4),
+          pick("letters", "Variant letters", ["sans", "hand"], "sans"),
+        ]],
+        ["Shape", [
+          range("control", "Control (C)", 26, 40, 2, 34),
+          range("pad", "Padding (P)", 8, 18, 1, 12),
+          range("inset", "Text inset (I)", 8, 16, 1, 12),
+          range("gap", "Gap", 4, 16, 1, 10),
+          pick("guides", "Show grid", ["off", "on"], "off"),
+          range("density", "Row density", 0.85, 1.25, 0.05, 1),
+        ]],
+        ["Type", [
+          pick("sans", "Sans", ["instrument", "sf", "geist"], "instrument"),
+          pick("mono", "Mono", ["geist", "jetbrains"], "geist"),
+          pick("hand", "Hand", ["caveat", "kalam"], "caveat"),
+          range("base", "Base size", 12, 14, 0.5, 13),
+          range("ratio", "Scale ratio", 1.1, 1.3, 0.01, 1.15),
+          pick("chips", "Key chips", ["key", "text", "hidden"], "hidden"),
+        ]],
+      ]
+      const KNOBS = GROUPS.flatMap(([, list]) => list)
+
+      function mulberry32(seed) {
+        let a = seed >>> 0
+        return () => {
+          a = (a + 0x6d2b79f5) >>> 0
+          let t = a
+          t = Math.imul(t ^ (t >>> 15), t | 1)
+          t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+        }
+      }
+
+      const decimals = (step) => String(step).split(".")[1]?.length ?? 0
+      const snap = (value, step) => Number((Math.round(value / step) * step).toFixed(decimals(step)))
+
+      function defaults(seed = 1) {
+        const config = { mode: "glass", seed }
+        for (const knob of KNOBS) config[knob.key] = knob.value
+        return config
+      }
+
+      /** A fresh variation: every knob drawn from its bounds by the seed, so the seed alone reproduces it. */
+      function variation(seed) {
+        const rng = mulberry32(seed)
+        const config = { mode: "glass", seed }
+        for (const knob of KNOBS)
+          config[knob.key] =
+            knob.type === "range"
+              ? snap(knob.min + rng() * (knob.max - knob.min), knob.step)
+              : knob.options[Math.floor(rng() * knob.options.length)]
+        return config
+      }
+
+      // Chromium is the only engine that runs an SVG filter as a backdrop-filter; the rest get the
+      // same tint, rim and frost without the bend.
+      const BENDS = (navigator.userAgentData?.brands ?? []).some((brand) => /Chrom/.test(brand.brand))
+
+      /** oklch to gamma sRGB, channels 0–1, unclamped so callers can test the gamut. */
+      function rgbOf([L, C, H]) {
+        const a = C * Math.cos((H * Math.PI) / 180)
+        const b = C * Math.sin((H * Math.PI) / 180)
+        const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3
+        const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3
+        const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3
+        const lin = [
+          4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+          -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+          -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+        ]
+        return lin.map((x) => (x <= 0.0031308 ? 12.92 * x : 1.055 * Math.sign(x) * Math.abs(x) ** (1 / 2.4) - 0.055))
+      }
+
+      /** Chroma pulled down, L and H held, until the colour fits sRGB. */
+      function inGamut([L, C, H, A = 1]) {
+        let lo = 0
+        let hi = C
+        if (rgbOf([L, C, H]).every((x) => x >= -0.0005 && x <= 1.0005)) return [L, C, H, A]
+        for (let n = 0; n < 20; n++) {
+          const mid = (lo + hi) / 2
+          if (rgbOf([L, mid, H]).every((x) => x >= -0.0005 && x <= 1.0005)) lo = mid
+          else hi = mid
+        }
+        return [L, lo, H, A]
+      }
+
+      const css = ([L, C, H, A = 1]) =>
+        `oklch(${+L.toFixed(3)} ${+C.toFixed(3)} ${+H.toFixed(1)}${A < 1 ? ` / ${+A.toFixed(3)}` : ""})`
+
+      /**
+       * The overlay's colours for one appearance. Neutrals carry the action's hue at low chroma so
+       * the greys agree with it; dark is the light set with L remapped, not a second palette.
+       */
+      function palette(config, dark) {
+        const N = config.actHue
+        const ink = config.actStyle === "ink"
+        const act = ink ? (dark ? [0.96, 0.008, N] : [0.24, 0.02, N]) : inGamut([dark ? 0.74 : 0.55, config.actC, N])
+        return {
+          paper: dark ? [0.25, 0.012, N, config.opacity] : [0.985, 0.005, N, config.opacity],
+          ink: dark ? [0.98, 0.005, N] : [0.18, 0.015, N],
+          ink2: dark ? [0.87, 0.01, N] : [0.34, 0.015, N],
+          ink3: dark ? [0.8, 0.01, N] : [0.44, 0.012, N],
+          well: dark ? [0.85, 0.01, N, 0.12] : [0.45, 0.01, N, 0.1],
+          sel: dark ? [1, 0, 0, 0.12] : [1, 0, 0, 0.72],
+          rule: dark ? [1, 0, 0, 0.12] : [0.2, 0.01, N, 0.1],
+          act,
+          onAct: act[0] > 0.6 ? [0.2, 0.015, N] : [0.985, 0.005, N],
+          mark: inGamut([dark ? 0.86 : 0.6, config.markC, config.markHue]),
+        }
+      }
+
+      /** Every colour, radius, size and shadow the overlay reads, for the host it sits on. */
+      function tokens(config, host) {
+        const dark = config.appearance === "adaptive" ? host === "dark" : config.appearance === "dark"
+        const c = palette(config, dark)
+        const s = config.shadow
+        const k = config.specular
+        const ctrl = config.control
+        const t = (n) => `${snap(config.base * config.ratio ** n, 0.5)}px`
+        const v = {
+          "--sans": `'${SANS[config.sans]}', system-ui, sans-serif`,
+          "--mono": `'${MONO[config.mono]}', ui-monospace, monospace`,
+          "--hand": `'${HAND[config.hand]}', cursive`,
+          "--t-xs": t(-2),
+          "--t-sm": t(-1),
+          "--t-md": t(0),
+          "--t-lg": t(1),
+          "--pad": `${config.pad}px`,
+          "--ctrl": `${ctrl}px`,
+          "--r": `${ctrl / 2 + config.pad}px`,
+          "--r-in": `${ctrl / 2}px`,
+          "--item": `${ctrl - 8}px`,
+          "--inset": `${config.inset}px`,
+          "--gap": `${config.gap}px`,
+          "--row": `${Math.round(6 * config.density)}px`,
+          "--blur": `${config.blur}px`,
+          "--saturate": String(config.saturate),
+          "--paper": css(c.paper),
+          "--ink": css(c.ink),
+          "--ink-2": css(c.ink2),
+          "--ink-3": css(c.ink3),
+          "--rule": css(c.rule),
+          "--well": css(c.well),
+          "--sel": css(c.sel),
+          "--sel-edge": dark
+            ? `inset 0 0.5px 0 oklch(1 0 0 / ${0.22 * k})`
+            : `inset 0 0.5px 0 oklch(1 0 0 / ${0.9 * k}), 0 1px 3px oklch(0 0 0 / 0.08)`,
+          "--act": css(c.act),
+          "--act-solid": css(dark ? c.ink : c.act),
+          "--on-act": css(c.onAct),
+          "--act-edge": dark
+            ? `0 0 0 0.5px oklch(1 0 0 / 0.2)`
+            : `inset 0 1px 0.5px oklch(1 0 0 / ${0.3 * k}), 0 1px 2px oklch(0 0 0 / ${0.2 * s}), 0 4px 10px -4px oklch(0 0 0 / ${0.3 * s})`,
+          // Dark mode flattens the shadow stack to a ring: shadows vanish on dark ground.
+          "--lift": dark
+            ? `inset 0 0.5px 0 oklch(1 0 0 / ${0.2 * k}), 0 0 0 1px oklch(1 0 0 / 0.1), 0 16px 32px -12px oklch(0 0 0 / ${0.6 * s})`
+            : [
+                `inset 0 1px 0 oklch(1 0 0 / ${0.8 * k})`,
+                `0 0 0 0.5px oklch(0 0 0 / 0.08)`,
+                `0 1px 3px oklch(0 0 0 / ${0.08 * s})`,
+                `0 4px 10px -4px oklch(0 0 0 / ${0.12 * s})`,
+                `0 16px 32px -12px oklch(0 0 0 / ${0.2 * s})`,
+              ].join(", "),
+          "--mark": css(c.mark),
+        }
+        return Object.entries(v)
+          .map(([key, value]) => `${key}:${value}`)
+          .join(";")
+      }
+
+      /* APCA (0.0.98G): text contrast as perceived, signed by polarity; |Lc| is what matters. */
+      function luminance([r, g, b]) {
+        const y = 0.2126729 * Math.max(0, r) ** 2.4 + 0.7151522 * Math.max(0, g) ** 2.4 + 0.072175 * Math.max(0, b) ** 2.4
+        return y < 0.022 ? y + (0.022 - y) ** 1.414 : y
+      }
+      function apca(text, ground) {
+        const yt = luminance(text)
+        const yb = luminance(ground)
+        const sapc = yb > yt ? (yb ** 0.56 - yt ** 0.57) * 1.14 : (yb ** 0.65 - yt ** 0.62) * 1.14
+        if (Math.abs(sapc) < 0.1) return 0
+        return Math.abs((sapc > 0 ? sapc - 0.027 : sapc + 0.027) * 100)
+      }
+
+      /** A colour with alpha painted over an opaque sRGB ground, as the browser composites it. */
+      const over = (color, ground) => {
+        const rgb = rgbOf(color).map((x) => Math.min(1, Math.max(0, x)))
+        const a = color[3] ?? 1
+        return rgb.map((x, i) => x * a + ground[i] * (1 - a))
+      }
+      const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255)
+
+      // What can sit behind a panel on each test page: background, card, brand blue, the auras at
+      // full strength. Unblurred, so this is the worst case.
+      const GROUNDS = {
+        light: ["#f5f6f8", "#ffffff", "#2f6bff", "#ffb0d0", "#a6c8ff", "#ffe0a8"].map(hex),
+        dark: ["#0c0e12", "#151922", "#6aa8ff", "#5a3a9a", "#24508f", "#7a3550"].map(hex),
+      }
+      const NEEDS = [
+        ["ink", "Body text", 75],
+        ["ink2", "Secondary", 60],
+        ["ink3", "Meta, placeholder", 45],
+        ["onAct", "Button label", 75],
+        ["mark", "Selection mark", 30],
+      ]
+
+      /** Worst-case |Lc| per role on each host, against every ground the glass can sit on. */
+      function contrast(config) {
+        return ["light", "dark"].map((host) => {
+          const dark = config.appearance === "adaptive" ? host === "dark" : config.appearance === "dark"
+          const c = palette(config, dark)
+          const worst = {}
+          for (const ground of GROUNDS[host]) {
+            const glass = over(c.paper, ground)
+            const field = over(c.well, glass)
+            const actGround = over(c.act, glass)
+            const pairs = {
+              ink: [apca(over(c.ink, glass), glass), apca(over(c.ink, field), field)],
+              ink2: [apca(over(c.ink2, glass), glass)],
+              ink3: [apca(over(c.ink3, glass), glass), apca(over(c.ink3, field), field)],
+              onAct: [apca(over(c.onAct, actGround), actGround)],
+              mark: GROUNDS[host].indexOf(ground) < 2 ? [apca(over(c.mark, ground), ground)] : [],
+            }
+            for (const [role, values] of Object.entries(pairs))
+              worst[role] = Math.min(worst[role] ?? Infinity, ...values)
+          }
+          return { host, worst }
+        })
+      }
+
+      /* Refraction, after kube.io's "Liquid Glass in the Browser". The bezel is a height profile
+         f(t), t = 0 at the rim and 1 where the flat top starts. A vertical ray hits the slope,
+         refracts by Snell's law into glass of index n, and lands displaced; the displacement points
+         into the shape, so the rim shows what sits further in, as thick glass does. */
+      const PROFILES = {
+        circle: (t) => Math.sqrt(1 - (1 - t) ** 2),
+        squircle: (t) => Math.pow(1 - (1 - t) ** 4, 0.25),
+        lip: (t) => {
+          const convex = Math.pow(1 - (1 - t) ** 4, 0.25)
+          const e = t * t * t * (t * (t * 6 - 15) + 10)
+          return convex * (1 - e) + (1 - convex) * e * 0.4 + convex * e * 0.6
+        },
+      }
+
+      /** Displacement magnitude per distance into the bezel, normalized to a peak of 1. */
+      function bendCurve(profile, ior, samples = 128) {
+        const f = PROFILES[profile]
+        const out = new Float32Array(samples)
+        let peak = 0
+        for (let i = 0; i < samples; i++) {
+          const t = Math.min(0.999, Math.max(0.001, i / (samples - 1)))
+          const slope = (f(Math.min(1, t + 0.001)) - f(Math.max(0, t - 0.001))) / 0.002
+          const incident = Math.atan(Math.abs(slope))
+          const refracted = Math.asin(Math.sin(incident) / ior)
+          out[i] = f(t) * Math.tan(incident - refracted)
+          peak = Math.max(peak, out[i])
+        }
+        if (peak > 0) for (let i = 0; i < samples; i++) out[i] /= peak
+        return out
+      }
+
+      const maps = new Map()
+      const scratch = document.createElement("canvas")
+
+      /**
+       * The refraction map (R = x, G = y, 128 = still) and the rim-light map for one surface size,
+       * cached by everything they depend on.
+       */
+      function surface(w, h, r, config) {
+        const bezel = Math.min(config.bezel, Math.max(r, 4), w / 2, h / 2)
+        const key = [w, h, r, bezel, config.profile, config.ior, config.lightAngle, config.specular].join(":")
+        const hit = maps.get(key)
+        if (hit) return hit
+        const curve = bendCurve(config.profile, config.ior)
+        const f = PROFILES[config.profile]
+        const lx = Math.cos((config.lightAngle * Math.PI) / 180)
+        const ly = Math.sin((config.lightAngle * Math.PI) / 180)
+        scratch.width = w
+        scratch.height = h
+        const ctx = scratch.getContext("2d")
+        const bend = ctx.createImageData(w, h)
+        const lit = ctx.createImageData(w, h)
+        for (let y = 0; y < h; y++)
+          for (let x = 0; x < w; x++) {
+            const px = x + 0.5
+            const py = y + 0.5
+            const qx = Math.abs(px - w / 2) - (w / 2 - r)
+            const qy = Math.abs(py - h / 2) - (h / 2 - r)
+            const sx = px < w / 2 ? -1 : 1
+            const sy = py < h / 2 ? -1 : 1
+            let depth
+            let nx
+            let ny
+            if (qx > 0 && qy > 0) {
+              const len = Math.hypot(qx, qy)
+              depth = r - len
+              nx = (qx / len) * sx
+              ny = (qy / len) * sy
+            } else if (qx > qy) {
+              depth = r - qx
+              nx = sx
+              ny = 0
+            } else {
+              depth = r - qy
+              nx = 0
+              ny = sy
+            }
+            const i = (y * w + x) * 4
+            bend.data[i + 2] = 128
+            bend.data[i + 3] = 255
+            if (depth < 0 || depth >= bezel) {
+              bend.data[i] = 128
+              bend.data[i + 1] = 128
+              continue
+            }
+            const t = depth / bezel
+            const m = curve[Math.min(127, Math.round(t * 127))]
+            bend.data[i] = Math.round(128 - nx * m * 127)
+            bend.data[i + 1] = Math.round(128 - ny * m * 127)
+            const facing = nx * lx + ny * ly
+            const slope = (f(Math.min(1, t + 0.01)) - f(Math.max(0, t - 0.01))) / 0.02
+            const glint = Math.max(0, facing) ** 2 + 0.45 * Math.max(0, -facing) ** 2
+            const a = Math.min(1, config.specular * glint * Math.min(1, slope / 3) * (1 - t) ** 1.5)
+            lit.data[i] = 255
+            lit.data[i + 1] = 255
+            lit.data[i + 2] = 255
+            lit.data[i + 3] = Math.round(a * 255)
+          }
+        ctx.putImageData(bend, 0, 0)
+        const bendURL = scratch.toDataURL()
+        ctx.clearRect(0, 0, w, h)
+        ctx.putImageData(lit, 0, 0)
+        const litURL = scratch.toDataURL()
+        const made = { bendURL, litURL, bezel }
+        maps.set(key, made)
+        return made
+      }
+
+      let filterCount = 0
+
+      /** A fresh filter id per render: Safari caches filter output by id. */
+      function filterFor(w, h, made, config) {
+        const id = `g${++filterCount}`
+        const scale = 2 * config.refract * made.bezel * 0.6
+        const a = config.aberration * 0.12
+        const displace = (name, factor, channel) => {
+          const keep = ["1 0 0 0 0", "0 1 0 0 0", "0 0 1 0 0"]
+            .map((row, n) => (n === channel ? row : "0 0 0 0 0"))
+            .join(" ")
+          return `<feDisplacementMap in="frost" in2="map" scale="${(scale * factor).toFixed(2)}" xChannelSelector="R" yChannelSelector="G" result="${name}d"/>
+            <feColorMatrix in="${name}d" type="matrix" values="${keep} 0 0 0 1 0" result="${name}"/>`
+        }
+        const body =
+          a > 0
+            ? `${displace("r", 1 + a, 0)}${displace("g", 1, 1)}${displace("b", 1 - a, 2)}
+               <feBlend in="r" in2="g" mode="screen" result="rg"/>
+               <feBlend in="rg" in2="b" mode="screen" result="bent"/>`
+            : `<feDisplacementMap in="frost" in2="map" scale="${scale.toFixed(2)}" xChannelSelector="R" yChannelSelector="G" result="bent"/>`
+        document.getElementById("filters").insertAdjacentHTML(
+          "beforeend",
+          `<filter id="${id}" x="0" y="0" width="${w}" height="${h}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="${config.blur / 2}" result="frost"/>
+            <feImage href="${made.bendURL}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="none" result="map"/>
+            ${body}
+            <feColorMatrix in="bent" type="saturate" values="${config.saturate}"/>
+          </filter>`,
+        )
+        return id
+      }
+
+      /** Turns every `.glass` element in the stage into a refracting, rim-lit surface. */
+      function glaze(stage, config) {
+        for (const el of stage.querySelectorAll(".glass")) {
+          const w = Math.round(el.offsetWidth)
+          const h = Math.round(el.offsetHeight)
+          if (w < 2 || h < 2) continue
+          const r = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, w / 2, h / 2)
+          const made = surface(w, h, r, config)
+          el.style.backgroundImage = `url(${made.litURL})`
+          if (BENDS && config.refract > 0) {
+            const filter = `url(#${filterFor(w, h, made, config)})`
+            el.style.backdropFilter = filter
+            el.style.webkitBackdropFilter = filter
+          }
+        }
+      }
+
+      const kbd = (text) => `<span class="m-kbd">${text}</span>`
+
+      function hostHTML(host, scene) {
+        return `<div class="host host--${host}">
+          <nav><b>Acme</b><span>Product</span><span>Pricing</span><span>Docs</span><span>Sign in</span></nav>
+          <h2>Simple plans for busy teams</h2>
+          <div class="plans">
+            <article class="plan ${scene === "compare" ? "plan--variant" : ""}" data-target>
+              <span class="eyebrow">Pro</span>
+              <div class="price">$24<small> /mo</small></div>
+              <p>For teams shipping weekly.</p>
+              <ul><li>Unlimited projects</li><li>Preview deploys</li><li>Priority support</li></ul>
+              <span class="cta">Start trial</span>
+            </article>
+            <article class="plan">
+              <span class="eyebrow">Team</span>
+              <div class="price">$64<small> /mo</small></div>
+              <p>For orgs with many repos.</p>
+              <ul><li>Everything in Pro</li><li>SSO and audit log</li><li>Shared design tokens</li></ul>
+              <span class="cta">Talk to us</span>
+            </article>
+          </div>
+        </div>`
+      }
+
+      function askHTML() {
+        return `<section class="glass m-panel">
+            <header class="m-head"><span class="m-target">PlanCard · ‘Pro’</span><span class="m-file">Plan.tsx:14</span></header>
+            <div class="m-field">Make the price the hero<span class="m-caret"></span></div>
+            <div class="m-sugs"><span class="m-chip">Price as headline</span><span class="m-chip">Swiss poster</span><span class="m-chip">Compact</span></div>
+            <footer class="m-foot"><span class="m-tools"><span>Box</span><span>Arrow</span><span>Note</span></span><span class="m-primary">Generate ${kbd("↵")}</span></footer>
+          </section>
+          <nav class="glass m-dock"><span class="m-logo">M</span><span>${kbd("⌥↑")} parent</span><span>${kbd("⌥↓")} child</span><span>${kbd("esc")} clear</span><span class="m-sep"></span><span>···</span><span>×</span></nav>`
+      }
+
+      const ROWS = [
+        ["0", "Original", "As written in Plan.tsx", ""],
+        ["A", "Price as headline", "Sets the price at 58 px on ink, the rest steps back", "+21 −8"],
+        ["B", "Swiss poster", "Red rule, flush-left grid, uppercase plan name", "+34 −12"],
+        ["C", "Compact row", "Folds the features into one line beside the price", "+18 −22"],
+      ]
+
+      function compareHTML() {
+        return `<section class="glass m-panel">
+            <header class="m-head"><span class="m-target">PlanCard · ‘Pro’</span><span class="m-file">Plan.tsx</span><span class="m-close">×</span></header>
+            <p class="m-quote">“Make the price the hero”</p>
+            <ol class="m-rows">${ROWS.map(
+              ([k, title, sub, diff]) => `<li class="m-row" ${k === "A" ? "aria-current" : ""}>
+                <span class="m-letter">${k === "0" ? "Orig" : k}</span>
+                <span><b>${title}</b><small>${sub}</small></span>
+                <span class="m-diff">${diff || kbd("0")}</span></li>`,
+            ).join("")}</ol>
+            <div class="m-refine">Refine from A…</div>
+            <footer class="m-foot"><span class="m-ghost">Discard</span><span class="m-meta">${kbd("←")}${kbd("→")} flip</span><span class="m-primary">Keep A</span></footer>
+          </section>
+          <nav class="glass m-dock"><span class="m-logo">M</span><span class="m-pinchip">1 PlanCard · A</span><span>${kbd("0")}–${kbd("3")} flip</span><span>${kbd("[")}${kbd("]")} pins</span><span class="m-sep"></span><span>···</span><span>×</span></nav>`
+      }
+
+      /** One hand-drawn stroke from a to b: wobble from the seed, ends overshooting the corner. */
+      function stroke(rng, [x1, y1], [x2, y2], jitter, overshoot) {
+        const dx = x2 - x1
+        const dy = y2 - y1
+        const len = Math.hypot(dx, dy) || 1
+        const ux = dx / len
+        const uy = dy / len
+        const o1 = overshoot * (0.4 + rng() * 0.8)
+        const o2 = overshoot * (0.4 + rng() * 0.8)
+        const w = () => (rng() - 0.5) * 2 * jitter
+        const a = [x1 - ux * o1 + w(), y1 - uy * o1 + w()]
+        const b = [x2 + ux * o2 + w(), y2 + uy * o2 + w()]
+        const bow = (rng() - 0.5) * 2 * jitter * 2.2
+        const c = [(a[0] + b[0]) / 2 - uy * bow, (a[1] + b[1]) / 2 + ux * bow]
+        return `M${a[0].toFixed(1)} ${a[1].toFixed(1)} Q${c[0].toFixed(1)} ${c[1].toFixed(1)} ${b[0].toFixed(1)} ${b[1].toFixed(1)}`
+      }
+
+      function marks(config, { x, y, w, h }, rng) {
+        if (config.marks === "clean")
+          return `<rect x="${x - 3}" y="${y - 3}" width="${w + 6}" height="${h + 6}" rx="14" fill="none" stroke="var(--mark)" stroke-width="2"/>
+            <rect x="${x - 6}" y="${y - 6}" width="${w + 12}" height="${h + 12}" rx="17" fill="none" stroke="var(--mark)" stroke-opacity="0.18" stroke-width="4"/>`
+        const pts = [[x - 3, y - 3], [x + w + 3, y - 3], [x + w + 3, y + h + 3], [x - 3, y + h + 3]]
+        const d = pts.map((p, i) => stroke(rng, p, pts[(i + 1) % 4], config.jitter, config.overshoot)).join(" ")
+        return `<path d="${d}" fill="none" stroke="var(--mark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>`
+      }
+
+      function ring(rng, jitter) {
+        const pts = []
+        for (let i = 0; i <= 28; i++) {
+          const a = -0.6 + (i / 28) * Math.PI * 2 * 1.12
+          const r = 17 + (rng() - 0.5) * jitter * 1.6 + i * 0.05
+          pts.push(`${(18 + Math.cos(a) * r * 1.05).toFixed(1)} ${(18 + Math.sin(a) * r * 0.86).toFixed(1)}`)
+        }
+        return `<svg viewBox="0 0 36 36" width="36" height="36"><polyline points="${pts.join(" ")}" fill="none" stroke="var(--mark)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+      }
+
+      function place(stage, config, scene) {
+        const rng = mulberry32(config.seed ^ (scene === "ask" ? 0x9e37 : 0x7f4a))
+        const root = stage.querySelector(".m")
+        const target = stage.querySelector("[data-target]").getBoundingClientRect()
+        const frame = stage.getBoundingClientRect()
+        const box = { x: target.left - frame.left, y: target.top - frame.top, w: target.width, h: target.height }
+        root.querySelector(".m-marks").innerHTML = marks(config, box, rng)
+        const panel = root.querySelector(".m-panel")
+        panel.style.left = `${box.x + box.w + 26}px`
+        panel.style.top = `${scene === "ask" ? box.y + 8 : box.y - 26}px`
+        const tag = root.querySelector(".m-tag")
+        if (tag) {
+          tag.style.left = `${box.x}px`
+          tag.style.top = `${box.y + box.h + 12}px`
+        }
+        const pin = root.querySelector(".m-pin")
+        if (pin) {
+          pin.style.left = `${box.x + box.w - 13}px`
+          pin.style.top = `${box.y - 13}px`
+        }
+        if (config.letters === "hand")
+          root.querySelectorAll(".m-row[aria-current] .m-letter").forEach((letter) => {
+            letter.insertAdjacentHTML("afterbegin", ring(rng, config.jitter))
+          })
+        glaze(stage, config)
+        if (config.guides === "on")
+          root.querySelectorAll(".m-panel").forEach((panel) => panel.insertAdjacentHTML("beforeend", `<i class="m-guide"></i>`))
+      }
+
+      /** Where the first glyph of an element's text starts, in viewport x. */
+      function glyphLeft(el) {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const at = node.data.search(/\S/)
+          if (at < 0) continue
+          const range = document.createRange()
+          range.setStart(node, at)
+          range.setEnd(node, at + 1)
+          return range.getBoundingClientRect().left
+        }
+        return el.getBoundingClientRect().left
+      }
+
+      // Everything that starts a line on the panel's left: its text must start at P + I.
+      const COLUMN = [".m-target", ".m-field", ".m-sugs > :first-child", ".m-tools > :first-child", ".m-quote", ".m-refine", ".m-ghost"]
+
+      /** The left-column text that misses the P + I column, by more than half a pixel. */
+      function misaligned(config) {
+        const off = []
+        for (const panel of document.querySelectorAll(".m-panel")) {
+          const column = panel.getBoundingClientRect().left + config.pad + config.inset
+          for (const el of panel.querySelectorAll(COLUMN.join(","))) {
+            const delta = glyphLeft(el) - column
+            if (Math.abs(delta) > 0.5) off.push({ el, delta })
+          }
+          for (const letter of panel.querySelectorAll(".m-row .m-letter")) {
+            const delta = letter.getBoundingClientRect().left - column
+            if (Math.abs(delta) > 0.5) off.push({ el: letter, delta })
+          }
+        }
+        return off
+      }
+
+      window.lab = { contrast, defaults }
+
+      function check(config) {
+        const off = misaligned(config)
+        const total = [...document.querySelectorAll(".m-panel")].reduce(
+          (n, panel) => n + panel.querySelectorAll(COLUMN.join(",")).length + panel.querySelectorAll(".m-row .m-letter").length,
+          0,
+        )
+        if (config.guides === "on") off.forEach(({ el }) => el.classList.add("m-off"))
+        const report = contrast(config)
+        document.getElementById("contrast").innerHTML = NEEDS.map(([role, label, need]) => {
+          const cells = report.map(({ host, worst }) => {
+            const lc = worst[role]
+            return `<span class="${lc >= need ? "ok" : "bad"}">${host} ${lc.toFixed(0)}</span>`
+          })
+          return `<span>${label} ≥ ${need}</span>${cells.join("")}`
+        }).join("")
+        document.getElementById("align").textContent =
+          off.length === 0
+            ? `Alignment: ${total}/${total} text starts on the P + I column`
+            : `Alignment: ${off.length} of ${total} off the column (${[...new Set(off.map(({ el, delta }) => `${el.className || el.tagName} ${delta > 0 ? "+" : ""}${delta.toFixed(1)}`))].join(", ")})`
+      }
+
+      const STAGES = [
+        ["ask", "light"],
+        ["ask", "dark"],
+        ["compare", "light"],
+        ["compare", "dark"],
+      ]
+
+      /** Draws all four stages from the config alone. */
+      function render(config) {
+        document.getElementById("filters").innerHTML = ""
+        const grid = document.getElementById("grid")
+        grid.innerHTML = STAGES.map(
+          ([scene, host]) => `<div><p class="cap"><span>${scene === "ask" ? "Pick and ask" : "Flip and keep"}</span><span>${host} host</span></p>
+            <div class="stage">${hostHTML(host, scene)}
+              <div class="m" data-chips="${config.chips}" data-letters="${config.letters}" style="${tokens(config, host)}">
+                <svg class="m-marks"></svg>
+                ${scene === "ask" ? `<span class="glass m-tag">PlanCard · Plan.tsx:14</span>` : `<span class="m-pin">1</span>`}
+                ${scene === "ask" ? askHTML() : compareHTML()}
+              </div>
+            </div></div>`,
+        ).join("")
+        grid.querySelectorAll(".stage").forEach((stage, i) => place(stage, config, STAGES[i][0]))
+        check(config)
+        document.getElementById("seed").textContent = `seed ${config.seed}`
+      }
+
+      let config = defaults()
+
+      function panel() {
+        document.getElementById("knobs").innerHTML = GROUPS.map(
+          ([group, list]) => `<p class="group">${group}</p>${list
+            .map((knob) =>
+              knob.type === "range"
+                ? `<div class="knob"><label for="k-${knob.key}">${knob.label}</label><input id="k-${knob.key}" data-key="${knob.key}" type="range" min="${knob.min}" max="${knob.max}" step="${knob.step}" value="${config[knob.key]}"><output>${config[knob.key]}</output></div>`
+                : `<div class="knob"><label for="k-${knob.key}">${knob.label}</label><select id="k-${knob.key}" data-key="${knob.key}">${knob.options
+                    .map((option) => `<option ${option === config[knob.key] ? "selected" : ""}>${option}</option>`)
+                    .join("")}</select></div>`,
+            )
+            .join("")}`,
+        ).join("")
+      }
+
+      const remember = () => {
+        try {
+          localStorage.setItem("morph-glass-lab", JSON.stringify(config))
+        } catch {}
+      }
+
+      /** Pulls a saved or stored config inside today's knob bounds, filling knobs it predates. */
+      function within(saved) {
+        const next = { ...defaults(saved.seed), ...saved }
+        for (const knob of KNOBS)
+          if (knob.type === "range") next[knob.key] = Math.min(knob.max, Math.max(knob.min, Number(next[knob.key])))
+          else if (!knob.options.includes(next[knob.key])) next[knob.key] = knob.value
+        return next
+      }
+
+      function apply(next) {
+        config = within(next)
+        panel()
+        render(config)
+        remember()
+      }
+
+      let frame = 0
+      document.getElementById("knobs").addEventListener("input", (event) => {
+        const input = event.target
+        const knob = KNOBS.find((entry) => entry.key === input.dataset.key)
+        if (!knob) return
+        config = { ...config, [knob.key]: knob.type === "range" ? Number(input.value) : input.value }
+        if (knob.type === "range") input.nextElementSibling.textContent = input.value
+        cancelAnimationFrame(frame)
+        frame = requestAnimationFrame(() => render(config))
+        remember()
+      })
+      const fresh = () => apply(variation(Math.floor(Math.random() * 1e6)))
+      document.getElementById("board").addEventListener("click", fresh)
+      document.getElementById("shuffle").addEventListener("click", fresh)
+      document.getElementById("defaults").addEventListener("click", () => apply(defaults(config.seed)))
+      document.getElementById("engine").textContent = BENDS
+        ? "Refraction: on (Chromium runs SVG backdrop filters)"
+        : "Refraction: off in this browser. You see the tint, rim and frost; open in Chrome for the bend."
+
+      const status = document.getElementById("status")
+      async function rail() {
+        const list = await fetch("/__lab/saved").then((res) => (res.ok ? res.json() : []), () => [])
+        const glassOnly = list.filter((entry) => entry.config?.mode === "glass")
+        const box = document.getElementById("rail")
+        box.innerHTML = glassOnly
+          .map(({ name, config: saved }) => `<button type="button" data-name="${name}"><i style="background:oklch(0.6 ${saved.actC} ${saved.actHue})"></i><i style="background:oklch(0.66 ${saved.markC} ${saved.markHue})"></i>${name}</button>`)
+          .join("")
+        box.onclick = (event) => {
+          const name = event.target.closest("[data-name]")?.dataset.name
+          const hit = glassOnly.find((entry) => entry.name === name)
+          if (hit) {
+            apply({ ...defaults(hit.config.seed), ...hit.config })
+            status.textContent = `Applied ${name}`
+          }
+        }
+      }
+      document.getElementById("save").addEventListener("click", async () => {
+        const json = JSON.stringify(config, null, 2)
+        await navigator.clipboard?.writeText(json).catch(() => {})
+        const res = await fetch("/__lab/save", { method: "POST", body: json }).catch(() => null)
+        status.textContent = res?.ok ? `Saved ${(await res.json()).path} · copied` : "Copied to the clipboard (no dev server to save to)"
+        void rail()
+      })
+
+      let start = defaults()
+      try {
+        const kept = JSON.parse(localStorage.getItem("morph-glass-lab") ?? "null")
+        if (kept?.mode === "glass") start = { ...defaults(kept.seed), ...kept }
+      } catch {}
+      apply(start)
+      document.fonts.ready.then(() => render(config))
+      void rail()
+    </script>
+  </body>
+</html>

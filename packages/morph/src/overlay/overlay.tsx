@@ -4,6 +4,7 @@ import { type Dispatch, useEffect, useEffectEvent, useReducer, useRef, useState 
 import { type ThemeName } from "../core/config"
 import { isPointShortcut, isTyping } from "../inspector/pointer"
 import { isMorph } from "../inspector/target"
+import { useAppearance } from "./appearance"
 import { type SessionActions } from "./ask"
 import { itemsIn } from "./frame"
 import { readSessions } from "./session-store"
@@ -292,6 +293,7 @@ export function Overlay() {
     writeTools(state.tools)
   }, [state.tools])
   const theme = useHostTheme(state.open)
+  const appearance = useAppearance(state.open)
   const scales = useScales(state.open, theme?.name ?? null)
   const drag = usePagePointer(state, dispatch)
   const actions = useSessions(state, dispatch)
@@ -312,7 +314,8 @@ export function Overlay() {
   const area = uncovered(dock, viewport())
 
   return (
-    <div className="ui">
+    <div className="ui" data-appearance={appearance}>
+      <svg data-morph-glass aria-hidden className="absolute size-0" />
       {/* First, so its `@layer` statement orders the legacy layer after the base reset. */}
       <style>{UI_CSS}</style>
       <style>{`@layer legacy {${OVERLAY_CSS}}`}</style>

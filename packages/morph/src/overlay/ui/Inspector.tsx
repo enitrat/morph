@@ -164,7 +164,7 @@ export function Inspector({
         <motion.aside
           key={open.side}
           aria-label="Inspector"
-          className="glass pointer-events-auto fixed z-[2147483643] flex flex-col overflow-hidden rounded-xl"
+          className="glass pointer-events-auto fixed z-[2147483643] flex flex-col overflow-hidden rounded-(--r-panel)"
           style={{ top: MARGIN, bottom: MARGIN, [open.side]: MARGIN }}
           initial={
             reduce ? { opacity: 0, width: open.width } : { opacity: 0, x: from, width: open.width }

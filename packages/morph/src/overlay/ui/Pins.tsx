@@ -27,8 +27,8 @@ import {
   submissionWords,
 } from "../sessions"
 import { Glyph } from "./Glyph"
+import { useGlass } from "./glass"
 import { useSize } from "./hooks"
-import { Kbd } from "./Kbd"
 import { appear } from "./lib/motion"
 import { enterChips, Suggestions, useSuggestions } from "./Suggestions"
 import { type Area } from "./PageLayer"
@@ -209,7 +209,7 @@ function PinButton({
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0.6, opacity: 0 }}
       className={`ring-focus pointer-events-auto absolute rounded-full shadow-[0_4px_12px_-4px_rgb(0_0_0/0.6)] ${
-        active ? "outline-2 outline-offset-2 outline-accent" : ""
+        active ? "outline-2 outline-offset-2 outline-mark" : ""
       }`}
       style={{ left: at.x, top: at.y }}
     >
@@ -232,7 +232,7 @@ function PinButton({
 function Scan({ box }: { box: Box }) {
   return (
     <div
-      className="absolute overflow-hidden rounded-[3px] shadow-[inset_0_0_0_1px_rgb(124_196_255/0.35)]"
+      className="absolute overflow-hidden rounded-[3px] shadow-[inset_0_0_0_1px_var(--mark)]"
       style={{
         left: box.left,
         top: box.top,
@@ -240,7 +240,7 @@ function Scan({ box }: { box: Box }) {
         height: box.bottom - box.top,
       }}
     >
-      <div className="morph-scan absolute inset-x-0 h-1/2 bg-[linear-gradient(180deg,transparent,rgb(124_196_255/0.10)_70%,rgb(124_196_255/0.22))]" />
+      <div className="morph-scan absolute inset-x-0 h-1/2 bg-[linear-gradient(180deg,transparent,var(--mark-soft)_70%,color-mix(in_oklch,var(--mark)_35%,transparent))]" />
     </div>
   )
 }
@@ -248,13 +248,11 @@ function Scan({ box }: { box: Box }) {
 function Note({ tone, children }: { tone: "warn" | "plain"; children: ReactNode }) {
   return (
     <div
-      className={`flex gap-2 rounded-lg px-2.5 py-2 text-[12px] leading-[17px] ${
-        tone === "warn"
-          ? "bg-warn-soft text-warn shadow-[inset_0_0_0_1px_rgb(245_177_74/0.35)]"
-          : "bg-surface-2 text-ink-2"
+      className={`flex gap-2 rounded-(--r-ctrl) px-(--inset) py-2.5 text-sm ${
+        tone === "warn" ? "bg-warn-soft text-ink" : "bg-surface-2 text-ink-2"
       }`}
     >
-      <span className="mt-px">
+      <span className={`mt-px ${tone === "warn" ? "text-warn" : ""}`}>
         <Glyph name={tone === "warn" ? "warn" : "specs"} size={13} />
       </span>
       <div className="min-w-0">{children}</div>
@@ -324,16 +322,16 @@ function Row({
       aria-pressed={on}
       disabled={disabled}
       onClick={onClick}
-      className={`ring-focus grid w-full grid-cols-[22px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors duration-150 ${
+      className={`ring-focus grid min-h-(--ctrl) w-full grid-cols-[22px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-(--r-ctrl) px-(--inset) py-1.5 text-left transition-colors duration-150 ${
         on
-          ? "bg-accent-soft shadow-[inset_0_0_0_1px_var(--ring)]"
+          ? "bg-accent-soft shadow-(--press)"
           : waiting
-            ? "bg-warn-soft shadow-[inset_0_0_0_1px_rgb(245_177_74/0.35)]"
+            ? "bg-warn-soft"
             : "hover:bg-surface-2 disabled:hover:bg-transparent"
       }`}
     >
       <span
-        className={`grid size-[22px] place-items-center rounded-md font-mono text-[11px] font-semibold ${
+        className={`grid size-[22px] place-items-center rounded-full text-sm font-semibold ${
           on ? "bg-accent text-on-accent" : "bg-surface-2 text-ink-2"
         }`}
       >
@@ -341,11 +339,11 @@ function Row({
       </span>
       <span className="min-w-0">
         <span
-          className={`block truncate text-[12.5px] font-medium ${disabled ? "text-ink-2" : "text-ink"}`}
+          className={`block truncate font-medium ${disabled ? "text-ink-2" : "text-ink"}`}
         >
           {title}
         </span>
-        <span className="block truncate text-[11.5px] text-ink-3">{sub}</span>
+        <span className="block truncate text-sm text-ink-3">{sub}</span>
       </span>
       <span className="flex items-center gap-1.5">{meta}</span>
     </button>
@@ -354,12 +352,10 @@ function Row({
 
 function VariantRow({
   variant,
-  index,
   view,
   actions,
 }: {
   variant: VariantView
-  index: number
   view: ActiveSessionView
   actions: SessionActions
 }) {
@@ -400,11 +396,11 @@ function VariantRow({
         }}
         meta={
           variant.retryable ? (
-            <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium text-ink">
+            <span className="flex h-(--item) items-center rounded-full bg-surface-3 px-(--inset) text-sm font-medium text-ink">
               Retry
             </span>
           ) : (
-            <span className="text-[11px] text-warn">failed</span>
+            <span className="text-sm text-warn">failed</span>
           )
         }
       />
@@ -422,9 +418,8 @@ function VariantRow({
       }}
       meta={
         <>
-          <span className="tnum font-mono text-[11px] text-[var(--add)]">+{variant.stat.add}</span>
-          <span className="tnum font-mono text-[11px] text-[var(--del)]">−{variant.stat.del}</span>
-          <Kbd>{String(index + 1)}</Kbd>
+          <span className="tnum font-mono text-sm text-[var(--add)]">+{variant.stat.add}</span>
+          <span className="tnum font-mono text-sm text-[var(--del)]">−{variant.stat.del}</span>
         </>
       }
     />
@@ -452,6 +447,7 @@ function ThreadCard({
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const size = useSize(ref)
+  useGlass(ref)
   const spot = cardSpot(box, size ?? { width: CARD_WIDTH, height: 320 }, area, {
     width: innerWidth,
     height: innerHeight,
@@ -481,7 +477,7 @@ function ThreadCard({
             y1={tether.from.y}
             x2={tether.to.x}
             y2={tether.to.y}
-            stroke="var(--accent)"
+            stroke="var(--mark)"
             strokeWidth={1.25}
             strokeDasharray="3 4"
             strokeLinecap="round"
@@ -493,7 +489,7 @@ function ThreadCard({
         {...appear}
         role="dialog"
         aria-label={`Pin ${pin.n}, ${pin.name}`}
-        className="glass pointer-events-auto absolute grid grid-cols-[minmax(0,1fr)] gap-2.5 rounded-xl p-3"
+        className="glass pointer-events-auto absolute grid grid-cols-[minmax(0,1fr)] gap-(--gap) rounded-(--r-panel) p-(--pad)"
         style={{
           left: spot.x,
           top: spot.y,
@@ -501,15 +497,13 @@ function ThreadCard({
           visibility: size ? "visible" : "hidden",
         }}
       >
-        <div className="flex items-center gap-2">
-          <Disc pin={pin} view={view} size={20} />
-          <span className="min-w-0 truncate text-[13px] font-semibold text-ink">{pin.name}</span>
-          {pin.file && (
-            <span className="truncate font-mono text-[11px] text-ink-3">{pin.file}</span>
-          )}
+        <div className="flex h-(--ctrl) items-center gap-2 pl-(--inset)">
+          <Disc pin={pin} view={view} size={22} />
+          <span className="min-w-0 truncate font-semibold text-ink">{pin.name}</span>
+          {pin.file && <span className="truncate font-mono text-sm text-ink-3">{pin.file}</span>}
           <span className="flex-1" />
           {round > 1 && (
-            <span className="rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-[10.5px] text-ink-2">
+            <span className="flex h-(--item) items-center rounded-full bg-surface-2 px-2.5 font-mono text-sm text-ink-2">
               R{round}
             </span>
           )}
@@ -520,22 +514,22 @@ function ThreadCard({
             onClick={() => {
               dispatch({ kind: "card", id: null })
             }}
-            className="ring-focus grid size-6 place-items-center rounded-md text-ink-2 hover:bg-surface-2 hover:text-ink"
+            className="ring-focus grid size-(--ctrl) flex-none place-items-center rounded-full bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink"
           >
             <Glyph name="x" size={12} />
           </button>
         </div>
-        <p className="text-[12.5px] leading-[18px] text-ink">
+        <p className="px-(--inset) text-ink-2">
           “{pin.submission === null ? (view?.words ?? pin.words) : submissionWords(pin.submission)}”
         </p>
         {last && (
-          <p className="truncate text-[11.5px] text-ink-3">
+          <p className="truncate px-(--inset) text-sm text-ink-3">
             Built on {letterOf(last.variant)} · {last.title}
           </p>
         )}
         {pin.submission !== null ? (
-          <div className="grid gap-2 text-[12px] text-ink-2">
-            <p>
+          <div className="grid justify-items-start gap-2 text-ink-2">
+            <p className="px-(--inset)">
               {pin.submission.kind === "uncertain"
                 ? pin.submission.detail
                 : pin.submission.kind === "locating"
@@ -545,7 +539,7 @@ function ThreadCard({
             {pin.submission.kind === "uncertain" && (
               <button
                 type="button"
-                className="ring-focus rounded-md bg-surface-2 px-2 py-1 text-ink"
+                className="ring-focus flex h-(--ctrl) items-center rounded-full bg-surface-2 px-(--inset) font-medium text-ink hover:bg-surface-3"
                 onClick={() => actions.resume(pin)}
               >
                 Retry request
@@ -553,15 +547,15 @@ function ThreadCard({
             )}
           </div>
         ) : view === null || view.kind === "planning" ? (
-          <p className="text-[12px] text-ink-2">
+          <p className="px-(--inset) text-ink-2">
             {view === null ? "Reconnecting…" : "Planning directions…"}
           </p>
         ) : view.kind === "plan-failed" ? (
-          <div className="grid gap-2 text-[12px] text-ink-2">
-            <p>{view.reason}</p>
+          <div className="grid justify-items-start gap-2 text-ink-2">
+            <p className="px-(--inset)">{view.reason}</p>
             <button
               type="button"
-              className="ring-focus rounded-md bg-surface-2 px-2 py-1 text-ink"
+              className="ring-focus flex h-(--ctrl) items-center rounded-full bg-surface-2 px-(--inset) font-medium text-ink hover:bg-surface-3"
               onClick={() => actions.retryPlan(view.id)}
             >
               Retry planning
@@ -581,13 +575,12 @@ function ThreadCard({
                 onClick={() => {
                   actions.show(view.id, "original")
                 }}
-                meta={<Kbd>0</Kbd>}
+                meta={null}
               />
-              {view.variants.map((variant, index) => (
+              {view.variants.map((variant) => (
                 <VariantRow
                   key={variant.id}
                   variant={variant}
-                  index={index}
                   view={view}
                   actions={actions}
                 />
@@ -595,8 +588,7 @@ function ThreadCard({
             </div>
           </>
         )}
-        <label className="flex h-8 items-center gap-2 rounded-lg bg-[rgb(0_0_0/0.25)] px-2.5 shadow-[inset_0_0_0_1px_var(--line)]">
-          <Glyph name="ask" size={13} />
+        <label className="flex h-(--ctrl) items-center rounded-(--r-ctrl) bg-surface-2 px-(--inset)">
           <input
             ref={field}
             value={pin.refine}
@@ -605,7 +597,7 @@ function ThreadCard({
               from === null ? "Refine once a variant shows…" : `Refine from ${letterOf(from)}…`
             }
             aria-label="Refine"
-            className="min-w-0 flex-1 bg-transparent text-[12.5px] text-ink outline-none placeholder:text-ink-3 disabled:opacity-60"
+            className="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-ink-3 disabled:text-ink-3"
             onChange={(event) => {
               dispatch({ kind: "refining", id: pin.id, words: event.target.value })
             }}
@@ -633,18 +625,18 @@ function ThreadCard({
             onLeave={() => field.current?.focus()}
           />
         )}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => {
               if (pin.submission !== null) actions.cancel(pin)
               else if (view !== null) actions.discard(view.id)
             }}
-            className="ring-focus h-7 rounded-md px-2 text-[12.5px] font-medium text-[var(--del)] hover:bg-surface-2"
+            className="ring-focus flex h-(--ctrl) items-center rounded-full bg-surface-2 px-(--inset) font-medium text-ink hover:bg-surface-3"
           >
             {pin.submission === null ? "Discard" : "Cancel request"}
           </button>
-          <span className="min-w-0 flex-1 truncate text-right text-[11px] text-ink-3">
+          <span className="min-w-0 flex-1 truncate text-right text-sm text-ink-3">
             {view?.kind === "active" && isGenerating(view)
               ? `${ready} of ${view.variants.length} ready`
               : view?.kind === "active" && view.place.kind === "waiting"
@@ -659,9 +651,8 @@ function ThreadCard({
             onClick={() => {
               if (keep != null && active !== null) actions.keep(pin, active, keep)
             }}
-            className="ring-focus flex h-7 items-center gap-1.5 rounded-md bg-accent px-2.5 text-[12.5px] font-semibold text-on-accent transition-transform duration-150 active:scale-[0.97] disabled:opacity-40"
+            className="ring-focus flex h-(--ctrl) items-center gap-1.5 rounded-full bg-accent px-(--r-ctrl) font-semibold text-on-accent shadow-(--press) transition-transform duration-150 active:scale-[0.97] disabled:bg-surface-3 disabled:text-ink-3 disabled:shadow-none"
           >
-            <Glyph name="check" size={12} />
             Keep{keep != null ? ` ${letterOf(keep)}` : ""}
           </button>
         </div>

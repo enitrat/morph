@@ -25,18 +25,18 @@ export function Outline({
   dashed = false,
 }: {
   box: Box
-  tone: "accent" | "hover" | "warn" | "dim"
+  tone: "mark" | "hover" | "warn" | "dim"
   dashed?: boolean
 }) {
   const ring = {
-    accent: "shadow-[inset_0_0_0_1.5px_var(--accent),0_0_0_1px_rgb(0_0_0/0.3)]",
-    hover: "shadow-[inset_0_0_0_1px_var(--accent),0_0_0_1px_rgb(0_0_0/0.2)]",
+    mark: "shadow-[0_0_0_2px_var(--mark),0_0_0_5px_var(--mark-soft)]",
+    hover: "shadow-[0_0_0_1px_var(--mark)]",
     warn: "bg-warn-soft shadow-[inset_0_0_0_1.5px_var(--warn)]",
-    dim: "shadow-[inset_0_0_0_1px_rgb(124_196_255/0.35)]",
+    dim: "shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--mark)_45%,transparent)]",
   }[tone]
   return (
     <div
-      className={`absolute rounded-[2px] ${dashed ? "outline-1 -outline-offset-1 outline-dashed outline-accent" : ring}`}
+      className={`absolute rounded-[3px] ${dashed ? "outline-1 -outline-offset-1 outline-dashed outline-mark" : ring}`}
       style={{
         left: box.left,
         top: box.top,
@@ -65,7 +65,7 @@ export function Tag({
   return (
     <div
       ref={ref}
-      className={`absolute flex h-[19px] items-center gap-1.5 whitespace-nowrap rounded-xs px-1.5 text-xs font-semibold bg-accent text-on-accent shadow-[0_1px_2px_rgb(0_0_0/0.25)] ${onClick ? "pointer-events-auto" : ""}`}
+      className={`absolute flex h-[19px] items-center gap-1.5 whitespace-nowrap rounded-xs px-1.5 text-xs font-semibold bg-mark text-on-mark shadow-[0_1px_2px_oklch(0_0_0/0.25)] ${onClick ? "pointer-events-auto" : ""}`}
       style={{ left: spot.x, top: spot.y, visibility: size ? "visible" : "hidden" }}
     >
       {children}
@@ -76,22 +76,6 @@ export function Tag({
 const Dim = ({ children }: { children: ReactNode }) => (
   <span className="tnum font-mono text-[10px] font-medium opacity-60">{children}</span>
 )
-
-function Handles({ box }: { box: Box }) {
-  const corners = [
-    [box.left, box.top],
-    [box.right, box.top],
-    [box.left, box.bottom],
-    [box.right, box.bottom],
-  ] as const
-  return corners.map(([x, y], i) => (
-    <div
-      key={i}
-      className="absolute size-[7px] rounded-[1.5px] bg-white shadow-[0_0_0_1.5px_var(--accent),0_0_0_2.5px_rgb(0_0_0/0.35)]"
-      style={{ left: x - 3.5, top: y - 3.5 }}
-    />
-  ))
-}
 
 /** How much of a selection runs under the inspector, marked on the inspector's edge. */
 function UnderPanel({
@@ -110,11 +94,11 @@ function UnderPanel({
   return (
     <>
       <div
-        className="absolute w-0.5 rounded-full bg-accent"
+        className="absolute w-0.5 rounded-full bg-mark"
         style={{ left: x, top, height: bottom - top }}
       />
       <div
-        className="tnum absolute whitespace-nowrap rounded-xs bg-surface-solid px-1.5 py-0.5 font-mono text-[10.5px] text-accent shadow-[inset_0_0_0_1px_var(--ring)]"
+        className="tnum absolute whitespace-nowrap rounded-xs bg-surface-solid px-1.5 py-0.5 font-mono text-[10.5px] text-ink shadow-[inset_0_0_0_1px_var(--ring)]"
         style={{
           top: (top + bottom) / 2 - 9,
           ...(sidebar.side === "right" ? { right: innerWidth - a + 8 } : { left: b + 8 }),
@@ -166,7 +150,7 @@ function FrameLabels({
             }
             className={`absolute h-4 whitespace-nowrap rounded-[3px] px-1.5 font-mono text-[10px] font-medium leading-4 ${
               dispatch ? "pointer-events-auto" : ""
-            } ${flagged.has(item) ? "bg-warn text-on-warn" : "bg-surface-solid text-accent shadow-[inset_0_0_0_1px_var(--ring)] hover:bg-accent hover:text-on-accent"}`}
+            } ${flagged.has(item) ? "bg-warn text-on-warn" : "bg-surface-solid text-ink shadow-[inset_0_0_0_1px_var(--ring)] hover:bg-mark hover:text-on-mark"}`}
             style={{ left: spot.x, top: spot.y }}
           >
             {name}
@@ -204,7 +188,7 @@ export function PageLayer({
       {frame && (
         <>
           <div
-            className="absolute rounded-xs outline-1 outline-dashed outline-accent"
+            className="absolute rounded-xs outline-1 outline-dashed outline-mark"
             style={boxStyle(frameBox(frame))}
           />
           <FrameLabels
@@ -218,7 +202,7 @@ export function PageLayer({
       {drag && (
         <>
           <div
-            className="absolute rounded-xs bg-accent-soft outline-1 outline-dashed outline-accent"
+            className="absolute rounded-xs bg-mark-soft outline-1 outline-dashed outline-mark"
             style={boxStyle(drag)}
           />
           <FrameLabels items={live} narrow={null} flagged={new Set()} dispatch={null} />
@@ -283,8 +267,7 @@ function Selected({
   const crumbs = pathOf(element).slice(-2)
   return (
     <>
-      <Outline box={box} tone="accent" />
-      <Handles box={box} />
+      <Outline box={box} tone="mark" />
       <Tag box={box} area={area} onClick={() => {}}>
         {crumbs.map((crumb, i) => (
           <span key={i} className="flex items-center gap-1.5">

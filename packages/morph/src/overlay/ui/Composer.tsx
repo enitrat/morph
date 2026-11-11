@@ -5,18 +5,18 @@ import { type SessionActions } from "../ask"
 import { type Composer as Open, type Event, type Frame, type SketchTool } from "../model"
 import { anchor, type Box, boxOf } from "../place"
 import { nameOf } from "../tree"
-import { Glyph, type GlyphName } from "./Glyph"
+import { Glyph } from "./Glyph"
+import { useGlass } from "./glass"
 import { fileOf, useSize, useSource } from "./hooks"
-import { Kbd } from "./Kbd"
 import { appear } from "./lib/motion"
 import { groupsOf } from "./FrameSheet"
 import { enterChips, Suggestions, useSuggestions } from "./Suggestions"
 import { type Area, frameBox } from "./PageLayer"
 
-const TOOLS: { id: SketchTool; glyph: GlyphName; label: string }[] = [
-  { id: "box", glyph: "box", label: "Box" },
-  { id: "arrow", glyph: "arrow", label: "Arrow" },
-  { id: "note", glyph: "note", label: "Note" },
+const TOOLS: { id: SketchTool; label: string }[] = [
+  { id: "box", label: "Box" },
+  { id: "arrow", label: "Arrow" },
+  { id: "note", label: "Note" },
 ]
 
 /** What the composer is about, and where it sits on the page. */
@@ -65,10 +65,8 @@ function Kinds({ frame, dispatch }: { frame: Frame; dispatch: Dispatch<Event> })
             onClick={() => {
               dispatch({ kind: "narrowed", name })
             }}
-            className={`ring-focus flex h-6 items-center gap-1 rounded-md px-2 text-[11.5px] transition-colors duration-150 ${
-              on
-                ? "bg-accent-soft text-accent shadow-[inset_0_0_0_1px_var(--ring)]"
-                : "bg-surface-2 text-ink-2 hover:text-ink"
+            className={`ring-focus flex h-(--item) items-center gap-1 rounded-full px-(--inset) text-sm transition-colors duration-150 ${
+              on ? "bg-accent-soft text-ink shadow-(--press)" : "bg-surface-2 text-ink-2 hover:text-ink"
             }`}
           >
             <span className="max-w-28 truncate">{name}</span>
@@ -95,6 +93,7 @@ export function Composer({
   const card = useRef<HTMLDivElement>(null)
   const field = useRef<HTMLTextAreaElement>(null)
   const size = useSize(card)
+  useGlass(card)
   const { name, box, element } = about(composer)
   const source = useSource(element)
   const { draft, tool } = composer
@@ -134,7 +133,7 @@ export function Composer({
       {...appear}
       role="dialog"
       aria-label={`Ask about ${name}`}
-      className="glass pointer-events-auto fixed z-[2147483642] grid w-[360px] grid-cols-[minmax(0,1fr)] gap-2.5 rounded-xl p-3"
+      className="glass pointer-events-auto fixed z-[2147483642] grid w-[360px] grid-cols-[minmax(0,1fr)] gap-(--gap) rounded-(--r-panel) p-(--pad)"
       style={{
         left: spot.x,
         top: spot.y,
@@ -142,24 +141,19 @@ export function Composer({
         transformOrigin: "top left",
       }}
     >
-      <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
-        <span className="flex h-[22px] items-center gap-1.5 rounded-md bg-accent-soft px-2 font-medium text-accent shadow-[inset_0_0_0_1px_var(--ring)]">
-          <Glyph name={element ? "comp" : "frame"} size={12} />
-          <span className="max-w-48 truncate">{name}</span>
-        </span>
+      <div className="flex h-(--ctrl) min-w-0 items-baseline gap-2 px-(--inset) leading-(--ctrl)">
+        <span className="truncate font-semibold">{name}</span>
         {source && (
-          <span className="flex h-[22px] items-center rounded-md bg-surface-2 px-2 font-mono text-[11px] text-ink-2">
-            {fileOf(source)}
-          </span>
+          <span className="truncate font-mono text-sm text-ink-3">{fileOf(source)}</span>
         )}
         {marks > 0 && (
-          <span className="flex h-[22px] items-center gap-1.5 rounded-md bg-surface-2 pl-2 text-ink-2">
+          <span className="ml-auto flex h-(--item) flex-none items-center gap-1.5 self-center rounded-full bg-surface-2 pl-2.5 text-sm leading-none text-ink-2">
             <Glyph name="sketch" size={12} />
             {marks} mark{marks === 1 ? "" : "s"}
             <button
               type="button"
               aria-label="Clear marks"
-              className="grid size-[22px] place-items-center rounded-md hover:text-ink"
+              className="grid size-(--item) place-items-center rounded-full hover:text-ink"
               onClick={() => {
                 for (const mark of draft.marks) dispatch({ kind: "unmarked", key: mark.key })
               }}
@@ -178,7 +172,7 @@ export function Composer({
         value={draft.words}
         placeholder={element ? `Describe a change to ${name}…` : `Ask about ${name.toLowerCase()}…`}
         aria-label="What should change"
-        className="ring-focus min-h-[58px] w-full resize-none rounded-lg bg-[rgb(0_0_0/0.25)] px-2.5 py-2 text-[13px] leading-[19px] text-ink shadow-[inset_0_0_0_1px_var(--line)] placeholder:text-ink-3"
+        className="min-h-[calc(var(--ctrl)*2)] w-full resize-none outline-none focus-visible:shadow-[inset_0_0_0_1px_var(--ring)] rounded-(--r-ctrl) bg-surface-2 px-(--inset) py-[calc((var(--ctrl)-18px)/2)] text-base text-ink placeholder:text-ink-3"
         onChange={(event) => {
           dispatch({ kind: "typed", words: event.target.value })
         }}
@@ -203,9 +197,9 @@ export function Composer({
           onLeave={() => field.current?.focus()}
         />
       )}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center justify-between gap-2">
         <span
-          className="flex gap-0.5 rounded-md bg-surface-2 p-0.5 shadow-[inset_0_0_0_1px_var(--line)]"
+          className="flex h-(--ctrl) items-center rounded-full bg-surface-2 p-1"
           role="radiogroup"
           aria-label="Sketch"
         >
@@ -221,20 +215,14 @@ export function Composer({
                 onClick={() => {
                   dispatch({ kind: "tool", tool: on ? null : entry.id })
                 }}
-                className={`ring-focus flex h-6 items-center gap-1 rounded-[5px] px-1.5 text-[11.5px] font-medium transition-colors duration-150 ${
-                  on
-                    ? "bg-accent-soft text-accent shadow-[inset_0_0_0_1px_var(--ring)]"
-                    : "text-ink-2 hover:text-ink"
+                className={`ring-focus flex h-(--item) items-center rounded-(--r-item) px-[calc(var(--inset)-4px)] text-sm transition-colors duration-150 ${
+                  on ? "bg-accent-soft text-ink shadow-(--press)" : "text-ink-2 hover:text-ink"
                 }`}
               >
-                <Glyph name={entry.glyph} size={12} />
                 {entry.label}
               </button>
             )
           })}
-        </span>
-        <span className="min-w-0 flex-1 truncate px-1.5 text-[11px] text-ink-3">
-          {tool ? "Drag on the page · esc done" : "3 variants"}
         </span>
         <button
           type="button"
@@ -242,10 +230,9 @@ export function Composer({
             send()
           }}
           disabled={draft.words.trim() === "" && marks === 0}
-          className="ring-focus flex h-7 items-center gap-1.5 rounded-md bg-accent px-2.5 text-[12.5px] font-semibold text-on-accent transition-transform duration-150 active:scale-[0.97] disabled:opacity-40"
+          className="ring-focus flex h-(--ctrl) items-center gap-1.5 rounded-full bg-accent px-(--r-ctrl) font-semibold text-on-accent shadow-(--press) transition-transform duration-150 active:scale-[0.97] disabled:bg-surface-3 disabled:text-ink-3 disabled:shadow-none"
         >
           Generate
-          <Kbd onInk>↵</Kbd>
         </button>
       </div>
     </motion.div>

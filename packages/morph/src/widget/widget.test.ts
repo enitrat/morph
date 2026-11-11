@@ -15,11 +15,13 @@ afterEach(() => {
   localStorage.clear()
   vi.unstubAllGlobals()
   Reflect.deleteProperty(document, "fonts")
+  Reflect.deleteProperty(document, "elementsFromPoint")
 })
 
 it("restores a session, flips ready choices by keyboard, explains unavailable ones, and keeps the selected choice", async () => {
-  // happy-dom has no FontFaceSet; keep font loading at the browser boundary.
+  // happy-dom has no FontFaceSet or hit testing; keep both at the browser boundary.
   Object.defineProperty(document, "fonts", { configurable: true, value: new Set() })
+  Object.defineProperty(document, "elementsFromPoint", { configurable: true, value: () => [] })
   vi.stubGlobal(
     "FontFace",
     class {

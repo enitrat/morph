@@ -42,7 +42,7 @@ export const OVERLAY_CSS = `
 .dial-control .icon:disabled { opacity: 0.35; cursor: default; }
 .dial-value {
   height: 26px; display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0;
-  border-radius: 7px; background: rgb(0 0 0 / 0.25); box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 7px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line);
   color: var(--accent); font: 500 11.5px/1 var(--font-mono);
   cursor: ew-resize; touch-action: none; user-select: none;
 }
@@ -87,9 +87,9 @@ export const OVERLAY_CSS = `
 .box-mark { position: absolute; border: 1.5px dashed var(--accent); border-radius: 6px; background: var(--accent-soft); }
 .label-input {
   position: absolute; pointer-events: auto; min-width: 160px; padding: 4px 8px; border-radius: 6px;
-  border: 0; background: var(--accent); color: var(--on-accent); font-size: 12px; box-shadow: var(--glass);
+  border: 0; background: var(--accent); color: var(--on-accent); font-size: 12px; box-shadow: var(--lift);
 }
-.label-input::placeholder { color: rgb(7 21 35 / 0.6); }
+.label-input::placeholder { color: color-mix(in oklch, var(--on-accent) 60%, transparent); }
 .label-input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .aim { position: fixed; pointer-events: none; border-radius: 4px; }
 .aim-source { outline: 1.5px dashed var(--accent); outline-offset: 2px; }

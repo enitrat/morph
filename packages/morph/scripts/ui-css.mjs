@@ -5,7 +5,12 @@ import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 
 const INPUT = resolve(import.meta.dirname, "../src/overlay/ui/tailwind.css")
-const GEIST = join(dirname(createRequire(import.meta.url).resolve("geist/font")), "fonts")
+const require = createRequire(import.meta.url)
+const GEIST = join(dirname(require.resolve("geist/font")), "fonts")
+const INSTRUMENT = join(
+  dirname(require.resolve("@fontsource-variable/instrument-sans/package.json")),
+  "files",
+)
 
 /** Compiles the overlay's Tailwind stylesheet into the CSS string its shadow root injects. */
 export async function uiCss() {
@@ -33,12 +38,12 @@ function forShadowRoot(css) {
   return css.replace(gate, "$1$2\n}").replace(/@property [^{]+\{[^}]*\}\n?/g, "")
 }
 
-/** Geist as data URLs, registered on the document by the widget since shadow trees ignore @font-face. */
+/** Instrument Sans and Geist Mono as data URLs, registered on the document by the widget since shadow trees ignore @font-face. */
 export async function uiFonts() {
   const dataUrl = async (file) =>
-    `data:font/woff2;base64,${(await readFile(join(GEIST, file))).toString("base64")}`
+    `data:font/woff2;base64,${(await readFile(file)).toString("base64")}`
   return {
-    sans: await dataUrl("geist-sans/Geist-Variable.woff2"),
-    mono: await dataUrl("geist-mono/GeistMono-Variable.woff2"),
+    sans: await dataUrl(join(INSTRUMENT, "instrument-sans-latin-wght-normal.woff2")),
+    mono: await dataUrl(join(GEIST, "geist-mono/GeistMono-Variable.woff2")),
   }
 }
