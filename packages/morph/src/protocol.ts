@@ -49,7 +49,13 @@ export const operations = {
   dial: { request: DialWrite, response: Dialed },
   page: { response: PageView },
   /** A GET with `path`, `line` and `col` naming a JSX site, or `session` for its refine field. */
-  suggest: { response: z.object({ suggestions: z.array(Suggestion).max(MAX_SUGGESTIONS) }) },
+  suggest: {
+    response: z.object({
+      suggestions: z.array(Suggestion).max(MAX_SUGGESTIONS),
+      /** Words an empty composer starts with, selected so typing replaces them. */
+      prefill: z.string().trim().min(1).max(120).optional(),
+    }),
+  },
   ask: { request: Ask, response: PageView },
   refine: { request: Refine, response: PageView },
   show: { request: ChoiceRef, response: PageView },

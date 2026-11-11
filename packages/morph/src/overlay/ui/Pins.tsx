@@ -457,7 +457,7 @@ function ThreadCard({
   const ready = view?.variants.filter((variant) => variant.state === "ready").length ?? 0
   const field = useRef<HTMLInputElement>(null)
   const chips = useRef<HTMLDivElement>(null)
-  const suggestions = useSuggestions(from === null ? null : pin.id)
+  const { suggestions } = useSuggestions(from === null ? null : pin.id)
   const tether =
     spot.docked && pinAt !== null && size !== null
       ? { from: { x: pinAt.x + PIN / 2, y: pinAt.y + PIN / 2 }, to: nearestOn(spot, size, pinAt) }

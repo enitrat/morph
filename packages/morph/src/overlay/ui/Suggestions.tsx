@@ -6,21 +6,32 @@ import { bridge } from "../bridge"
 type About = SourceLoc | SessionId
 
 /** What the bridge suggests for a site or a session; none while it answers, or when it cannot. */
-export function useSuggestions(about: About | null): readonly Suggestion[] {
-  const [found, setFound] = useState<{ about: About; suggestions: readonly Suggestion[] } | null>(
-    null,
-  )
+interface Suggested {
+  readonly suggestions: readonly Suggestion[]
+  readonly prefill: string | null
+}
+
+const NOTHING: Suggested = { suggestions: [], prefill: null }
+
+export function useSuggestions(about: About | null): Suggested {
+  const [found, setFound] = useState<{ about: About; suggested: Suggested } | null>(null)
   useEffect(() => {
     if (about === null) return undefined
     let live = true
     void bridge.suggest(about).then((answer) => {
-      if (live) setFound({ about, suggestions: answer.ok ? answer.value.suggestions : [] })
+      if (!live) return
+      setFound({
+        about,
+        suggested: answer.ok
+          ? { suggestions: answer.value.suggestions, prefill: answer.value.prefill ?? null }
+          : NOTHING,
+      })
     })
     return () => {
       live = false
     }
   }, [about])
-  return found !== null && found.about === about ? found.suggestions : []
+  return found !== null && found.about === about ? found.suggested : NOTHING
 }
 
 const STEP: Partial<Record<string, 1 | -1>> = {

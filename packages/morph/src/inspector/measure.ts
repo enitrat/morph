@@ -209,7 +209,11 @@ export function measureRegion(frame: MeasureRect, selected: Element | null = nul
   const root = selected ?? document.body
   const filter: NodeFilter = {
     acceptNode(node) {
-      if (!(node instanceof Element) || isMorph(node) || node.matches("script,style,link,meta,head"))
+      if (
+        !(node instanceof Element) ||
+        isMorph(node) ||
+        node.matches("script,style,link,meta,head")
+      )
         return NodeFilter.FILTER_REJECT
       const style = getComputedStyle(node)
       if (style.display === "none" || style.opacity === "0") return NodeFilter.FILTER_REJECT

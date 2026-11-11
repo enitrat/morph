@@ -1,4 +1,4 @@
-[data-theme='discord'] {
+[data-theme="discord"] {
   --background: oklch(0.994 0 0);
   --foreground: oklch(0 0 0);
   --card: oklch(1 0 180);
@@ -53,7 +53,7 @@
   --spacing: 0.275rem;
 }
 
-[data-theme='discord'].dark {
+[data-theme="discord"].dark {
   --background: oklch(0.2195 0.0077 285.74);
   --foreground: oklch(0.9881 0 0);
   --card: oklch(0.2624 0.0093 285.74);

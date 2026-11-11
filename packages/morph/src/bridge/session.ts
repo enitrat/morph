@@ -390,11 +390,7 @@ async function drop(repo: Repo, id: SessionId): Promise<void> {
  * its files first. Every session whose variants touch those files merges onto the kept code when
  * it next shows, and lists them in its `drift`. A session already gone is a no-op.
  */
-export async function keep(
-  repo: Repo,
-  id: SessionId,
-  variant: VariantId,
-): Promise<Done<PageView>> {
+export async function keep(repo: Repo, id: SessionId, variant: VariantId): Promise<Done<PageView>> {
   const done = await withLock(sessionLock(repo, id), async () => {
     if ((await readSessionFile(repo, id)) === null) return page(repo)
     const kept = await settle(repo, { kind: "keep", session: id, variant })

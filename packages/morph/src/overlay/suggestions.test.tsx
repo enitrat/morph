@@ -112,3 +112,28 @@ it("shows no chips when the bridge does not know the operation", async () => {
   expect(ui.chips()).toHaveLength(0)
   expect(ui.host.querySelector("textarea")).not.toBeNull()
 })
+
+it("starts an empty composer with the bridge's prefill once, and keeps the chips while it is untouched", async () => {
+  const ui = mountComposer(() => ({
+    status: 200,
+    body: {
+      suggestions: [
+        { words: "Departure board", kind: "house" },
+        { words: "Wallet pass", kind: "house" },
+      ],
+      prefill: "Departure board",
+    },
+  }))
+  await vi.waitFor(() => expect(ui.chips()).toHaveLength(2))
+  const typed = ui.events.filter((event) => event.kind === "typed")
+  expect(typed).toEqual([{ kind: "typed", words: "Departure board" }])
+})
+
+it("leaves the composer empty when the bridge sends no prefill", async () => {
+  const ui = mountComposer(() => ({
+    status: 200,
+    body: { suggestions: [{ words: "Departure board", kind: "house" }] },
+  }))
+  await vi.waitFor(() => expect(ui.chips()).toHaveLength(1))
+  expect(ui.events.some((event) => event.kind === "typed")).toBe(false)
+})

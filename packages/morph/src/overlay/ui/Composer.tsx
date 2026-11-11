@@ -68,7 +68,19 @@ export function Composer({
     input.setSelectionRange(input.value.length, input.value.length)
   }, [composer.target, shown])
   const chips = useRef<HTMLDivElement>(null)
-  const suggestions = useSuggestions(source)
+  const { suggestions, prefill } = useSuggestions(source)
+  // An empty composer starts with the bridge's words once per target, selected so typing replaces
+  // them; words the designer already typed are never overwritten.
+  const prefilled = useRef<unknown>(null)
+  useEffect(() => {
+    const input = field.current
+    if (prefill === null || input === null || prefilled.current === composer.target) return
+    prefilled.current = composer.target
+    if (draft.words !== "") return
+    dispatch({ kind: "typed", words: prefill })
+    requestAnimationFrame(() => input.select())
+  }, [prefill, composer.target, draft.words, dispatch])
+  const untouched = draft.words === "" || suggestions.some((entry) => entry.words === draft.words)
   const send = (words = draft.words) => {
     void ask({ target: composer.target, words, marks: draft.marks }, dispatch)
   }
@@ -128,7 +140,7 @@ export function Composer({
           if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault()
             send()
-          } else if (event.key === "ArrowDown" && draft.words === "") {
+          } else if (event.key === "ArrowDown" && untouched) {
             if (enterChips(chips.current)) event.preventDefault()
           } else if (event.key === "Escape") {
             event.preventDefault()
@@ -137,7 +149,7 @@ export function Composer({
           }
         }}
       />
-      {draft.words === "" && (
+      {untouched && (
         <Suggestions
           ref={chips}
           suggestions={suggestions}

@@ -8,10 +8,12 @@ export interface ButtonProps {
 }
 
 const VARIANT = {
-  primary: "bg-(--button-primary-bg) text-(--button-primary-fg) hover:bg-(--button-primary-bg-hover)",
+  primary:
+    "bg-(--button-primary-bg) text-(--button-primary-fg) hover:bg-(--button-primary-bg-hover)",
   secondary:
     "bg-(--button-secondary-bg) text-(--button-secondary-fg) hover:bg-(--button-secondary-bg-hover)",
-  outline: "border border-(--button-outline-border) bg-(--button-outline-bg) text-(--button-outline-fg)",
+  outline:
+    "border border-(--button-outline-border) bg-(--button-outline-bg) text-(--button-outline-fg)",
   ghost: "bg-(--button-ghost-bg) text-(--button-ghost-fg) hover:bg-(--button-ghost-bg-hover)",
   destructive: "bg-(--button-destructive-bg) text-(--button-destructive-fg)",
 }
